@@ -9,6 +9,10 @@ import { checkClaims } from "./panel/claimcheck.js";
 import { DEMO_STIMULI, neutralStimulus } from "./panel/stimuli.js";
 import { ablation } from "./proof/ablation.js";
 import { runBacktest } from "./proof/backtest.js";
+import { YouTubeClient } from "./proof/youtube/client.js";
+import { runYouTubeBacktest, saveResult, RESULT_FILE, type YouTubeBacktest } from "./proof/youtube/run.js";
+import { compareMetros, saveTrendsCheck, TRENDS_FILE } from "./proof/trends.js";
+import { readFile } from "node:fs/promises";
 import type { Fingerprint, Aggregate, Stimulus } from "./qloo/types.js";
 
 /**
@@ -17,13 +21,22 @@ import type { Fingerprint, Aggregate, Stimulus } from "./qloo/types.js";
  *   npm run fingerprint "some unknown band"   # shows the coverage refusal
  */
 
-const [cmd, ...rest] = process.argv.slice(2);
-const name = rest.join(" ").trim();
+const [cmd, ...args] = process.argv.slice(2);
+const flags = args.filter((a) => a.startsWith("--"));
+const rest = args.filter((a) => !a.startsWith("--"));
+const csvPath = rest.find((a) => a.toLowerCase().endsWith(".csv"));
+const channelArg = rest.find((a) => a.startsWith("@") || /^UC[\w-]{20,}$/.test(a));
+const name = rest.filter((a) => a !== csvPath && a !== channelArg).join(" ").trim();
 const mode = (process.env.QLOO_MODE as Mode) || "mock";
 const dbPath = process.env.REHEARSAL_DB || "./rehearsal.sqlite";
 
-if (!cmd || (cmd !== "backtest" && !name)) {
-  console.error('Usage: npm run <fingerprint|rehearse|ablation> "<audience>"  |  npm run backtest');
+const NO_NAME = ["backtest", "backtest-youtube"];
+if (!cmd || (!NO_NAME.includes(cmd) && !name) || (cmd === "trends-check" && !csvPath)) {
+  console.error(
+    'Usage: npm run <fingerprint|rehearse|ablation> "<audience>"  |  npm run backtest\n' +
+      '       npm run backtest-youtube [-- "<audience>" [@handle]] [--fresh] [--live-respondents]\n' +
+      '       npm run trends-check -- "<audience>" <geoMap.csv>',
+  );
   process.exit(1);
 }
 
@@ -41,6 +54,10 @@ async function main() {
 
   if (cmd === "backtest") {
     printBacktest();
+    return;
+  }
+  if (cmd === "backtest-youtube") {
+    await backtestYouTube();
     return;
   }
 
@@ -93,6 +110,82 @@ async function main() {
     const ab = await ablation(fp, getStimulus(fp));
     printAblation(ab);
     return;
+  }
+
+  if (cmd === "trends-check") {
+    const check = compareMetros(fp, await readFile(csvPath!, "utf8"));
+    console.log(bold("═══ Google Trends metro check ═══"));
+    console.log(dim(`Trends term "${check.term}" · ${check.window || "window not in file"}`));
+    console.log(`   Metros in both      ${bold(String(check.shared))}`);
+    if (check.testable) {
+      console.log(`   Rank agreement      ρ = ${bold(String(check.rho))}   p = ${check.p}`);
+    } else console.log(red(`   Not testable: ${check.reason}`));
+    console.log(`   Top-5 overlap       ${bold(check.overlapTop5 + "/5")}`);
+    console.log(`   Qloo top 5          ${check.topQloo.join(", ")}`);
+    console.log(`   Trends top 5        ${check.topTrends.join(", ")}`);
+    check.biggestGaps.forEach((g) => console.log(dim(`   gap: ${g.metro} — Qloo #${g.qlooRank}, Trends #${g.trendsRank}`)));
+    if (check.qlooOnly.length) console.log(dim(`   not in the Trends file: ${check.qlooOnly.join(", ")}`));
+    await saveTrendsCheck(fp.audience.id.replace(/^mock:/, ""), check);
+    console.log(dim(`\nSaved to ${TRENDS_FILE}`));
+    return;
+  }
+}
+
+async function backtestYouTube() {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) {
+    console.log(red("YOUTUBE_API_KEY is not set."));
+    console.log(
+      "It's free: Google Cloud Console → new project → enable \"YouTube Data API v3\" → Credentials → API key.\n" +
+        "Then set it for this terminal only (don't put it in a committed file):\n" +
+        '   PowerShell:  $env:YOUTUBE_API_KEY = "<key>"\n' +
+        "   bash:        export YOUTUBE_API_KEY=<key>\n" +
+        "A full run uses about 350 of the 10,000 free daily units.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const respMode: RespondentMode = flags.includes("--live-respondents") ? "live" : "mock";
+  if (respMode === "live")
+    console.log(red("⚠ live respondents: one Claude call per persona per video — this costs Anthropic credits."));
+  const api = new YouTubeClient(key, "data/youtube/raw", flags.includes("--fresh"));
+  const result = await runYouTubeBacktest(api, gateway, {
+    qlooMode: mode,
+    respMode,
+    only: name || undefined,
+    channel: channelArg,
+    log: (s) => console.log(dim(s)),
+  });
+  await saveResult(result);
+  printYouTube(result);
+  console.log(dim(`\nSaved to ${RESULT_FILE} · ${result.quotaUnits} YouTube quota units used (cache hits are free)`));
+}
+
+function printYouTube(r: YouTubeBacktest) {
+  console.log(bold("\n═══ Real-world backtest — YouTube ═══"));
+  console.log(dim(`method ${r.methodVersion} (frozen): ${r.method}`));
+  if (r.qlooMode === "mock" || r.respondentMode === "mock")
+    console.log(red(`⚠ Qloo=${r.qlooMode}, respondents=${r.respondentMode}. The outcomes are real YouTube data; the predictor is only as real as these modes.`));
+  for (const c of r.cases) {
+    console.log(bold(`\n${c.audience}`));
+    if ("error" in c) {
+      console.log(red(`   ${c.error}`));
+      continue;
+    }
+    console.log(dim(`   channel "${c.channel.title}" (${c.channel.id}) · sealed ${c.sealHash} at ${c.sealedAt}`));
+    const t = c.rankTest;
+    if (t.testable)
+      console.log(`   Panel score vs likes per 1k views   ρ = ${bold(String(t.rho))}  p = ${t.p}  n = ${t.n}   (without Qloo ρ = ${t.flatRho})`);
+    else console.log(red(`   Not testable: ${t.reason}`));
+    if (c.medianSplit)
+      console.log(
+        `   Panel's higher half ${bold(String(c.medianSplit.higherMean))} likes/1k views vs lower half ${c.medianSplit.lowerMean}`,
+      );
+    console.log(
+      `   Taste echoes   ${bold(String(c.echoes.ownPer1k))} per 1k comments name a Qloo neighbour vs ${c.echoes.controlPer1k} for a control audience (${c.echoes.comments} comments)`,
+    );
+    if (c.echoes.topOwn.length) console.log(dim(`   most named: ${c.echoes.topOwn.join(", ")}`));
+    c.misses.forEach((m) => console.log(dim(`   miss (${m.kind}): "${m.title.slice(0, 60)}" panel ${m.predicted} · ${m.likesPerK} likes/1k`)));
   }
 }
 

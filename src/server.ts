@@ -7,6 +7,8 @@ import {
   rehearseReport,
   ablationReport,
   backtestReport,
+  youtubeBacktestReport,
+  trendsCheckReport,
   serverInfo,
 } from "./service/engine.js";
 
@@ -46,6 +48,10 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await ablationReport(name)));
       case "/api/backtest":
         return send(res, 200, JSON.stringify(backtestReport()));
+      case "/api/backtest-youtube":
+        return send(res, 200, JSON.stringify(await youtubeBacktestReport()));
+      case "/api/trends-check":
+        return send(res, 200, JSON.stringify(await trendsCheckReport()));
       default:
         return send(res, 404, JSON.stringify({ error: "not found" }));
     }

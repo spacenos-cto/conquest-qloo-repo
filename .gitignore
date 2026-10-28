@@ -9,3 +9,5 @@ dist/
 # Never commit Qloo response data (API terms)
 qloo-cache/
 *.qloo.json
+# Raw YouTube API responses: local cache only (YouTube terms: refresh or delete within 30 days)
+data/youtube/raw/

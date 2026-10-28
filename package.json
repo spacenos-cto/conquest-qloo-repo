@@ -15,7 +15,9 @@
     "probe": "tsx src/probe.ts",
     "resolve": "tsx src/cli.ts resolve",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test"
+    "test": "node --import tsx --test",
+    "backtest-youtube": "tsx src/cli.ts backtest-youtube",
+    "trends-check": "tsx src/cli.ts trends-check"
   },
   "devDependencies": {
     "@types/node": "22.10.5",

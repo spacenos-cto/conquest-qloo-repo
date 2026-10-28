@@ -27,7 +27,16 @@ All live Qloo calls go through the official harness (`qloo exec` / `qloo mcp`).
 
 Each call is logged to an evidence ledger; the Receipts screen shows the call
 behind every part of the fingerprint. The agent-facing MCP server exposes
-`fingerprint_audience`, `rehearse`, `compare_without_qloo`, `backtest`.
+`fingerprint_audience`, `rehearse`, `compare_without_qloo`, `backtest`,
+`backtest_youtube`, `trends_metro_check`.
+
+**Real-world proof.** Two checks use outside data, both free. (1) A YouTube backtest:
+the panel scores each judge audience's own recent videos from title and description,
+the predictions are sealed with a hash before any engagement data is fetched, and
+they're then scored against real likes per 1,000 views. It also counts how often real
+commenters name the audience's Qloo neighbours, against a control audience. (2) A
+Google Trends check compares Qloo's `where_popular` metro ranking with search
+interest by metro.
 
 ## 3. Redacted request → result walkthrough (one audience)
 
@@ -64,9 +73,11 @@ Node host (Render / Railway / a VM) — see README.
 ```bash
 git clone <repo> && cd Rehearsal_Qloo
 npm install
-npm test            # 12 tests
+npm test            # 20 tests
 npm run serve       # http://localhost:5173
 # CLI: npm run rehearse "Los Angeles Dodgers"  |  npm run backtest
+# real-world proof: YOUTUBE_API_KEY=<free key> npm run backtest-youtube
+#                   npm run trends-check -- "<audience>" <Google Trends metro CSV>
 # live Qloo: npm i -g @qloo/qloo-harness; qloo setup --qloo; QLOO_MODE=live
 ```
 
@@ -79,9 +90,17 @@ npm run serve       # http://localhost:5173
 - The TRIBE v2 "brain" strip is a **labelled stub**. The real strip needs Meta
   FAIR's model on a GPU and is CC BY-NC 4.0 (research use); it shows predicted
   attention/response, never liking, memorability or sales.
-- The backtest reference is a **seeded sample**, not real YouGov, and the grounded
-  path is a stand-in. The harness and method are real and frozen; swap in real
+- The demographic backtest reference is a **seeded sample**, not real YouGov, and the
+  grounded path is a stand-in. The harness and method are real and frozen; swap in real
   YouGov + live Qloo for the citable figure.
+- The **YouTube backtest uses real outcomes** (likes per 1,000 views and real
+  comments, with predictions sealed first), but it ranks videos **within one channel**
+  over about 12 videos, so its p-values are wide. Likes measure engagement from people
+  who already clicked, not a general audience. The predictor is only as real as the
+  Qloo and respondent modes it ran in, which are printed on the result.
+- The **Google Trends check** compares Qloo's metro ranking with search interest,
+  which is a different signal (curiosity, not taste). Agreement supports the metro
+  weights; it doesn't prove them.
 - Respondents run on a **mock heuristic** by default; the live Claude Haiku
   backend is wired behind `ANTHROPIC_API_KEY` (one call per persona — costs).
 - No names, emails or IDs are ever sent to Qloo.

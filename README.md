@@ -35,8 +35,42 @@ npm run rehearse "Los Angeles Dodgers"           # promo poster
 npm run ablation "This Week in Startups"         # the Without-Qloo comparison
 npm run backtest                                  # the proof harness
 npm run fingerprint "some unknown band"          # the coverage refusal
-npm test                                          # 12 tests
+npm run backtest-youtube                          # real-world backtest (free YouTube key)
+npm run trends-check -- "Cedric the Entertainer" geoMap.csv   # Google Trends metro check
+npm test                                          # 20 tests
 ```
+
+## Real-world proof (free data only)
+
+**YouTube backtest.** For each judge audience, Rehearsal takes the audience's
+own channel, picks its 12 most recent settled uploads (≥14 days old, no
+Shorts), and has the panel score each one from its title and description.
+Those predictions are **sealed with a hash before any view, like or comment is
+fetched**, then scored against real likes per 1,000 views (Spearman ρ with a
+permutation p-value). It also counts **taste echoes**: real comments that name
+one of the audience's Qloo neighbours (an artist, show or brand the video never
+mentioned), against a control audience's neighbours. Fewer than 4 videos that
+name a Qloo taste → it refuses to score, same as the coverage rule.
+
+```bash
+# free key: Google Cloud Console → enable "YouTube Data API v3" → Credentials → API key
+$env:YOUTUBE_API_KEY = "<key>"      # PowerShell; bash: export YOUTUBE_API_KEY=<key>
+npm run backtest-youtube            # ~350 of the 10,000 free daily units
+npm run backtest-youtube -- "Cedric" @SomeHandle   # pin a channel after checking the one it found
+```
+
+Results go to `data/backtest-youtube.json` (committed: numbers and titles only,
+no comment text or commenter names). Sealed predictions go to
+`data/youtube/sealed/`. Raw API responses stay in `data/youtube/raw/`
+(gitignored; YouTube's terms say to refresh or delete within 30 days, so rerun
+with `--fresh`). The web app's Proof scene reads the saved result. The server
+never spends quota.
+
+**Google Trends metro check.** On trends.google.com, search the audience, set
+United States → Interest by subregion → **Metro**, and download the CSV. Then
+`npm run trends-check -- "<audience>" <file.csv>` compares the metro ranking
+with Qloo's `where_popular` (Spearman ρ, top-5 overlap, biggest gaps). No
+scraping, no key.
 
 ## Deploy (to satisfy "hosted externally")
 

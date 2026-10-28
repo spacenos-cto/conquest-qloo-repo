@@ -4,6 +4,8 @@ import {
   rehearseReport,
   ablationReport,
   backtestReport,
+  youtubeBacktestReport,
+  trendsCheckReport,
   serverInfo,
 } from "./service/engine.js";
 
@@ -57,6 +59,18 @@ const TOOLS = [
       "Return the frozen-method backtest: how well Qloo-grounded vs flat LLM-only panels track reference demographic splits (Pearson r, MAE, misses).",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "backtest_youtube",
+    description:
+      "Return the real-world backtest: panel predictions sealed before fetching YouTube engagement, then scored against real likes per 1,000 views (Spearman rho, permutation p) and taste echoes in real comments.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "trends_metro_check",
+    description:
+      "Return the Google Trends cross-check: rank agreement between Qloo's top metros for an audience and Google Trends search interest by metro.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 function reply(id: unknown, result: unknown) {
@@ -77,6 +91,10 @@ async function callTool(name: string, args: any) {
       return asText(await ablationReport(String(args?.audience ?? "")));
     case "backtest":
       return asText(backtestReport());
+    case "backtest_youtube":
+      return asText(await youtubeBacktestReport());
+    case "trends_metro_check":
+      return asText(await trendsCheckReport());
     default:
       throw new Error(`unknown tool: ${name}`);
   }

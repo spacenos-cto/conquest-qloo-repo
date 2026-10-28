@@ -11,6 +11,9 @@ import { pickStimulus } from "../panel/stimuli.js";
 import { tribeStrip } from "../tribe/strip.js";
 import { ablation } from "../proof/ablation.js";
 import { runBacktest } from "../proof/backtest.js";
+import { loadResult } from "../proof/youtube/run.js";
+import { METHOD as YT_METHOD } from "../proof/youtube/backtest.js";
+import { loadTrendsChecks } from "../proof/trends.js";
 import type { Fingerprint } from "../qloo/types.js";
 
 /**
@@ -137,4 +140,19 @@ export async function ablationReport(name: string) {
 /** Scene 5: the backtest. */
 export function backtestReport() {
   return { status: "ok", ...runBacktest() };
+}
+
+/** Scene 5: the real-world YouTube backtest, as last run from the CLI (the server never spends quota). */
+export async function youtubeBacktestReport() {
+  const r = await loadResult();
+  if (!r) return { status: "not_run", method: YT_METHOD, run: "YOUTUBE_API_KEY=<free key> npm run backtest-youtube" };
+  return { status: "ok", ...r };
+}
+
+/** Scene 5: Google Trends metro checks, one per audience, as last run from the CLI. */
+export async function trendsCheckReport() {
+  const all = await loadTrendsChecks();
+  return Object.keys(all).length
+    ? { status: "ok", checks: all }
+    : { status: "not_run", run: 'npm run trends-check -- "<audience>" <geoMap.csv>' };
 }
