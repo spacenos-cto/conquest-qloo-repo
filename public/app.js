@@ -23,11 +23,22 @@ const cache = {}; // name -> {audience, rehearse, ablation}
 
 async function getJSON(path) { const r = await fetch(path); return r.json(); }
 
-// animate a number from 0 → value (ease-out cubic), so results feel computed
+// animate a number from 0 → value (ease-out cubic), so results feel computed.
+// Always lands the final value even if requestAnimationFrame is paused (a
+// backgrounded tab) or motion is reduced — via a setTimeout fallback.
 function countUp(el, to, dec=0, suffix=""){
-  if(!el) return; const t0=performance.now(), dur=750;
-  function f(t){const k=Math.min(1,(t-t0)/dur);const v=to*(1-Math.pow(1-k,3));el.textContent=(dec?v.toFixed(dec):Math.round(v))+suffix;if(k<1)requestAnimationFrame(f);}
+  if(!el) return;
+  const final=(dec?to.toFixed(dec):Math.round(to))+suffix;
+  const t0=performance.now(), dur=750; let done=false;
+  const land=()=>{ if(!done){ done=true; el.textContent=final; } };
+  function f(t){
+    if(done) return;
+    const k=Math.min(1,(t-t0)/dur);
+    el.textContent=(dec?(to*(1-Math.pow(1-k,3))).toFixed(dec):Math.round(to*(1-Math.pow(1-k,3))))+suffix;
+    if(k<1) requestAnimationFrame(f); else land();
+  }
   requestAnimationFrame(f);
+  setTimeout(land, dur+150); // guarantee the number appears even with rAF paused
 }
 
 // ---------- navigation ----------
