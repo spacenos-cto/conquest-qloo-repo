@@ -48,3 +48,12 @@ export const DEMO_STIMULI: Record<string, Stimulus> = {
 export function neutralStimulus(text: string): Stimulus {
   return { id: "custom", label: "Custom stimulus", text };
 }
+
+/** Pick the demo stimulus for an audience, or a neutral one. */
+export function pickStimulus(audienceId: string): Stimulus {
+  const slug = audienceId.replace(/^mock:/, "");
+  return (
+    DEMO_STIMULI[slug] ??
+    neutralStimulus("A short, friendly promo for this audience, with no regional references.")
+  );
+}
