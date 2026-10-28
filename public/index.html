@@ -112,7 +112,8 @@ pre{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;pad
 .progress{height:10px;background:var(--panel-2);border-radius:5px;overflow:hidden;position:relative;margin-top:8px}
 .progress i{position:absolute;inset:0 auto 0 0;background:var(--accent);width:0;transition:width .1s}
 .loading{color:var(--muted);font-family:var(--mono);font-size:13px;padding:24px 0}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>

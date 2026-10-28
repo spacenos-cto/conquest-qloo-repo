@@ -64,14 +64,17 @@ function runMock(personas: Persona[], stimulus: Stimulus, seed: number): Reply[]
     let score = base + appealBoost + regional + noise;
     score = Math.max(1, Math.min(5, Math.round(score)));
 
+    // element = which part drove it (for the "what drove it" clusters)
     let element = "overall";
+    if (matched.length) element = matched[0]!.value;
+    else if (regional < -0.4) element = "reference";
+
+    // reason = what this person would actually say, by how much they liked it
+    const v = stimulus.voices;
     let reason: string;
-    if (matched.length) {
-      element = matched[0]!.value;
-      reason = `the ${matched[0]!.value.toLowerCase()} angle landed`;
-    } else if (regional < -0.4) {
-      element = "reference";
-      reason = "didn't get the reference";
+    if (v) {
+      const bank = score >= 4 ? v.love : score === 3 ? v.meh : v.nope;
+      reason = bank.length ? bank[(p.id * 7 + score) % bank.length]! : "no comment";
     } else {
       reason = LUKEWARM[Math.floor(rand() * LUKEWARM.length)]!;
     }

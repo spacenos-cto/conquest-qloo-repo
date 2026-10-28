@@ -49,19 +49,32 @@ function pickQuotes(
   byId: Map<number, Persona>,
 ): { text: string; persona: string }[] {
   const sorted = [...replies].sort((a, b) => b.score - a.score);
-  const picks = [
-    ...sorted.slice(0, 3), // loudest fans
-    ...sorted.slice(-3), // harshest
-  ];
-  const seenMetro = new Set<string>();
-  const out: { text: string; persona: string }[] = [];
-  for (const r of picks) {
-    const p = byId.get(r.personaId)!;
-    const tag = `#${p.id} · ${p.metro} · ${p.age} · ${p.tastes.slice(0, 2).map((t) => t.value).join(", ")}`;
-    out.push({ text: `${capital(r.reason)} (${r.score}/5)`, persona: tag });
-    seenMetro.add(p.metro);
+  const seenText = new Set<string>();
+  const take = (pool: Reply[], n: number) => {
+    const out: Reply[] = [];
+    for (const r of pool) {
+      if (seenText.has(r.reason)) continue;
+      seenText.add(r.reason);
+      out.push(r);
+      if (out.length >= n) break;
+    }
+    return out;
+  };
+  const fans = take(sorted.slice(0, 40), 3); // loudest
+  const critics = take(sorted.slice(-40).reverse(), 3); // harshest
+  // interleave so the readout reads like a mix, not a highlight reel
+  const mixed: Reply[] = [];
+  for (let i = 0; i < 3; i++) {
+    if (fans[i]) mixed.push(fans[i]!);
+    if (critics[i]) mixed.push(critics[i]!);
   }
-  return out.slice(0, 6);
+  return mixed.slice(0, 6).map((r) => {
+    const p = byId.get(r.personaId)!;
+    return {
+      text: `${r.reason} (${r.score}/5)`,
+      persona: `#${p.id} · ${p.metro} · ${p.age} · ${p.tastes.slice(0, 2).map((t) => t.value).join(", ")}`,
+    };
+  });
 }
 
 // --- helpers ---

@@ -71,6 +71,8 @@ export interface Stimulus {
   appeals?: string[];
   /** Per-metro score deltas (the regional reference effect, mock only). */
   regionalLift?: Record<string, number>;
+  /** Reaction lines people actually say, by how much they liked it (mock only). */
+  voices?: { love: string[]; meh: string[]; nope: string[] };
 }
 
 /** One respondent's reaction. */

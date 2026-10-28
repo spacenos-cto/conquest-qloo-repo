@@ -23,6 +23,13 @@ const cache = {}; // name -> {audience, rehearse, ablation}
 
 async function getJSON(path) { const r = await fetch(path); return r.json(); }
 
+// animate a number from 0 → value (ease-out cubic), so results feel computed
+function countUp(el, to, dec=0, suffix=""){
+  if(!el) return; const t0=performance.now(), dur=750;
+  function f(t){const k=Math.min(1,(t-t0)/dur);const v=to*(1-Math.pow(1-k,3));el.textContent=(dec?v.toFixed(dec):Math.round(v))+suffix;if(k<1)requestAnimationFrame(f);}
+  requestAnimationFrame(f);
+}
+
 // ---------- navigation ----------
 const SCENES = ["audience","panel","rehearse","without","proof","receipts"];
 function go(s){
@@ -89,14 +96,23 @@ function renderAudience(d){
 
 // ---------- scene 2 ----------
 function renderPanel(d){
-  const svg=$("#map svg"); if(!svg||!d.personas) return; svg.innerHTML="";
-  let g="";for(let x=20;x<1000;x+=40)for(let y=20;y<600;y+=40)g+=`<circle cx="${x}" cy="${y}" r="1.1" fill="var(--line)"/>`;
-  svg.insertAdjacentHTML("beforeend",`<g>${g}</g>`);
+  const svg=$("#map svg"); if(!svg||!d.personas) return;
+  // designed backdrop: soft vignette + glow, no cheap grid
+  svg.innerHTML=`<defs>
+    <radialGradient id="vg" cx="48%" cy="42%" r="75%"><stop offset="0%" stop-color="#1b2234"/><stop offset="100%" stop-color="#11131b"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs><rect width="1000" height="600" fill="url(#vg)"/>`;
+  // metro halos sized by weight (the "where the crowd is" glow)
+  let halos="";
+  Object.entries(d.metros).forEach(([m,w])=>{const co=METROS[m];if(!co)return;const[x,y]=proj(co[0],co[1]);halos+=`<circle cx="${x}" cy="${y}" r="${(12+w*34).toFixed(0)}" fill="var(--accent)" fill-opacity="${(0.03+w*0.05).toFixed(3)}"/>`;});
+  svg.insertAdjacentHTML("beforeend",`<g>${halos}</g>`);
+  // the 1,000 respondents
   let dots="";
-  d.personas.forEach(p=>{const co=METROS[p.metro];if(!co)return;const[x,y]=proj(co[0],co[1]);const r=20*Math.sqrt(Math.random());const t=Math.random()*6.28;
-    dots+=`<circle data-id="${p.id}" cx="${(x+r*Math.cos(t)).toFixed(1)}" cy="${(y+r*Math.sin(t)*0.8).toFixed(1)}" r="3" fill="${AGEC[p.age]||"#888"}" fill-opacity=".85"/>`;});
-  svg.insertAdjacentHTML("beforeend",`<g>${dots}</g>`);
-  Object.entries(d.metros).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([m])=>{const co=METROS[m];if(!co)return;const[x,y]=proj(co[0],co[1]);svg.insertAdjacentHTML("beforeend",`<text x="${x+24}" y="${y+4}" font-family="IBM Plex Mono,monospace" font-size="12" fill="var(--muted)">${esc(m)}</text>`);});
+  d.personas.forEach(p=>{const co=METROS[p.metro];if(!co)return;const[x,y]=proj(co[0],co[1]);const r=18*Math.sqrt(Math.random());const t=Math.random()*6.28;
+    dots+=`<circle data-id="${p.id}" cx="${(x+r*Math.cos(t)).toFixed(1)}" cy="${(y+r*Math.sin(t)*0.8).toFixed(1)}" r="2.6" fill="${AGEC[p.age]||"#888"}" fill-opacity=".9"/>`;});
+  svg.insertAdjacentHTML("beforeend",`<g id="dotg" filter="url(#glow)" style="opacity:0;transition:opacity .6s ease">${dots}</g>`);
+  requestAnimationFrame(()=>{const g=svg.querySelector("#dotg");if(g)g.style.opacity="1";});
+  Object.entries(d.metros).sort((a,b)=>b[1]-a[1]).slice(0,10).forEach(([m])=>{const co=METROS[m];if(!co)return;const[x,y]=proj(co[0],co[1]);svg.insertAdjacentHTML("beforeend",`<circle cx="${x}" cy="${y}" r="2" fill="#fff" fill-opacity=".9"/><text x="${x+8}" y="${y+4}" font-family="IBM Plex Mono,monospace" font-size="12" fill="#cfd4e4">${esc(m)}</text>`);});
   const byId=Object.fromEntries(d.personas.map(p=>[p.id,p]));
   svg.onmousemove=(e)=>{const t=e.target;const card=$("#pcard");if(t.tagName!=="circle"||!t.dataset.id){card.style.display="none";return;}
     const p=byId[t.dataset.id];const r=$("#map").getBoundingClientRect();let px=e.clientX-r.left+14,py=e.clientY-r.top+14;if(px>r.width-260)px-=280;if(py>r.height-110)py-=130;
@@ -124,10 +140,12 @@ function renderRehearse(d){
   $("#stim-h").textContent=d.stimulus.label;$("#stim-t").textContent='“'+d.stimulus.text+'”';
   const a=d.aggregate;
   $("#reh-results").hidden=false;
-  $("#score").textContent=a.mean.toFixed(1);$("#pct").textContent=a.pct45+"%";$("#reh-n").textContent=a.n+" replies";
-  if(d.split){$("#splitbox").hidden=false;$("#cA").textContent=d.split.top.mean.toFixed(1);$("#cAn").textContent=d.split.top.metro;$("#cB").textContent=d.split.bottom.mean.toFixed(1);$("#cBn").textContent=d.split.bottom.metro;}
+  countUp($("#score"),a.mean,1);countUp($("#pct"),a.pct45,0,"%");$("#reh-n").textContent=a.n+" replies";
+  if(d.split){$("#splitbox").hidden=false;$("#cAn").textContent=d.split.top.metro;$("#cBn").textContent=d.split.bottom.metro;countUp($("#cA"),d.split.top.mean,1);countUp($("#cB"),d.split.bottom.mean,1);}
   $("#verdicts").innerHTML=d.verdicts.map(v=>`<div class="verdict"><span><b>${esc(v.segment)}</b><br><span class="muted" style="font-size:12px">${esc(v.note)}</span></span><span class="tag ${v.brain}">brain ${v.brain==="up"?"↑":"flat"}</span><span class="tag ${v.panel}">panel ${v.panel}</span><span class="tag ${v.call}">${v.call}</span></div>`).join("");
-  $("#quotes").innerHTML=a.quotes.map(q=>`<div class="q">“${esc(q.text)}”<small>${esc(q.persona)}</small></div>`).join("");
+  // stream the quotes in, like reactions landing
+  const qbox=$("#quotes");qbox.innerHTML="";
+  a.quotes.forEach((q,i)=>setTimeout(()=>{const el=document.createElement("div");el.className="q";el.style.animation="fade .32s ease";el.innerHTML=`“${esc(q.text)}”<small>${esc(q.persona)}</small>`;qbox.appendChild(el);},140*i));
   $("#narrative").innerHTML=d.narrative.kept.map(s=>`<div>${esc(s)}</div>`).join("")+d.narrative.struck.map(s=>`<div style="color:var(--bad)">[struck] ${esc(s.text)}</div>`).join("")+`<div class="faint" style="font-size:11px">${d.narrative.kept.length} kept, ${d.narrative.struck.length} struck · every number traces to a computed fact</div>`;
   // strip
   $("#strip-card").hidden=false;$("#strip-h").textContent=d.tribe.label;$("#strip-m").textContent=d.tribe.deadZones.length?"sag":"";$("#strip-note").textContent=d.tribe.note+" — "+d.tribe.licence;
@@ -174,6 +192,44 @@ async function loadProof(){
         <li>Panel results are preference signals, not sales forecasts.</li>
         <li>TRIBE v2 is a generic brain model, CC BY-NC 4.0 — predicted response, not memorability.</li>
         <li>No names, emails or IDs are ever sent to Qloo.</li></ul></div></div>`;
+  body.insertAdjacentHTML("beforeend", await realWorldHTML());
+}
+
+// Real-world checks: YouTube backtest + Google Trends metro check (run from the CLI, read here).
+async function realWorldHTML(){
+  const [yt,tr]=await Promise.all([getJSON("/api/backtest-youtube"),getJSON("/api/trends-check")]);
+  let h=`<h2 style="margin:26px 0 4px">Real-world check · YouTube</h2>
+    <p class="muted" style="margin:0 0 12px;font-size:13px">Each audience's own channel. Panel predictions are sealed with a hash <b>before</b> any view, like or comment is fetched, then scored against what really happened.</p>`;
+  if(yt.status!=="ok"){
+    h+=`<div class="card"><div class="eyebrow">Not run yet</div><p style="font-size:13px">${esc(yt.method)}</p><pre>${esc(yt.run)}</pre></div>`;
+  }else{
+    if(yt.qlooMode==="mock"||yt.respondentMode==="mock")h+=`<div class="banner">Outcomes are real YouTube data. Predictions ran with Qloo=${esc(yt.qlooMode)}, respondents=${esc(yt.respondentMode)}.</div>`;
+    h+=`<div class="grid g3">`+yt.cases.map(c=>{
+      if(c.error)return `<div class="card"><div class="eyebrow">${esc(c.audience)}</div><p class="muted" style="font-size:13px">${esc(c.error)}</p></div>`;
+      const t=c.rankTest,m=c.medianSplit,e=c.echoes;
+      const head=t.testable
+        ?`<div class="big">ρ = ${t.rho.toFixed(2)}</div><p class="muted" style="font-size:13px">panel score vs likes per 1k views · n=${t.n} · p=${t.p} · without Qloo ρ=${t.flatRho.toFixed(2)}</p>`
+        :`<div class="big muted" style="font-size:26px">Not testable</div><p class="muted" style="font-size:13px">${esc(t.reason)}. Rehearsal won't guess.</p>`;
+      return `<div class="card"><div class="eyebrow">${esc(c.audience)} · ${esc(c.channel.title)}</div>${head}
+        <div class="list" style="margin-top:10px;font-size:13px">
+          ${m?`<div><span>Likes/1k views, panel's top half vs rest</span><b class="mono">${m.higherMean} vs ${m.lowerMean}</b></div>`:""}
+          <div><span>Comments naming a Qloo neighbour</span><b class="mono">${e.ownPer1k} vs ${e.controlPer1k} control /1k</b></div>
+          <div><span>Comments read</span><b class="mono">${e.comments}</b></div>
+          <div><span>Sealed</span><b class="mono" style="font-size:11px">${esc(c.sealHash)}</b></div></div>
+        ${e.topOwn.length?`<p class="muted" style="font-size:12px;margin:8px 0 0">Most named: ${esc(e.topOwn.join(", "))}</p>`:""}
+        ${c.misses.length?`<p class="muted" style="font-size:12px;margin:6px 0 0">Misses: ${c.misses.map(x=>`“${esc(x.title.slice(0,48))}” (${x.kind})`).join("; ")}</p>`:""}</div>`;
+    }).join("")+`</div><p class="faint mono" style="font-size:11px">Method ${esc(yt.methodVersion)}, frozen: ${esc(yt.method)} · run ${esc(yt.generatedAt.slice(0,10))} · Data: YouTube Data API. Comment text is read, never stored.</p>`;
+  }
+  h+=`<h2 style="margin:26px 0 4px">Outside check · Google Trends</h2>
+    <p class="muted" style="margin:0 0 12px;font-size:13px">Do Qloo's top metros (where the personas live) match where people search for the audience?</p>`;
+  if(tr.status!=="ok"){
+    h+=`<div class="card"><div class="eyebrow">Not run yet</div><pre>${esc(tr.run)}</pre></div>`;
+  }else{
+    h+=`<div class="card scroll"><table><thead><tr><th>Audience</th><th class="num">Metros in both</th><th class="num">Rank agreement</th><th class="num">Top-5 overlap</th><th>Biggest gaps</th></tr></thead><tbody>`+
+      Object.values(tr.checks).map(c=>`<tr><td>${esc(c.audience)}</td><td class="num">${c.shared}</td><td class="num">${c.testable?`ρ ${c.rho.toFixed(2)} · p ${c.p}`:"not testable"}</td><td class="num">${c.overlapTop5}/5</td><td style="font-size:12px">${c.biggestGaps.map(g=>`${esc(g.metro)} Qloo #${g.qlooRank} vs Trends #${g.trendsRank}`).join("; ")}</td></tr>`).join("")+
+      `</tbody></table><p class="faint mono" style="font-size:11px;margin-top:8px">Source: Google Trends, interest by metro (CSV export).</p></div>`;
+  }
+  return h;
 }
 
 // ---------- receipts ----------
@@ -183,7 +239,7 @@ function renderReceipts(rows){
 
 // ---------- boot ----------
 (async function(){
-  try{const h=await getJSON("/api/health");$("#srvnote").textContent=`live pipeline · Qloo=${h.qlooMode} · respondents=${h.respondentMode} · panel=${h.panelN}`;}catch(e){}
+  try{const h=await getJSON("/api/health");const note=$("#srvnote");note.textContent=`Taste graph: Qloo · ${h.panelN.toLocaleString()}-respondent panel`+(h.qlooMode==="mock"?" · demo dataset":" · live");note.title=`Qloo=${h.qlooMode} · respondents=${h.respondentMode}`;}catch(e){}
   await selectAudience("Cedric the Entertainer", document.querySelector(".case"));
   go((location.hash||"#audience").slice(1));
 })();
