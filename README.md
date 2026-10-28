@@ -10,31 +10,39 @@ refuses to simulate audiences Qloo can't see.
 
 Built for the Qloo Agentic Hackathon.
 
-## Status — Day 2
+## Status — complete (mock mode)
 
-Full Qloo→panel pipeline works end to end in **mock mode** (no keys needed):
-resolve → fingerprint (with per-trait receipts) → refuse thin coverage → sample
-1,000 personas in code → run the panel → aggregate the vote, city/age/gender
-splits, reasons and quotes → claim-check the narrative (strike any number with
-no computed fact).
+The whole product runs end to end in **mock mode** (no keys needed): resolve →
+fingerprint (per-trait receipts) → refuse thin coverage → 1,000 personas sampled
+in code → run the panel → aggregate (vote, city/age/gender splits, reasons,
+quotes) → claim-check → Without-Qloo ablation → frozen-method backtest → TRIBE
+perception strip + verdict cards. Served as a clickable web app and an MCP server.
 
-Two swap points, each one env var:
+Three swap points, each one env var:
 - `QLOO_MODE=live` — real Qloo via the harness (needs the event key).
 - `REHEARSAL_RESPONDENT_MODE=live` — real Claude Haiku respondents (needs
-  `ANTHROPIC_API_KEY`; one call per persona, so it costs credits — opt in
-  deliberately).
+  `ANTHROPIC_API_KEY`; one call per persona, so it costs credits).
+- TRIBE strip is a labelled stub (CC BY-NC) → wire the GPU service for the real one.
 
 ## Run it
 
 ```bash
 npm install
-npm run fingerprint "Cedric the Entertainer"     # the audience fingerprint
-npm run rehearse "Cedric the Entertainer"        # full panel: the church bit
-npm run rehearse "This Week in Startups"         # JCal's show: sponsor read
-npm run rehearse "Los Angeles Dodgers"           # Boehly's team: promo poster
+npm run serve                                    # the web app → http://localhost:5173
+npm run mcp                                       # the MCP server (stdio)
+npm run rehearse "Cedric the Entertainer"        # CLI: the church bit
+npm run rehearse "Los Angeles Dodgers"           # promo poster
+npm run ablation "This Week in Startups"         # the Without-Qloo comparison
+npm run backtest                                  # the proof harness
 npm run fingerprint "some unknown band"          # the coverage refusal
-npm test
+npm test                                          # 12 tests
 ```
+
+## Deploy (to satisfy "hosted externally")
+
+Any Node host runs `npm run serve` (binds `PORT`). On Render/Railway: build
+`npm install`, start `npm run serve`. The browser never calls Qloo directly —
+all Qloo calls stay server-side behind the harness.
 
 ## Going live (when the Qloo key arrives)
 
