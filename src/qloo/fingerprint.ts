@@ -20,22 +20,31 @@ export async function fingerprint(
   entity: Entity,
   runId: string,
 ): Promise<Fingerprint> {
-  // --- the ~40 calls, all logged to the ledger via the gateway ---
+  // --- the calls, all logged to the ledger via the gateway. After each call
+  // we capture the ledger ref it produced, so every trait has a receipt. ---
+  const refs: Record<string, string> = {};
+  const ref = () => "E" + g.callCount(runId);
+
   const demoEnv = await g.call("audience_demographics", { entity: entity.id }, runId);
+  refs.demographics = ref();
   const tagEnv = await g.call("entity_tags", { entity: entity.id }, runId);
+  refs.tags = ref();
   const metroEnv = await g.call(
     "where_popular",
     { entity: entity.id, within: "United States" },
     runId,
   );
+  refs.metros = ref();
 
   const domains: Record<string, Ranked[]> = {};
   for (const d of DOMAINS) {
     const e = await g.call("recommend", { entity: entity.id, target_type: d }, runId);
+    refs[d] = ref();
     domains[d] = asRanked(e.results);
   }
 
   const trendEnv = await g.call("trends", { entity: entity.id }, runId);
+  refs.trends = ref();
 
   // --- parse (field names match the kit result shape; see mock.ts note) ---
   const demographics = (demoEnv.results ?? []).map(
@@ -53,7 +62,7 @@ export async function fingerprint(
   const coverage = assessCoverage(demographics, tags, metros, domains);
   const calls = g.callCount(runId);
 
-  return { audience: entity, demographics, tags, metros, domains, momentum, coverage, calls };
+  return { audience: entity, demographics, tags, metros, domains, momentum, coverage, calls, refs };
 }
 
 function asRanked(results: any[] = []): Ranked[] {

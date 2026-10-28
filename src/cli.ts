@@ -2,7 +2,12 @@ import { Ledger } from "./ledger/ledger.js";
 import { QlooGateway, type Mode } from "./qloo/gateway.js";
 import { resolve } from "./qloo/resolve.js";
 import { fingerprint } from "./qloo/fingerprint.js";
-import type { Fingerprint } from "./qloo/types.js";
+import { samplePanel } from "./panel/sampler.js";
+import { runPanel, type RespondentMode } from "./panel/respondent.js";
+import { aggregate, citySplit } from "./panel/aggregate.js";
+import { checkClaims } from "./panel/claimcheck.js";
+import { DEMO_STIMULI, neutralStimulus } from "./panel/stimuli.js";
+import type { Fingerprint, Aggregate } from "./qloo/types.js";
 
 /**
  * Day-1 CLI: prove the Qloo pipeline end to end.
@@ -49,8 +54,97 @@ async function main() {
   if (cmd === "resolve") return;
 
   const fp = await fingerprint(gateway, r.entity, runId);
-  printFingerprint(fp);
-  printLedger(ledger, runId);
+
+  if (cmd === "fingerprint") {
+    printFingerprint(fp);
+    printLedger(ledger, runId);
+    return;
+  }
+
+  if (cmd === "rehearse") {
+    console.log(
+      fp.coverage.ok
+        ? green(`● Coverage: strong · ${fp.calls} Qloo calls`)
+        : red(`● Coverage: INSUFFICIENT — Rehearsal won't guess`),
+    );
+    if (!fp.coverage.ok) {
+      fp.coverage.reasons.forEach((l) => console.log("   " + l));
+      console.log(red("\nRefusing to build a panel.\n"));
+      printLedger(ledger, runId);
+      return;
+    }
+    await rehearse(fp);
+    printLedger(ledger, runId);
+    return;
+  }
+}
+
+async function rehearse(fp: Fingerprint) {
+  const slug = fp.audience.id.replace(/^mock:/, "");
+  const stimulus =
+    DEMO_STIMULI[slug] ??
+    neutralStimulus("A short generic promo for this audience, no regional references.");
+  const respMode = (process.env.REHEARSAL_RESPONDENT_MODE as RespondentMode) || "mock";
+
+  console.log(`\n${bold("Testing:")} ${stimulus.label}`);
+  console.log(dim(`   "${stimulus.text.slice(0, 90)}${stimulus.text.length > 90 ? "…" : ""}"`));
+
+  const { personas, composition } = samplePanel(fp, 1000, 42);
+  console.log(
+    dim(
+      `\n1,000 personas sampled · ages ` +
+        composition.map((c) => `${c.age}:${c.n}`).join("  "),
+    ),
+  );
+
+  const replies = await runPanel(personas, stimulus, respMode, 7);
+  const agg = aggregate(personas, replies);
+
+  console.log(green(`\n${bold("Panel verdict")} (${respMode} respondent · ${agg.n} replies)`));
+  console.log(`   Mean score   ${bold(agg.mean.toFixed(1))} / 5`);
+  console.log(`   Rated 4–5    ${bold(agg.pct45 + "%")}`);
+
+  const split = citySplit(agg);
+  if (split) {
+    console.log(
+      `   City split   ${bold(split.top.metro)} ${split.top.mean.toFixed(1)} ` +
+        `vs ${bold(split.bottom.metro)} ${split.bottom.mean.toFixed(1)}`,
+    );
+  }
+
+  console.log(bold("\nBy age"));
+  agg.byAge.forEach((a) => console.log(`   ${a.age.padEnd(8)} ${a.mean.toFixed(1)}  ${dim("n=" + a.n)}`));
+  console.log(bold("By gender"));
+  agg.byGender.forEach((x) => console.log(`   ${x.gender.padEnd(8)} ${x.mean.toFixed(1)}  ${dim("n=" + x.n)}`));
+
+  console.log(bold("\nWhat drove it (reasons by element)"));
+  agg.reasons.slice(0, 5).forEach((rr) => console.log(`   ${String(rr.count).padStart(4)}  ${rr.element}`));
+
+  console.log(bold("\nWhat they said"));
+  agg.quotes.forEach((q) => console.log(`   "${q.text}"\n      ${dim(q.persona)}`));
+
+  // Narrative is written from facts only, then claim-checked.
+  const narrative = narrate(agg, split);
+  const checked = checkClaims(narrative, agg.facts);
+  console.log(bold("\nNarrative (claim-checked)"));
+  checked.kept.forEach((s) => console.log(`   ${s}`));
+  checked.struck.forEach((s) => console.log(red(`   [STRUCK] ${s.text} — ${s.reason}`)));
+  console.log(
+    dim(`   ${checked.kept.length} kept, ${checked.struck.length} struck · every number traces to a computed fact`),
+  );
+}
+
+function narrate(agg: Aggregate, split: ReturnType<typeof citySplit>): string {
+  const parts = [
+    `The panel scored this ${agg.mean.toFixed(1)} out of 5, with ${agg.pct45}% rating it 4 or higher.`,
+  ];
+  if (split) {
+    parts.push(
+      `${split.top.metro} led at ${split.top.mean.toFixed(1)}, while ${split.bottom.metro} trailed at ${split.bottom.mean.toFixed(1)}.`,
+    );
+  }
+  parts.push(`The result is drawn from ${agg.n} synthetic respondents.`);
+  return parts.join(" ");
 }
 
 function printFingerprint(fp: Fingerprint) {

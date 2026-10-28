@@ -10,22 +10,29 @@ refuses to simulate audiences Qloo can't see.
 
 Built for the Qloo Agentic Hackathon.
 
-## Status — Day 1
+## Status — Day 2
 
-The Qloo pipeline works end to end in **mock mode** (no API key needed yet):
-resolve a name → build the audience fingerprint → enforce the coverage refusal →
-log every call to an evidence ledger.
+Full Qloo→panel pipeline works end to end in **mock mode** (no keys needed):
+resolve → fingerprint (with per-trait receipts) → refuse thin coverage → sample
+1,000 personas in code → run the panel → aggregate the vote, city/age/gender
+splits, reasons and quotes → claim-check the narrative (strike any number with
+no computed fact).
 
-Swap mock → live with one env var once the event API key arrives.
+Two swap points, each one env var:
+- `QLOO_MODE=live` — real Qloo via the harness (needs the event key).
+- `REHEARSAL_RESPONDENT_MODE=live` — real Claude Haiku respondents (needs
+  `ANTHROPIC_API_KEY`; one call per persona, so it costs credits — opt in
+  deliberately).
 
 ## Run it
 
 ```bash
 npm install
-npm run fingerprint "Cedric the Entertainer"     # strong coverage
-npm run fingerprint "This Week in Startups"       # JCal's show
-npm run fingerprint "Los Angeles Dodgers"         # Boehly's team
-npm run fingerprint "some unknown band"           # the coverage refusal
+npm run fingerprint "Cedric the Entertainer"     # the audience fingerprint
+npm run rehearse "Cedric the Entertainer"        # full panel: the church bit
+npm run rehearse "This Week in Startups"         # JCal's show: sponsor read
+npm run rehearse "Los Angeles Dodgers"           # Boehly's team: promo poster
+npm run fingerprint "some unknown band"          # the coverage refusal
 npm test
 ```
 

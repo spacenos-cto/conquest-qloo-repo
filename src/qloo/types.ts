@@ -42,6 +42,61 @@ export interface Fingerprint {
   momentum: { status: "measured" | "not_measured"; note: string };
   coverage: Coverage;
   calls: number;
+  /** Ledger ref (E#) for the call that produced each part — the receipt. */
+  refs: Record<string, string>;
+}
+
+/** One sampled taste on a persona, with the receipt it came from. */
+export interface Taste {
+  value: string;
+  domain: string; // tag | artist | tv_show | brand | podcast | movie
+  ref: string; // ledger E# that produced this list
+}
+
+/** A synthetic respondent, sampled in code from the fingerprint. */
+export interface Persona {
+  id: number;
+  metro: string;
+  age: string;
+  gender: "M" | "F";
+  tastes: Taste[];
+}
+
+/** Something to test in front of the panel. */
+export interface Stimulus {
+  id: string;
+  label: string;
+  text: string;
+  /** Tags/tastes this plays to (mock respondent boosts personas who hold them). */
+  appeals?: string[];
+  /** Per-metro score deltas (the regional reference effect, mock only). */
+  regionalLift?: Record<string, number>;
+}
+
+/** One respondent's reaction. */
+export interface Reply {
+  personaId: number;
+  score: number; // 1..5
+  reason: string;
+  element: string; // which part of the stimulus drove it
+}
+
+export interface MetroStat {
+  metro: string;
+  mean: number;
+  n: number;
+}
+
+export interface Aggregate {
+  n: number;
+  mean: number;
+  pct45: number; // % scoring 4 or 5
+  byMetro: MetroStat[];
+  byAge: { age: string; mean: number; n: number }[];
+  byGender: { gender: string; mean: number; n: number }[];
+  reasons: { element: string; count: number }[];
+  quotes: { text: string; persona: string }[];
+  facts: Record<string, number>; // every number, for the claim checker
 }
 
 export interface Coverage {
