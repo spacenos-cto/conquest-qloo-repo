@@ -31,6 +31,25 @@ const LUKEWARM = [
   "took too long to get there",
 ];
 
+/**
+ * Ungrounded respondent — the "without Qloo" baseline. Ignores the stimulus's
+ * appeals and regional effect and the persona's tastes entirely: everyone
+ * reacts the same, from no cultural signal. Produces the collapse the ablation
+ * shows (near-zero city variance, one bland reason).
+ */
+export function runFlat(personas: Persona[], seed = 7): Reply[] {
+  const rand = rng(seed);
+  return personas.map((p) => {
+    const score = Math.max(1, Math.min(5, Math.round(3.4 + gauss(rand, 0, 0.4))));
+    return {
+      personaId: p.id,
+      score,
+      reason: LUKEWARM[Math.floor(rand() * LUKEWARM.length)]!,
+      element: "overall",
+    };
+  });
+}
+
 function runMock(personas: Persona[], stimulus: Stimulus, seed: number): Reply[] {
   const rand = rng(seed);
   const appeals = new Set((stimulus.appeals ?? []).map((a) => a.toLowerCase()));

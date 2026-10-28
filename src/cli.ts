@@ -7,7 +7,9 @@ import { runPanel, type RespondentMode } from "./panel/respondent.js";
 import { aggregate, citySplit } from "./panel/aggregate.js";
 import { checkClaims } from "./panel/claimcheck.js";
 import { DEMO_STIMULI, neutralStimulus } from "./panel/stimuli.js";
-import type { Fingerprint, Aggregate } from "./qloo/types.js";
+import { ablation } from "./proof/ablation.js";
+import { runBacktest } from "./proof/backtest.js";
+import type { Fingerprint, Aggregate, Stimulus } from "./qloo/types.js";
 
 /**
  * Day-1 CLI: prove the Qloo pipeline end to end.
@@ -20,8 +22,8 @@ const name = rest.join(" ").trim();
 const mode = (process.env.QLOO_MODE as Mode) || "mock";
 const dbPath = process.env.REHEARSAL_DB || "./rehearsal.sqlite";
 
-if (!cmd || !name) {
-  console.error('Usage: npm run fingerprint "<audience name>"');
+if (!cmd || (cmd !== "backtest" && !name)) {
+  console.error('Usage: npm run <fingerprint|rehearse|ablation> "<audience>"  |  npm run backtest');
   process.exit(1);
 }
 
@@ -36,6 +38,11 @@ const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 
 async function main() {
   console.log(dim(`mode=${mode}  run=${runId}\n`));
+
+  if (cmd === "backtest") {
+    printBacktest();
+    return;
+  }
 
   const r = await resolve(gateway, name, runId);
 
@@ -77,13 +84,28 @@ async function main() {
     printLedger(ledger, runId);
     return;
   }
+
+  if (cmd === "ablation") {
+    if (!fp.coverage.ok) {
+      console.log(red("Coverage insufficient — Rehearsal won't guess.\n"));
+      return;
+    }
+    const ab = await ablation(fp, getStimulus(fp));
+    printAblation(ab);
+    return;
+  }
+}
+
+function getStimulus(fp: Fingerprint): Stimulus {
+  const slug = fp.audience.id.replace(/^mock:/, "");
+  return (
+    DEMO_STIMULI[slug] ??
+    neutralStimulus("A short generic promo for this audience, no regional references.")
+  );
 }
 
 async function rehearse(fp: Fingerprint) {
-  const slug = fp.audience.id.replace(/^mock:/, "");
-  const stimulus =
-    DEMO_STIMULI[slug] ??
-    neutralStimulus("A short generic promo for this audience, no regional references.");
+  const stimulus = getStimulus(fp);
   const respMode = (process.env.REHEARSAL_RESPONDENT_MODE as RespondentMode) || "mock";
 
   console.log(`\n${bold("Testing:")} ${stimulus.label}`);
@@ -183,6 +205,42 @@ function printFingerprint(fp: Fingerprint) {
 
   console.log(bold("\nMomentum"));
   console.log(`   ${fp.momentum.status} — ${fp.momentum.note}`);
+}
+
+function printAblation(ab: Awaited<ReturnType<typeof ablation>>) {
+  const bar = (pct: number[]) => pct.map((p, i) => `${i + 1}:${String(p).padStart(2)}%`).join("  ");
+  const side = (s: typeof ab.grounded, color: (x: string) => string) => {
+    console.log(color(`\n${bold(s.label)}`));
+    console.log(`   mean ${s.mean.toFixed(1)}   rated 4–5 ${s.pct45}%`);
+    console.log(`   city variance ${bold(String(s.metroVariance))}   distinct reasons ${bold(String(s.distinctReasons))}`);
+    if (s.topSplit)
+      console.log(`   split ${s.topSplit.top} ${s.topSplit.topMean.toFixed(1)} vs ${s.topSplit.bottom} ${s.topSplit.bottomMean.toFixed(1)}`);
+    console.log(`   ${dim(bar(s.hist))}`);
+  };
+  console.log(bold("\n═══ Without Qloo — the ablation ═══"));
+  side(ab.grounded, green);
+  side(ab.ungrounded, red);
+  console.log(
+    dim(
+      `\nTaste is where the disagreement lives: grounded city-variance ${ab.grounded.metroVariance} ` +
+        `vs ungrounded ${ab.ungrounded.metroVariance}; ` +
+        `${ab.grounded.distinctReasons} reasons vs ${ab.ungrounded.distinctReasons}.`,
+    ),
+  );
+}
+
+function printBacktest() {
+  const bt = runBacktest();
+  console.log(bold("═══ Backtest — does it track reality? ═══"));
+  console.log(dim(`method (frozen): ${bt.frozenMethod}`));
+  if (bt.isSample) console.log(red("⚠ SAMPLE data + stand-in grounded model — replace with real YouGov + live Qloo to cite."));
+  console.log(`\n   Qloo-grounded vs reference   r = ${bold(bt.rGrounded.toFixed(2))}   MAE ${bt.maeGrounded}`);
+  console.log(`   LLM-only vs reference        r = ${bold(bt.rLLM.toFixed(2))}   MAE ${bt.maeLLM}`);
+  console.log(`   Misses (>10 pts)             ${bt.misses.length} of ${bt.brands.length * 8}`);
+  console.log(bold("\nSample of the misses"));
+  bt.misses.slice(0, 6).forEach((m) =>
+    console.log(`   ${m.brand.padEnd(12)} ${m.cell.padEnd(9)} panel ${String(m.grounded).padStart(3)}%  ref ${String(m.ref).padStart(3)}%`),
+  );
 }
 
 function printLedger(ledger: Ledger, runId: string) {
