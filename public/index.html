@@ -1403,19 +1403,36 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
 .bt-why{margin:6px 18px 0;text-align:center;font-size:13.5px;color:#e6e7ea;line-height:1.45}
 .bt-why b{color:#e1bdff}.bt-why span{display:block;color:var(--ash);margin-top:4px}
 @media (max-width:640px){.bt-r{grid-template-columns:22px minmax(0,1fr) 60px}.bt-r p{grid-column:2/4}.bt-vs{grid-template-columns:1fr 1.2fr 1fr}}
+.contact2 .ct2{max-width:720px}.contact2 .ct2 p{font-size:20px;font-weight:300;color:#d9dce0;line-height:1.5;margin:0 0 24px}.contact2 .orow{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.contact2 a.playbtn{text-decoration:none}.ct-mail{font-family:var(--mono);color:var(--ash)}
+
+/* ===== simple view: one goal, one best move, your agents; the rest one click away ===== */
+.goalbar{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:4;width:min(520px,calc(100% - 760px));min-width:300px;padding:9px 16px 10px;border-radius:12px;background:rgba(12,10,18,.88);border:1px solid rgba(225,189,255,.28);text-align:center;backdrop-filter:blur(6px)}
+.goalbar b{display:block;font-family:var(--serif);font-style:italic;font-weight:400;font-size:19px;line-height:1.15}
+.goalbar span{display:block;font-size:12px;color:var(--mist);margin-top:2px}
+.goalbar i{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:7px;overflow:hidden}.goalbar u{display:block;height:100%;background:linear-gradient(90deg,#7b2cff,#e1bdff);transition:width .6s}
+@media (max-width:1180px){.goalbar{top:auto;bottom:12px;width:calc(100% - 28px);min-width:0}}
+body.simple #mapside .s-brain,body.simple #p-ops,body.simple .scoreboard,body.simple #legend,body.simple #events{display:none!important}
+body.simple #game .quests .quest:nth-child(n+2){display:none}
+.unit2.more .face{background:#1c1828;color:#e1bdff;font:700 15px var(--sans)}
+#view-btn{font-size:12px}
+.pts{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.pts li{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;align-items:baseline;font-size:13.5px;line-height:1.35}
+.pts li b{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e1bdff}
+.pts li span{color:#eef0f3}
+#parley-body .pitch.ai{border-color:rgba(61,255,154,.4)}
 </style>
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
 <div id="hook" hidden style="--tx:43%;--ty:44%">
   <div class="hk-art" aria-hidden="true"><img src="img/hook.jpg" alt="" onerror="this.closest('#hook').classList.add('noart')"><span class="hk-tag you" style="left:15%;top:31%">You <span class="emo">🎤</span></span><span class="hk-tag fans" style="left:76%;top:74%">Your next 1,000 fans <span class="emo">📱</span></span><span class="hk-zap"></span></div>
-  <div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">click anywhere to skip</div><button class="hk-snd" id="hook-snd" hidden><span class="emo">🔊</span> Tap for sound</button></div>
+  <div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">tap for sound · tap again to skip</div><button class="hk-snd" id="hook-snd" hidden><span class="emo">🔊</span> Tap anywhere for sound</button></div>
 
 <!-- ======================= SITE ======================= -->
 <div id="site">
   <header class="nav2"><div class="navin">
     <a class="brand2" href="#top"><b>CONQUEST</b><span>.AGENT</span></a>
-    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a><a href="mailto:venky@spacenos.com?subject=Onboard%20me%20to%20Conquest&body=Hi%20Venky%2C%0A%0AI'd%20like%20to%20be%20onboarded%20to%20Conquest.%0A%0AName%20%2F%20stage%20name%3A%0AYouTube%20or%20Instagram%3A%0A">Onboard</a></nav>
+    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#contact">Contact us</a></nav>
     <div class="navcta"><a class="btn-dark" href="mailto:venky@spacenos.com?subject=Conquest%20Enterprise&body=Hi%20Venky%2C%0A%0AWe'd%20like%20the%20Enterprise%20version%20of%20Conquest%20for%20our%20roster.%0A%0ACompany%3A%0ANumber%20of%20performers%3A%0A" title="Mail venky@spacenos.com for the Enterprise version">Get Enterprise</a><button class="btn-line" data-play>Start your Conquest</button></div>
   </div></header>
 
@@ -1477,9 +1494,9 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
       <div class="stamp-sm">[WHO_PAYS]</div>
       <div class="ptable">
         <div class="pr head"><span>Who</span><span>Plan</span><span>Why they pay</span></div>
-        <div class="pr"><span>Mid-size creators and comics<small>10k to 1M followers</small></span><b>Creator · $19/mo</b><span>One booked show or one sponsor deal can pay for the year.</span></div>
-        <div class="pr hl"><span>Touring headliners and podcasters</span><b>Headliner · $49/mo</b><span>Tours, sponsors and collabs are their revenue; this plans all three.</span></div>
-        <div class="pr"><span>Talent managers and agencies</span><b>Manager · $149/mo</b><span>Ten performers' campaigns, a weekly plan for each, agents as MCP tools.</span></div>
+        <div class="pr"><span>Mid-size creators and comics<small>10k to 1M followers</small></span><b>Creator</b><span>One booked show or one sponsor deal can pay for the year.</span></div>
+        <div class="pr hl"><span>Touring headliners and podcasters</span><b>Headliner</b><span>Tours, sponsors and collabs are their revenue; this plans all three.</span></div>
+        <div class="pr"><span>Talent managers and agencies</span><b>Manager</b><span>Ten performers' campaigns, a weekly plan for each, agents as MCP tools.</span></div>
         <div class="pr"><span>Teams, venues and brands</span><b>Custom</b><span>Fan territory and partner fit across many markets.</span></div>
       </div>
       <p class="note">More than 50 million people earn from an audience (Goldman Sachs). Almost none of them can afford a strategist.</p>
@@ -1558,14 +1575,10 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
     <p class="note">✓ yes · ◐ partly · ✗ no. Based on each product's public features as we understand them; corrections welcome.</p></div>
   </div></section>
 
-  <section id="pricing" class="pricing2"><div class="wrap2">
-    <h2 class="mix2 sechead">Simple <em>pricing.</em></h2>
-    <div class="plans2">
-      <div class="plan2"><small>CREATOR</small><div class="price2">$19<span>/mo</span></div><ul><li>Your battle map and radar</li><li>5 agents, 10 battle-tests a month</li><li>Weekly campaign and battle plan</li></ul></div>
-      <div class="plan2 bloom"><small>HEADLINER</small><div class="price2">$49<span>/mo</span></div><ul><li>All 12 agents, unlimited tests</li><li>Rival tracking and alerts</li><li>Sponsor and venue picks per city</li></ul></div>
-      <div class="plan2"><small>MANAGER</small><div class="price2">$149<span>/mo</span></div><ul><li>Up to 10 performers</li><li>Tour planning across a roster</li><li>Your agents as MCP tools</li></ul></div>
-      <div class="plan2 ent"><small>ENTERPRISE</small><div class="price2">Let's talk</div><ul><li>Labels, agencies and venues</li><li>Your data and roster, private</li><li>Onboarding with our team</li></ul><a class="pill2" href="mailto:venky@spacenos.com?subject=Conquest%20Enterprise&body=Hi%20Venky%2C%0A%0AWe'd%20like%20the%20Enterprise%20version%20of%20Conquest%20for%20our%20roster.%0A%0ACompany%3A%0ANumber%20of%20performers%3A%0A">Mail venky@spacenos.com</a></div>
-    </div>
+  <section id="contact" class="pricing2 contact2"><div class="wrap2">
+    <h2 class="mix2 sechead">Let's <em>talk.</em></h2>
+    <div class="ct2"><p>Performers, managers, agencies, venues and brands: tell us who you want to reach and we'll set up your campaign with you.</p>
+      <div class="orow"><a class="playbtn" href="mailto:venky@spacenos.com?subject=Conquest%3A%20let's%20talk"><span>Contact us</span><i><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></i></a><span class="ct-mail">venky@spacenos.com</span></div></div>
   </div></section>
 
   <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your audience is a map.<br><em>Go conquer it.</em></h2><button class="playbtn center-b" data-play><span>Start your Conquest</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
@@ -1625,6 +1638,7 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
       <button class="icobtn" id="share-btn" title="Share your campaign card">⭐ <span class="lbl">Share</span></button>
       </div>
       <div class="hgrp quiet">
+      <button class="icobtn" id="view-btn" title="Simple view shows only what you need; full view shows radar, brain and live calls">Full view</button>
       <button class="icobtn" id="help" title="Replay the guided first turn">?</button>
       <button class="icobtn" id="sound" title="Sound on or off">🔊</button>
       <button class="icobtn" id="exit" title="Back to the site">Exit</button>
@@ -1635,6 +1649,7 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
     <div class="mapwrap" id="mapwrap">
       <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
       <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
+      <div class="goalbar" id="goalbar"></div>
       <div class="events" id="events" aria-live="polite"></div>
       <aside class="council frame" id="council">
         <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>Your AI strategist</b><span>Picks your best move</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
@@ -1677,6 +1692,6 @@ body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=200"></script>
+<script src="app.js?v=210"></script>
 </body>
 </html>

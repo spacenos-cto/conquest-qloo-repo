@@ -384,7 +384,8 @@ function assignStates() {
     if (inside) { G.gov.set(s.id, { city: inside, k: 1 }); continue; }
     if (s.code === "AK" || s.code === "HI" || s.code === "PR") continue;
     const n = nearest(G.cities, { p: s.c }), dist = n ? Math.hypot(n.p[0] - s.c[0], n.p[1] - s.c[1]) : 1e9;
-    if (dist < 200) G.gov.set(s.id, { city: n, k: dist < 120 ? 0.6 : 0.35 });
+    // every state belongs to its nearest city in play, fading with distance, so the whole map reads
+    if (n) G.gov.set(s.id, { city: n, k: dist < 120 ? 0.6 : dist < 260 ? 0.45 : 0.32 });
   }
 }
 
@@ -417,10 +418,14 @@ const MapView = (() => {
     const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
     x.setTransform(T.s, 0, 0, T.s, T.ox, T.oy); const P = d3.geoPath(null, x);
     const keyOf = new Map(); for (const [id, g] of G.gov) keyOf.set(id, sideOf(g.city));
-    const A = { you: 0.62, allied: 0.5, open: 0.2, fog: 0.1 };
+    const A = { you: 0.62, allied: 0.5, open: 0.34, fog: 0.22 };
+    // uncharted ground gets a light hatch: "send a Scout here"
+    const hc = document.createElement("canvas"); hc.width = hc.height = 10; const hx = hc.getContext("2d"); hx.strokeStyle = "rgba(225,189,255,.22)"; hx.lineWidth = 1.2; hx.beginPath(); hx.moveTo(0, 10); hx.lineTo(10, 0); hx.stroke();
+    const hatch = x.createPattern(hc, "repeat");
     for (const s of Atlas.states) {
       const g = G.gov.get(s.id); if (!g) continue; const key = keyOf.get(s.id);
       x.beginPath(); P(s.f); x.globalAlpha = (A[key] ?? 0.56) * g.k; x.fillStyle = colOf(key); x.fill();
+      if (key === "fog" && hatch) { x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.fillStyle = hatch; x.restore(); x.save(); x.globalAlpha = 0.9; x.fillStyle = hatch; x.fill(); x.restore(); }
     }
     x.globalAlpha = 1; x.lineJoin = "round";
     x.beginPath(); P(Atlas.inner); x.strokeStyle = "rgba(247,249,250,0.11)"; x.lineWidth = (0.7 * d) / T.s; x.stroke();
@@ -703,6 +708,35 @@ const Clock = (() => {
 const costOf = (o) => Math.max(1, COST[o.kind] - (o.city && G.prep.has(o.city) ? 1 : 0));
 const gainOf = (o) => (o.gain ? o.gain + (o.city && G.prep.has(o.city) ? 2 : 0) : 0);
 const income = () => G.cities.filter((c) => sideOf(c) === "you").length * 15 + G.sponsors.reduce((s, x) => s + x.perWeek, 0);
+const pts_ = (n) => pts(G.cities.find((c) => c.name === n));
+// ---------------------------------------------------------------- the thinking agents (Claude, when the AI layer is on)
+const post = async (p, body, ms = 25000) => { try { const r = await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) }); return await r.json(); } catch { return { status: "error" }; } };
+async function aiCheck() { if (G.aiMode != null) return G.aiMode === "claude"; const r = await api("/api/ai").catch(() => null); G.aiMode = r?.mode ?? "off"; G.aiModel = r?.model; return G.aiMode === "claude"; }
+function board() {
+  const [, , aname] = ageOf(G.conquest), goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1);
+  return {
+    name: G.player.name, ids: G.player.q?.ids, week: G.week, weeks: WEEKS, conquest: G.conquest, goal: `${goal[2]} (${goal[0]}%)`, buzz: G.buzz, gold: G.gold, hype: Math.round(G.morale * 10) / 10, capital: G.capital,
+    cities: G.cities.slice(0, 30).map((c) => ({ name: c.name, side: sideOf(c), you: c.you, mean: c.mean ?? null, worth: pts(c), state: c.state, lon: METROS[c.name]?.[0], lat: METROS[c.name]?.[1], prepared: G.prep.has(c.name), walls: G.forts.has(c.name) })),
+    orders: G.orders.filter((o) => !o.done).slice(0, 12).map((o) => ({ id: String(o.id), title: o.title, kind: o.kind, city: o.city ?? null, cost: costOf(o), gain: gainOf(o) })),
+    rivals: [...G.fac.values()].slice(0, 6).map((f) => ({ name: f.name, role: ROLE(f), momentum: G.fame.get(f.name)?.momentum ?? null, attacking: G.intents.find((i) => i.fid === f.id)?.city ?? null, besieging: G.sieges.find((i) => i.fid === f.id)?.city ?? null })),
+    agents: [...G.crew.entries()].filter(([, c]) => c.recruited).map(([id]) => id),
+  };
+}
+// once a week, the AI strategist reads the board and plans (cached per board, so replays are free)
+async function aiPlan() {
+  if (!G || G.tour || !(await aiCheck()) || G.aiPlan?.week === G.week) return;
+  const week = G.week; ops(`<span class="ag">🧠 AI strategist</span> reading the board…`);
+  const r = await post("/api/agent/strategist", board(), 60000);
+  if (r?.status !== "ok" || !G || G.week !== week) { if (r?.status === "off") G.aiMode = "off"; return; }
+  G.aiPlan = { week, ...r }; ops(`<span class="api">${esc(r.model)}</span> plan: ${esc(r.plan.headline)} · tools: ${esc((r.tools ?? []).join(", ") || "none")}`);
+  council();
+}
+// agents that write: the AI's text when it's on, the template otherwise
+async function aiWrite(kind, context, fallback) {
+  if (!(await aiCheck())) return fallback;
+  const r = await post("/api/agent/write", { kind, context }, 20000);
+  return r?.status === "ok" && r.text ? r.text : fallback;
+}
 function council() {
   const open = G.orders.filter((o) => !o.done);
   const sg = G.sieges.slice().sort((a, b) => a.left - b.left)[0];
@@ -710,13 +744,17 @@ function council() {
   const afford = open.filter((o) => costOf(o) <= G.buzz && o.gain);
   const best = afford.sort((a, b) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a))[0];
   const left = WEEKS - G.week + 1;
-  let msg;
-  if (sg) msg = `Alarm! ${G.fac.get(sg.fid)?.name} is besieging ${sg.city}. It falls in ${sg.left} week${sg.left > 1 ? "s" : ""}. Defend it for ⚡${COST.defend}, and win the battle.`;
-  else if (inc) msg = `Radar: ${G.fac.get(inc.fid)?.name} is marching on ${inc.city} and arrives Sunday. Fortify it (🪙80), strike them first, or parley. ${best ? `Then: “${best.title}”, +${gainOf(best)}%.` : ""}`;
-  else if (!open.length) msg = "Every order is done. Let the clock run out or end the week to close the campaign.";
-  else if (!afford.length) msg = `You're low on buzz (⚡${G.buzz}). Claim an opportunity, drink a trend potion, or end the week for +⚡${regen()}.`;
-  else msg = `Best value now: “${best.title}”, +${gainOf(best)}% for ⚡${costOf(best)}.${G.prep.has(best.city) ? " Your agents already prepared that city." : best.city ? ` Send a Scout or Booker to ${best.city} first and it costs less and gains more.` : ""} ${left} week${left > 1 ? "s" : ""} left.`;
-  typeInto($("#brief"), msg, `Week ${G.week} of ${WEEKS} · rival moves are simulated from their real Qloo footprints and Wikipedia momentum`);
+  const goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1), name = (fid) => G.fac.get(fid)?.name ?? "A rival";
+  let pts;
+  if (sg) pts = [["Now", `${name(sg.fid)} is besieging ${sg.city}`], ["Do", `Defend ${sg.city} · ⚡${COST.defend}`], ["Why", `It falls in ${sg.left} week${sg.left > 1 ? "s" : ""}: −${pts_(sg.city)}% conquest`]];
+  else if (inc) pts = [["Now", `${name(inc.fid)} marches on ${inc.city}, Sunday`], ["Do", "Build walls (🪙80) or strike first"], ["Then", best ? `${best.title} · +${gainOf(best)}%` : "End the week"]];
+  else if (!open.length) pts = [["Now", "Every order is done"], ["Do", "End the week"], ["Why", "The campaign closes at week " + WEEKS]];
+  else if (!afford.length) pts = [["Now", `Low on buzz (⚡${G.buzz})`], ["Do", "Claim an opportunity or end the week"], ["Why", `Sunday pays +⚡${regen()}`]];
+  else pts = [["Now", `You hold ${held()} of ${ground()} cities`], ["Do", `${best.title} · ⚡${costOf(best)}`], ["Why", `+${gainOf(best)}% conquest${G.prep.has(best.city) ? ", city already prepared" : ""}`]];
+  const ai = G.aiPlan?.week === G.week && G.aiPlan.plan, step = ai?.steps?.[0];
+  if (step) pts = [["Do", step.action], ["Why", `${step.why} (${step.source})`], ...(ai.real_world ? [["For real", ai.real_world]] : [])];
+  $("#brief").innerHTML = `<ul class="pts">${pts.map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join("")}</ul>
+    <small class="rc">${ai ? `🧠 ${esc(G.aiPlan.model)} · used ${esc((G.aiPlan.tools ?? []).join(", ") || "the board")}` : `Week ${G.week} of ${WEEKS} · goal: ${esc(goal[2])} (${goal[0]}%)`}</small>`;
   renderAdvice();
 }
 
@@ -734,9 +772,16 @@ function orb(id, frac, label) {
   lastOrb[id] = label;
 }
 let saveT = 0;
+// One line that says what the game is and how you're doing, always on screen
+function goalBar(nx) {
+  const el = $("#goalbar"); if (!el) return;
+  const target = nx ?? AGES.at(-1), pct = Math.min(100, (G.conquest / target[0]) * 100);
+  el.innerHTML = `<b>Win your real fans, city by city</b><span>${held()} of ${ground()} cities · ${G.conquest}% of your fans won · next: ${esc(target[2])} at ${target[0]}%</span><i><u style="width:${pct}%"></u></i>`;
+}
 function hud(delta) {
   clearTimeout(saveT); saveT = setTimeout(saveGame, 800); renderAdvice();
   const [a0, n, name] = ageOf(G.conquest), nx = AGES.find((x) => x[0] > G.conquest);
+  goalBar(nx);
   $("#lvl-n").textContent = n; $("#age-name").textContent = name;
   $("#xp-fill").style.width = `${nx ? ((G.conquest - a0) / (nx[0] - a0)) * 100 : 100}%`;
   $("#xp-text").textContent = `${G.conquest}% conquest${delta ? ` (${delta > 0 ? "+" : ""}${delta})` : ""}${nx ? ` · ${nx[2]} at ${nx[0]}%` : " · max age"}`;
@@ -1046,7 +1091,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
       { id: "open", name: `Open for them${city ? ` in ${city}` : ""}`, text: "Take the smaller slot; they bring the crowd.", buzz: 3, gold: 0, p: clampP(0.72 + b / 300) },
     ];
     const best = offers.filter((x) => x.p >= 0.7).sort((x, y) => x.buzz * 40 + x.gold - (y.buzz * 40 + y.gold))[0];
-    const pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.toLowerCase() : "a co-bill"}${city ? ` in ${city}` : ""}. Same taste, different rooms: we both grow.`;
+    let pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.toLowerCase() : "a co-bill"}${city ? ` in ${city}` : ""}. Same taste, different rooms: we both grow.`;
     box.innerHTML = `<div class="ptitle">Parley</div><h2>Parley with ${esc(name)}</h2><p class="sub2">Barter score ${b}/100 · ${Math.round(netnew * 100)}% of their crowd is new to you · ${Math.round(convert * 100)}% would cross over</p>
       <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>You</b></div><div class="vsx" style="color:var(--good);text-shadow:0 0 18px rgba(225,189,255,.6)">🤝</div><div class="side" style="--c:${col}">${avatar(img, name)}<b>${esc(name)}</b></div></div>
       <div class="offers">${offers.map((x, i) => `<button class="offer${x === best ? " best" : ""}" data-of="${i}" ${(G.buzz >= x.buzz && G.gold >= x.gold) ? "" : "disabled"}><b>${esc(x.name)}${x === best ? " · smallest that likely works" : ""}</b><small>${esc(x.text)}</small><span class="pr"><em>${Math.round(x.p * 100)}%</em>${x.buzz ? `⚡${x.buzz}` : `🪙${x.gold}`}</span></button>`).join("")}</div>
@@ -1054,6 +1099,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
       <div class="verdict" id="pverdict"></div>
       <div class="row2" id="prow"><button class="ghostbtn" id="pcopy" style="margin-top:4px">Copy the pitch</button><button class="ghostbtn" id="pclose" style="margin-top:4px">Walk away</button></div>`;
     $("#parley").hidden = false; Sound.play("alliance");
+    aiWrite("pitch", { name: G.player.name, partner: name, offer: best ? best.name : "a co-bill", city, netnew: Math.round(netnew * 100), convert: Math.round(convert * 100) }, null).then((dm) => { if (dm && !$("#parley").hidden) { pitch = dm; const el = $("#parley-body .pitch"); if (el) { el.textContent = dm; el.classList.add("ai"); } } });
     const close = (r) => { $("#parley").hidden = true; G.modal = false; resolve(r); };
     $("#pclose").onclick = () => close("cancel");
     $("#pcopy").onclick = async () => { try { await navigator.clipboard.writeText(pitch); toast("Pitch copied. Send it for real."); } catch {} };
@@ -1162,11 +1208,16 @@ const AGENTS = [
 ];
 const deployCity = () => G.cities.find((c) => c.name === G.pinned) ?? G.cities.find((c) => c.name === G.orders[G.sel]?.city) ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
 const HOTKEYS = "QWERTYASDFGH";
+const simpleView = () => document.body.classList.contains("simple") && !G?.allAgents;
 function renderAgents() {
   const city = deployCity();
   $("#army-hint").textContent = city ? "→ " + city.name : "";
-  $("#agents").innerHTML = AGENTS.map((a, i) => {
-    const c = G.crew.get(a.id) ?? {}, hk = HOTKEYS[i];
+  // simple view: hired agents first, then the three cheapest you can afford; the rest behind "All agents"
+  const hiredIds = new Set([...G.crew.entries()].filter(([, c]) => c.recruited).map(([id]) => id));
+  const offer = AGENTS.filter((a) => !a.locked && !hiredIds.has(a.id)).sort((x, y) => x.cost - y.cost).slice(0, Math.max(2, 5 - hiredIds.size)).map((a) => a.id);
+  const shown = simpleView() ? AGENTS.filter((a) => hiredIds.has(a.id) || offer.includes(a.id)) : AGENTS;
+  $("#agents").innerHTML = shown.map((a) => {
+    const i = AGENTS.indexOf(a), c = G.crew.get(a.id) ?? {}, hk = HOTKEYS[i];
     let cls = "unit2", tag = "", tip = a.name + ": " + a.role + " (" + a.src + ")";
     if (a.locked) { cls += " locked"; tag = "LOCK"; tip += ". Connect your account to unlock."; }
     else if (!c.recruited) { cls += " hire" + (G.gold >= a.cost ? " can" : ""); tag = "🪙" + a.cost; tip += ". Click to recruit for " + a.cost + " gold, or drag it onto a city to hire and send it."; }
@@ -1175,7 +1226,8 @@ function renderAgents() {
     else if (c.week === G.week) { cls += " rest"; tag = "WK " + (G.week + 1); tip += ". Back next week."; }
     else { cls += " ready"; tag = G.army.get(a.id)?.state === "stationed" ? "HOLD" : "GO"; tip += ". Click to select, then click a city on the map (or drag this tile onto one)."; }
     return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '" style="' + agentGrad(a.id) + '"><span class="hk">' + hk + '</span><span class="face emo">' + a.icon + '</span><span class="nm2">' + a.name + '</span><span class="pr">' + tag + "</span></button>";
-  }).join("");
+  }).join("") + (simpleView() && shown.length < AGENTS.length ? `<button class="unit2 more" id="all-agents" title="See all 12 agents"><span class="face">+${AGENTS.length - shown.length}</span><span class="nm2">All agents</span><span class="pr">›</span></button>` : "");
+  $("#all-agents")?.addEventListener("click", () => { G.allAgents = true; renderAgents(); });
   $$("[data-unit]").forEach((b) => { b.addEventListener("click", () => { if (!b._dragged) unitAction(b.dataset.unit); }); tileDrag(b); });
   $$("[data-unit]").forEach((b) => b.classList.toggle("sel", G.selected?.type === "unit" && G.selected.id === b.dataset.unit));
 }
@@ -1274,6 +1326,7 @@ const AGENT_JOBS = {
     const used = new Set(G.sponsors.map((s) => s.name)), b = pick(G.player.aud?.domains?.brand, used);
     if (!b) return { line: "no new brand fits your crowd." };
     const perWeek = Math.round(20 + b.affinity * 50); G.sponsors.push({ name: b.name, perWeek }); ach("paid");
+    aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: Math.round(b.affinity * 100), audience: (G.player.aud?.tags ?? []).slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { G.drafts.push(mail); ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> drafted: “${esc(mail.split("\n")[0].slice(0, 90))}”`); } });
     return { line: `<span class="api">Qloo · brands your fans love</span> <b>${esc(b.name)}</b> (${Math.round(b.affinity * 100)}% affinity) signs on <span class="ok">+🪙${perWeek}/week</span>`, intel: `💼 Sponsor: ${b.name} (+${perWeek} gold a week).`, float: `💼 +🪙${perWeek}/wk` };
   },
   async herald(city) {
@@ -1318,7 +1371,8 @@ const AGENT_JOBS = {
   async scribe(city) {
     const tags = (G.player.aud?.tags || []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
     const tr = G.potions.find((p) => !p.used && p.where === city.name) ?? G.potions.find((p) => !p.used);
-    const post = `${city.name}! If you grew up on ${tags[0] || "great comedy"}${tags[1] ? ` and ${tags[1]}` : ""}, this one's for you. ${tr ? `Got thoughts on ${tr.title}. ` : ""}New set, one night only. 🎤`;
+    const draft = `${city.name}! If you grew up on ${tags[0] || "great comedy"}${tags[1] ? ` and ${tags[1]}` : ""}, this one's for you. ${tr ? `Got thoughts on ${tr.title}. ` : ""}New set, one night only. 🎤`;
+    const post = await aiWrite("caption", { name: G.player.name, city: city.name, tastes: tags, trend: tr?.title }, draft);
     G.buzz = Math.min(BUZZ_MAX, G.buzz + 1); G.drafts.push(post);
     try { await navigator.clipboard.writeText(post); } catch {}
     return { line: `<span class="api">Qloo tags${tr ? " + Trends" : ""}</span> draft: “${esc(post)}” <span class="ok">+1 ⚡ · copied</span>`, intel: `✍️ Post ready: “${post}”`, float: "✍️ +⚡1" };
@@ -1858,7 +1912,7 @@ let TOUR_T0 = 0, tourSpot = null;
 function spot(sel) { tourSpot?.classList.remove("spot"); tourSpot = sel ? $(sel) : null; tourSpot?.classList.add("spot"); }
 function stopTour() { TOURING = false; spot(null); const b = $("#tourbar"); if (b) b.hidden = true; if (G) { G.tour = false; Clock.reset(); } }
 async function runTour() {
-  if (TOURING) return; TOURING = true; TOUR_T0 = Date.now(); const N = 12, live = () => TOURING;
+  if (TOURING) return; TOURING = true; document.body.classList.remove("simple"); TOUR_T0 = Date.now(); const N = 12, live = () => TOURING;
   try { localStorage.setItem("conquest-coached", "1"); } catch {}
   caption(1, N, "Conquest is the growth agent you play like a strategy game. Watch a full week in two minutes.");
   await sleep(4000); if (!live()) return;
@@ -2151,7 +2205,8 @@ function adviceAction() {
 }
 function renderAdvice() {
   const b = $("#council-do"); if (!b || !G) return;
-  const act = adviceAction(); b.textContent = act.label; b.onclick = () => { if (!G.busy && !G.modal) act.fn(); };
+  const step = G.aiPlan?.week === G.week ? G.aiPlan.plan?.steps?.[0] : null, oi = step?.order_id ? G.orders.findIndex((o) => o.id === step.order_id && !o.done) : -1;
+  const act = oi >= 0 ? { label: `🚩 ${G.orders[oi].title}`, fn: () => execute(oi) } : adviceAction(); b.textContent = act.label; b.onclick = () => { if (!G.busy && !G.modal) act.fn(); };
 }
 
 // ---------------------------------------------------------------- the landing hook
@@ -2159,24 +2214,29 @@ function renderAdvice() {
 // first move 👉👈. Then the fingertips touch, and Conquest makes it.
 function playHook() {
   const el = $("#hook"); if (!el) return;
-  let seen = false; try { seen = sessionStorage.getItem("conquest-hook") === "1"; } catch {}
-  if (seen || new URLSearchParams(location.search).has("tour") || new URLSearchParams(location.search).has("play")) { el.remove(); return; }
+  // plays on every visit to the landing page; the jury tour and ?play= links skip it
+  if (new URLSearchParams(location.search).has("tour") || new URLSearchParams(location.search).has("play")) { el.remove(); return; }
   el.hidden = false; document.body.classList.add("hooked");
-  const cap = $("#hook-cap"), lines = [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]];
-  const t = lines.map(([ms, text]) => setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
-  t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400));
-  t.push(setTimeout(() => el.classList.add("touch"), 4300));
-  // sound, like a studio logo: ta-dum, a swell while they hesitate, ba-dum-tss on the touch.
-  // Browsers keep a page silent until the first tap, so the chip turns sound on without skipping.
-  let touched = false; const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
-  cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);
-  const chip = $("#hook-snd");
-  Sound.unlock().then(() => { if (!Sound.live && chip) chip.hidden = false; }, () => chip && (chip.hidden = false));
-  setTimeout(() => { if (!Sound.live && chip) chip.hidden = false; }, 400);
-  chip?.addEventListener("click", (e) => { e.stopPropagation(); Sound.unlock().then(() => { chip.hidden = true; if (!touched) Sound.play("swell"); }); });
-  const end = () => { if (!touched) Sound.unlock().then(() => Sound.live && Sound.play("rimshot")); touched = true; t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); try { sessionStorage.setItem("conquest-hook", "1"); } catch {} setTimeout(() => el.remove(), 900); };
-  t.push(setTimeout(end, 6200));
-  el.addEventListener("click", end, { once: true });
+  const cap = $("#hook-cap"), chip = $("#hook-snd");
+  let t = [], touched = false, done = false;
+  // sound, like a studio logo: ta-dum, a swell while they hesitate, ba-dum-tss on the touch
+  function run() {
+    t.forEach(clearTimeout); t = []; touched = false; el.classList.remove("you", "fans", "touch");
+    const art = el.querySelector(".hk-art"); if (art) { art.style.animation = "none"; void art.offsetWidth; art.style.animation = ""; }
+    for (const [ms, text] of [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
+    t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400), setTimeout(() => el.classList.add("touch"), 4300), setTimeout(end, 6400));
+    const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
+    cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);
+  }
+  function end() { if (done) return; done = true; t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); setTimeout(() => el.remove(), 900); }
+  // Browsers keep every page silent until the visitor's first tap. So the first
+  // tap turns the sound on and replays the opener with it; the next tap skips.
+  Sound.unlock().catch(() => {}).finally(() => { if (!Sound.live && chip) chip.hidden = false; });
+  el.addEventListener("click", (e) => {
+    if (Sound.live) return end();
+    e.stopPropagation(); Sound.unlock().then(() => { if (chip) chip.hidden = true; run(); });
+  });
+  run();
 }
 
 // ---------------------------------------------------------------- orders, forecasts, previews
@@ -2261,7 +2321,7 @@ const Drawer = {
     const b = $("#drawer-b");
     if (this.mode === "orders") {
       $("#drawer-t").textContent = "All orders"; b.innerHTML = ordersHtml();
-      $$("#drawer-b [data-o]").forEach((x) => x.addEventListener("click", () => { selectOrder(+x.dataset.o); this.close(); }));
+      $$("#drawer-b [data-o]").forEach((x) => x.addEventListener("click", () => selectOrder(+x.dataset.o))); // open the card in place; the drawer stays
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
@@ -2325,9 +2385,7 @@ async function startGame(c, player) {
   planIntents();
   playerCard(); renderTrends(); hud(); renderOrders(); renderAgents(); $("#cityp").hidden = true; $("#victory").hidden = true;
   const nem = c.rivals.find((r) => r.strategy === "compete");
-  typeInto($("#brief"),
-    `Commander ${player.name.split(" ")[0]}, you hold ${held()} of ${ground()} cities. ${nem ? `${nem.name} is your nemesis: same fans, same taste. ` : ""}The clock is running: ${WEEKS} weeks. Spend ⚡ on orders, 🪙 on agents, watch the radar for incoming rivals, and grab opportunities before they expire.`,
-    `Source: Qloo taste graph + 1,000-fan panel · ${c.receipts?.length ?? 0} live calls logged`);
+  council(); setTimeout(aiPlan, 1500); // three short points now; the AI plan replaces them when the AI layer is on
   ops(`<span class="api">Qloo</span> mapped ${cities.length} cities, ${c.rivals.length} rivals, ${c.missions.length} orders · ${c.receipts?.length ?? 0} live calls`);
   const ev = [[`Commander ${player.name} has taken the field.`, "you"], [`Your capital is ${G.capital ?? "not yet chosen"}.`, "info"], [`${c.rivals.length} rivals spotted fighting for your fans.`, "bad"], [`${c.territory.target ? `Scouts report ${c.territory.target.name} is ripe for conquest.` : "Scouts are still reading the map."}`, "good"]];
   ev.forEach(([t, k], i) => setTimeout(() => event(t, k), 400 + i * 900));
@@ -2462,7 +2520,7 @@ async function endWeek() {
   G.busy = false;
   if (G.week > WEEKS) { G.week = WEEKS; hud(); renderOrders(); setTimeout(victory, 600); return; }
   planIntents();
-  event(`📅 Week ${G.week} begins. +⚡${gain} +🪙${gold}.`, "you");
+  event(`📅 Week ${G.week} begins. +⚡${gain} +🪙${gold}.`, "you"); aiPlan();
   const urgent = G.orders.findIndex((o) => !o.done && o.kind === "defend");
   G.sel = urgent >= 0 ? urgent : -1;
   hud(); renderOrders(); renderAgents(); council();
@@ -2503,6 +2561,9 @@ $("#cpause").addEventListener("click", () => Clock.toggle());
 $("#cfast").addEventListener("click", () => Clock.fast());
 $("#sound").addEventListener("click", () => { $("#sound").textContent = Sound.toggle() ? "🔊" : "🔇"; });
 $("#exit").addEventListener("click", toSite);
+function setView(full) { document.body.classList.toggle("simple", !full); $("#view-btn").textContent = full ? "Simple view" : "Full view"; try { localStorage.setItem("conquest-view", full ? "full" : "simple"); } catch {} if (G) { renderAgents(); MapView.relayer?.(); } }
+$("#view-btn").addEventListener("click", () => setView(document.body.classList.contains("simple")));
+{ let v = "simple"; try { v = localStorage.getItem("conquest-view") || "simple"; } catch {} setView(v === "full" || new URLSearchParams(location.search).has("tour")); }
 $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
 $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
 $("#share-btn").addEventListener("click", openShare);
