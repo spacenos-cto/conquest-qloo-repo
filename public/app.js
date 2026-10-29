@@ -219,7 +219,7 @@ const GENERAL = `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy=
 const PORTRAIT = new Map();
 function portrait(url) {
   if (!url) return null;
-  if (!PORTRAIT.has(url)) { const im = new Image(); im.crossOrigin = "anonymous"; im.onerror = () => (im._bad = true); im.src = url; PORTRAIT.set(url, im); }
+  if (!PORTRAIT.has(url)) { const im = new Image(); im.onerror = () => (im._bad = true); im.src = url; PORTRAIT.set(url, im); }
   const im = PORTRAIT.get(url); return im.complete && !im._bad && im.naturalWidth ? im : null;
 }
 
@@ -1418,7 +1418,7 @@ const HeroMap = (() => {
     units = units.filter((u) => now - u.t0 < 1500);
     for (const u of units) { const q = ease(clamp01((now - u.t0) / 1400)), a = toS(u.from), b = toS(u.to), X = a[0] + (b[0] - a[0]) * q, Y = a[1] + (b[1] - a[1]) * q - Math.sin(q * Math.PI) * 30 * d; ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.font = `${13 * d}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(u.icon, X, Y); ctx.textBaseline = "alphabetic"; }
     fx = fx.filter((f) => now - f.t0 < 1800);
-    for (const f of fx) { const q = (now - f.t0) / 1800, [X, Y] = toS(f.p); ctx.strokeStyle = "#ffcf5a"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#ffcf5a"; ctx.font = `800 ${16 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 16 * d - q * 30 * d); ctx.globalAlpha = 1; }
+    for (const f of fx) { const q = clamp01((now - f.t0) / 1800), [X, Y] = toS(f.p); ctx.strokeStyle = "#ffcf5a"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#ffcf5a"; ctx.font = `800 ${16 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 16 * d - q * 30 * d); ctx.globalAlpha = 1; }
   }
   return { frame };
 })();
@@ -1561,7 +1561,15 @@ async function scan() {
 }
 
 // ---------------------------------------------------------------- run
-(function loop(now) { Field.frame(now); if (G && !$("#game").hidden) { MapView.frame(now); Radar.frame(now); brainTick(now); } else { HeroMap.frame(now); HeroRadar.frame(now); } requestAnimationFrame(loop); })(performance.now());
+// every renderer is isolated: one bad frame is logged once and never stops the loop
+const failed = new Set();
+function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name)) { failed.add(name); console.warn(`[${name}] frame error`, e); } } }
+(function loop(now) {
+  requestAnimationFrame(loop);
+  safe("brain", Field.frame, now);
+  if (G && !$("#game").hidden) { safe("map", MapView.frame, now); safe("radar", Radar.frame, now); safe("regions", brainTick, now); }
+  else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); }
+})(performance.now());
 // a shareable link: ?play=Name opens the game as that person
 const autoplay = new URLSearchParams(location.search).get("play");
 if (autoplay) openWho(autoplay);
