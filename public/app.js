@@ -724,12 +724,14 @@ function factions() {
   const all = [row({ name: G.player.name, img: G.player.image, col: COL.you, st: `<span class="st you">You</span>`, n: G.cities.filter((c) => sideOf(c) === "you").length, last: G.last, r: fansOf() })]
     .concat([...G.fac.values()].map((f) => row({ name: f.name, img: f.img, col: f.allied ? COL.allied : f.col, st: f.allied ? `<span class="st allied">Allied</span>` : f.strategy === "ally" ? `<span class="st ally">Ally?</span>` : `<span class="st rival">Nemesis</span>`, n: G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, last: f.last, title: f.plan.reason, r: reach(f) })));
   const useFame = all.some((x) => x.v), max = Math.max(1, ...all.map((x) => (useFame ? x.v ?? 0 : x.r)));
+  if (!$("#factions")) return;
   $("#factions").innerHTML = all.map((x) => `<div class="fac" style="--c:${x.col}" ${x.title ? `title="${esc(x.title)}"` : ""}>${avatar(x.img, x.name, "fp")}<span>${esc(x.name)}</span>${x.st}<b>${x.n}</b><span class="pw"><i style="width:${((useFame ? x.v ?? 0 : x.r) / max) * 100}%"></i></span><span class="fl">${x.v != null ? `${kfmt(x.v)} views/30d${x.mo != null ? ` ${x.mo >= 0 ? "▲" : "▼"}${Math.abs(x.mo)}%` : ""} · ` : ""}${esc(x.last || "")}</span></div>`).join("")
     ;
 }
 function playerCard() {
   const p = G.player, socials = (p.socials || []).filter((s) => s.network !== "imdb");
   $("#hud-face").innerHTML = avatar(p.image, p.name);
+  if (!$("#player")) return;
   $("#player").innerHTML = `${avatar(p.image, p.name)}<div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.bio || (p.custom ? "Custom audience" : "On Qloo"))}</div><div class="socials">${socials.map((s) => `<a class="soc" href="${esc(s.url || "#")}" target="_blank" rel="noopener"><b>✓</b> ${esc(s.network)}</a>`).join("")}</div></div>`;
   const c = G.c;
   $("#intel").innerHTML = `
@@ -772,7 +774,7 @@ const Radar = (() => {
     if (!G || cv.offsetParent === null) return;
     fit(cv, 2); const W = cv.width, H = cv.height, d = cv._dpr || 1, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 8 * d;
     const cap = G.cities.find((c) => c.name === G.capital) ?? G.cities[0]; if (!cap) return;
-    const RANGE = 620, pos = (p) => { const dx = p[0] - cap.p[0], dy = p[1] - cap.p[1], dd = Math.hypot(dx, dy), k = Math.min(1, dd / RANGE); return [cx + (dx / (dd || 1)) * k * R, cy + (dy / (dd || 1)) * k * R]; };
+    const RANGE = 560, pos = (p) => { const dx = p[0] - cap.p[0], dy = p[1] - cap.p[1], dd = Math.hypot(dx, dy), k = Math.min(1, dd / RANGE); return [cx + (dx / (dd || 1)) * k * R, cy + (dy / (dd || 1)) * k * R]; };
     ctx.clearRect(0, 0, W, H);
     const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R); bg.addColorStop(0, "#1b0f2e"); bg.addColorStop(1, "#08060c");
     ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
@@ -806,7 +808,7 @@ const Radar = (() => {
     ctx.globalAlpha = 1;
     ctx.fillStyle = COL.you; ctx.beginPath(); ctx.arc(cx, cy, 5 * d, 0, 6.283); ctx.fill();
     ctx.fillStyle = "rgba(225,189,255,.7)"; ctx.font = `600 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.fillText(`HQ · ${G.capital?.toUpperCase() ?? ""}`, 8 * d, H - 8 * d);
-    ctx.textAlign = "right"; ctx.fillText(`ETA SUN 00:00 · ${Math.max(0, Math.ceil((168 - G.hour) / 24))}D`, W - 8 * d, H - 8 * d);
+    ctx.textAlign = "right"; ctx.fillText(`SUN · ${Math.max(0, Math.ceil((168 - G.hour) / 24))}D`, W - 8 * d, 14 * d);
   }
   return { frame };
 })();
@@ -819,15 +821,15 @@ function threatLevel(f) {
 function renderThreats() {
   if (!G) return;
   const RANK = { HIGH: 0, MED: 1, LOW: 2, ALLY: 3 };
-  $("#threats").innerHTML = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]).slice(0, 2).map((f) => {
+  $("#threats").innerHTML = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]).map((f) => {
     const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), mo = G.fame.get(f.name)?.momentum;
     const strikeAt = strikeCity(f);
-    const why = f.allied ? "Fighting at your side." : it ? (G.forts.has(it.city) ? `Marching on ${it.city}. Walls up.` : `Marching on ${it.city} · arrives Sunday.`) : f.strategy === "ally" ? "Same taste, new crowd. A good partner." : "Watching your ground.";
-    const btns = f.allied ? "" : `<div class="cnt">
-      ${it ? `<button data-fort="${esc(it.city)}" ${G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled"} title="Walls up in ${esc(it.city)} this week: their attack bounces">🛡 Fortify 🪙80</button>` : ""}
-      <button data-strike="${esc(f.id)}" ${strikeAt && G.buzz >= 4 ? "" : "disabled"} title="${strikeAt ? `Hit them first in ${esc(strikeAt.name)}` : "They hold no city to hit"}">⚔ Strike ⚡4</button>
-      <button data-parley="${esc(f.id)}" title="Offer a partnership instead of a fight">🕊 Parley</button></div>`;
-    return `<div class="threat${lv === "HIGH" ? " hi" : ""}" style="--c:${f.allied ? COL.allied : f.col}"><div class="th">${avatar(f.img, f.name, "fp")}<span>${esc(f.name)}${mo != null ? ` <small style="color:var(--ash)">${mo >= 0 ? "▲" : "▼"}${Math.abs(mo)}%</small>` : ""}</span><span class="lv ${lv}">${lv}</span></div><p>${esc(why)}</p>${btns}</div>`;
+    const why = f.allied ? "Fighting at your side" : it ? (G.forts.has(it.city) ? "→ " + it.city + " · walls up" : "→ " + it.city + " · arrives Sun") : f.strategy === "ally" ? "Same taste, new crowd" : "Watching your ground";
+    const btns = f.allied ? "" : '<div class="cnt">' +
+      (it ? '<button data-fort="' + esc(it.city) + '" ' + (G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled") + ' title="Fortify ' + esc(it.city) + ' (80 gold): their attack bounces">🛡</button>' : "") +
+      '<button data-strike="' + esc(f.id) + '" ' + (strikeAt && G.buzz >= 4 ? "" : "disabled") + ' title="' + (strikeAt ? "Strike first in " + esc(strikeAt.name) + " (4 buzz)" : "They hold no city to hit") + '">⚔</button>' +
+      '<button data-parley="' + esc(f.id) + '" title="Parley: offer a partnership">🕊</button></div>';
+    return '<div class="threat' + (lv === "HIGH" ? " hi" : "") + '" style="--c:' + (f.allied ? COL.allied : f.col) + '"><span class="lv ' + lv + '">' + lv + '</span><div class="th">' + avatar(f.img, f.name, "fp") + '<span class="nmx">' + esc(f.name) + (mo != null ? ' <small style="color:var(--ash)">' + (mo >= 0 ? "▲" : "▼") + Math.abs(mo) + "%</small>" : "") + "</span></div><p>" + esc(why) + "</p>" + btns + "</div>";
   }).join("");
   $$("[data-fort]").forEach((b) => b.addEventListener("click", () => fortify(b.dataset.fort)));
   $$("[data-strike]").forEach((b) => b.addEventListener("click", () => strike(b.dataset.strike)));
@@ -1018,23 +1020,29 @@ const AGENTS = [
   { id: "listener", icon: "👂", name: "Listener", role: "What Reddit says about you", src: "Reddit · connect", locked: true },
 ];
 const deployCity = () => G.cities.find((c) => c.name === G.pinned) ?? G.cities.find((c) => c.name === G.orders[G.sel]?.city) ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
+const HOTKEYS = "QWERTYASDFGH";
 function renderAgents() {
   const city = deployCity();
-  const list = G.allAgents ? AGENTS : AGENTS.filter((a, i) => i < 6 || G.crew.get(a.id)?.recruited);
-  $("#agents").innerHTML = list.map((a) => {
-    const c = G.crew.get(a.id) ?? {};
-    let btn;
-    if (a.locked) btn = `<button data-lockag="1">Connect</button>`;
-    else if (!c.recruited) btn = `<button data-rec="${a.id}" ${G.gold >= a.cost && !G.over ? "" : "disabled"}>Recruit 🪙${a.cost}</button>`;
-    else if (c.busy) btn = `<button disabled>On mission</button>`;
-    else if (c.week === G.week) btn = `<button disabled>Back next week</button>`;
-    else btn = `<button data-dep="${a.id}" ${G.over ? "disabled" : ""}>Deploy → ${esc(city?.name ?? "")}</button>`;
-    return `<div class="agent${c.busy ? " busy" : ""}${a.locked ? " lock" : ""}"><span class="ai">${a.icon}</span><span>${a.name}<small>${a.role}</small><span class="src${a.locked ? " no" : ""}">${a.src}</span></span>${btn}</div>`;
-  }).join("") + (G.allAgents ? "" : `<button class="more" id="more-agents">+${AGENTS.length - list.length} more agents</button>`) + `<div class="note" style="margin-top:6px">Deploy goes to the city you clicked on the map, else your next move's city.</div>`;
-  $("#more-agents")?.addEventListener("click", () => { G.allAgents = true; renderAgents(); });
-  $$("[data-rec]").forEach((b) => b.addEventListener("click", () => recruit(b.dataset.rec)));
-  $$("[data-dep]").forEach((b) => b.addEventListener("click", () => deploy(b.dataset.dep)));
-  $$("[data-lockag]").forEach((b) => b.addEventListener("click", () => toast("Reddit blocks anonymous apps. Connect a Reddit account to unlock the Listener.")));
+  $("#army-hint").textContent = city ? "→ " + city.name : "";
+  $("#agents").innerHTML = AGENTS.map((a, i) => {
+    const c = G.crew.get(a.id) ?? {}, hk = HOTKEYS[i];
+    let cls = "unit2", tag = "", tip = a.name + ": " + a.role + " (" + a.src + ")";
+    if (a.locked) { cls += " locked"; tag = "LOCK"; tip += ". Connect your account to unlock."; }
+    else if (!c.recruited) { cls += " hire" + (G.gold >= a.cost ? " can" : ""); tag = "🪙" + a.cost; tip += ". Click to recruit for " + a.cost + " gold."; }
+    else if (c.busy) { cls += " busy"; tag = "…"; tip += ". On a mission."; }
+    else if (c.week === G.week) { cls += " rest"; tag = "WK " + (G.week + 1); tip += ". Back next week."; }
+    else { cls += " ready"; tag = "GO"; tip += ". Click to deploy to " + (city?.name ?? "the target city") + "."; }
+    return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '"><span class="hk">' + hk + "</span>" + a.icon + '<span class="pr">' + tag + "</span></button>";
+  }).join("");
+  $$("[data-unit]").forEach((b) => b.addEventListener("click", () => unitAction(b.dataset.unit)));
+}
+function unitAction(id) {
+  const a = AGENTS.find((x) => x.id === id), c = G.crew.get(id); if (!a || !G || G.over) return;
+  if (a.locked) return toast("Reddit blocks anonymous apps. Connect a Reddit account to unlock the Listener.");
+  if (!c?.recruited) { if (G.gold < a.cost) { Sound.play("nope"); return toast("Not enough gold: " + a.name + " costs " + a.cost + "."); } return recruit(id); }
+  if (c.busy) return toast(a.name + " is on a mission.");
+  if (c.week === G.week) return toast(a.name + " is back next week.");
+  deploy(id);
 }
 function recruit(id) {
   const a = AGENTS.find((x) => x.id === id); if (!a || G.gold < a.cost) return;
@@ -1223,18 +1231,12 @@ function actionLabel(o, c, can) {
 function renderPrimary() {
   const rec = recommended(), i = G.sel >= 0 && G.orders[G.sel] && !G.orders[G.sel].done ? G.sel : rec, o = G.orders[i];
   G.primary = i;
-  if (!o) { $("#primary").innerHTML = `<div class="pcard empty">Every order is done. Let the week run out, or end it.</div>`; $("#mbar").innerHTML = ""; return; }
+  if (!o) { $("#primary").innerHTML = '<div class="nm"><div class="ti">✓</div><div><div class="kk">ALL CLEAR</div><h3>Every order is done</h3></div><div class="why">Let the week run out, or end it. Rivals still move on Sunday.</div></div>'; return; }
   const c = costOf(o), g = gainOf(o), can = c <= G.buzz && !G.busy && !G.over, ct = o.city && G.cities.find((x) => x.name === o.city);
   const foe = (o.kind === "rivalry" || o.kind === "defend") && ct && (facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid));
-  $("#primary").innerHTML = `<div class="pcard"><div class="pk">${ICON[o.kind] ?? ""} ${o.kind === "edit" ? "sharpen" : o.kind}${i === rec ? ' · <span style="color:var(--good)">recommended</span>' : ""}${o.city && G.prep.has(o.city) ? ' · <span style="color:#7fd8ff">prepared ✓</span>' : ""}</div>
-    <h3>${esc(o.title)}</h3>
-    <div class="pg">${g ? `<b>+${g}% conquest</b>` : "<b>keeps your ground</b>"}<span>⚡${c}</span>${foe ? `<span>${Math.round(oddsFor(ct, foe).p * 100)}% odds</span>` : ""}</div>
-    <div class="why">${esc(o.detail)}<span class="rc">Source: ${esc(o.receipt)}</span></div>
-    <div class="fc"><b>WHAT HAPPENS</b><ol>${(FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => `<li><span>${d}</span>${esc(t)}</li>`).join("")}</ol><div class="skip">${esc(skipText(o))}</div>${sparkline(o)}</div>
-    <div class="orow"><button class="go" id="p-exec" ${can ? "" : "disabled"}>${actionLabel(o, c, can)}</button><button class="ghostbtn" id="p-prev">▶ Preview</button></div></div>`;
+  const steps = (FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => "<b>" + d + "</b> " + esc(t)).join(" <i>→</i> ");
+  $("#primary").innerHTML = '<div class="nm"><div class="ti">' + (ICON[o.kind] ?? "🚩") + '</div><div style="min-width:0"><div class="kk">' + (o.kind === "edit" ? "sharpen" : o.kind) + (i === rec ? ' · <span class="rec">recommended</span>' : "") + (o.city && G.prep.has(o.city) ? " · prepared ✓" : "") + "</div><h3>" + esc(o.title) + '</h3><div class="chips">' + (g ? '<span class="g">+' + g + "%</span>" : "<span>holds ground</span>") + "<span>⚡" + c + "</span>" + (foe ? "<span>" + Math.round(oddsFor(ct, foe).p * 100) + "% odds</span>" : "") + '</div></div><div class="why">' + esc(o.detail) + '</div><div class="steps3">' + steps + '</div><div class="nmrow"><button class="go" id="p-exec" ' + (can ? "" : "disabled") + ">" + actionLabel(o, c, can) + '</button><button class="ghostbtn" id="p-prev" title="Show what happens on the map">▶</button></div></div>';
   $("#p-exec").onclick = () => execute(i); $("#p-prev").onclick = () => preview(o);
-  $("#mbar").innerHTML = `<span>${esc(o.title)}${g ? ` · +${g}%` : ""}</span><button class="go" id="m-exec" ${can ? "" : "disabled"}>${actionLabel(o, c, can)}</button>`;
-  $("#m-exec").onclick = () => execute(i);
 }
 function renderOrders() {
   renderPrimary();
@@ -1268,6 +1270,7 @@ const Drawer = {
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
     else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
   },
 };
@@ -1499,12 +1502,13 @@ $("#v-copy").addEventListener("click", async () => { try { await navigator.clipb
 $("#simulate").addEventListener("click", simulatePlan);
 $("#all-orders").addEventListener("click", () => (Drawer.mode === "orders" ? Drawer.close() : Drawer.open("orders")));
 $("#trends-btn").addEventListener("click", () => (Drawer.mode === "trends" ? Drawer.close() : Drawer.open("trends")));
+$("#cmd-btn").addEventListener("click", () => (Drawer.mode === "intel" ? Drawer.close() : Drawer.open("intel")));
 $("#plan-btn").addEventListener("click", () => (Drawer.mode === "moves" ? Drawer.close() : Drawer.open("moves")));
 $("#drawer-x").addEventListener("click", () => Drawer.close());
 $("#help").addEventListener("click", () => { try { localStorage.removeItem("conquest-coached"); } catch {} Coach.start(); });
 $("#ops-toggle").addEventListener("click", () => { const p = $("#p-ops"); p.classList.toggle("collapsed"); $("#ops-toggle").setAttribute("aria-expanded", String(!p.classList.contains("collapsed"))); });
 $("#legend").addEventListener("mouseenter", () => $("#legend").classList.remove("hide"));
-function tab(name) { $$(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name)); for (const t of ["agents", "brain", "intel"]) $(`#tab-${t}`).hidden = t !== name; }
+function tab(name) { if (!$("#tab-agents")) return; $$(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name)); for (const t of ["agents", "brain", "intel"]) $(`#tab-${t}`).hidden = t !== name; }
 $$(".seg button").forEach((b) => b.addEventListener("click", () => tab(b.dataset.tab)));
 // phones: rails become bottom sheets, picked from a tab bar
 function sheet(name) {
@@ -1526,8 +1530,8 @@ const Coach = (() => {
   const mobile = () => innerWidth < 1180;
   const STEPS = [
     { spot: () => "#mapwrap", go: "Continue", t: () => `This is your ground. Fans already live here. ${G.capital ?? "Your capital"} is your capital and you hold ${held()} cit${held() === 1 ? "y" : "ies"}.`, enter: () => { const p = capP(); if (p) { boom(p, COL.you); float(p, "👑 YOUR CAPITAL"); } } },
-    { spot: () => (mobile() ? "#mbar" : "#p-primary"), go: null, t: () => { const o = G.orders[recommended()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = recommended(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
-    { spot: () => (mobile() ? null : "#p-threats"), go: "Continue", t: () => { const it = G.intents[0], f = it && G.fac.get(it.fid); return f ? `A rival is moving: ${f.name} is marching on ${it.city} and arrives Sunday. Fortify the city or strike first.` : "Rivals show up on the radar days before they strike. Fortify or strike first."; }, enter: () => { ensureThreat(); hud(); } },
+    { spot: () => "#slot-next", go: null, t: () => { const o = G.orders[recommended()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = recommended(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
+    { spot: () => "#slot-rivals", go: "Continue", t: () => { const it = G.intents[0], f = it && G.fac.get(it.fid); return f ? `A rival is moving: ${f.name} is marching on ${it.city} and arrives Sunday. Fortify the city or strike first.` : "Rivals show up on the radar days before they strike. Fortify or strike first."; }, enter: () => { ensureThreat(); hud(); } },
     { spot: () => "#orbs", go: "Continue", t: () => "Three resources run your campaign. ⚡ Buzz = your actions this week. ❤ Hype = how hard your material hits. 🪙 Gold = money for agents and walls.", enter: () => ["#orb-buzz", "#orb-hype", "#orb-gold"].forEach((id, k) => setTimeout(() => { const e = $(id); e.classList.remove("pulse"); void e.offsetWidth; e.classList.add("pulse"); }, k * 450)) },
     { spot: () => null, go: "Play", t: () => "First city taken. Real venues. Real data. The board is yours: the clock starts now. Pause any time." },
   ];
@@ -1569,6 +1573,7 @@ addEventListener("keydown", (e) => {
   if (/^[1-9]$/.test(e.key) && G.orders[+e.key - 1]) selectOrder(+e.key - 1);
   if ((e.key === "Enter" || e.key === "e" || e.key === "E") && G.primary >= 0) { e.preventDefault(); execute(G.primary); }
   if (e.key === " ") { e.preventDefault(); Clock.toggle(); }
+  const hk = HOTKEYS.indexOf(e.key.toUpperCase()); if (hk >= 0 && AGENTS[hk] && e.key.length === 1) unitAction(AGENTS[hk].id);
 });
 function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site").hidden = false; Field.setMode("site"); Neuro.reset(); if (G) G.over = true; }
 

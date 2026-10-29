@@ -803,6 +803,131 @@ em{font-style:italic}
 .pill:hover{background:#c27aff}
 .scanbox h2{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(34px,4vw,56px);letter-spacing:0}
 .conquest-btn{background:#af50ff;font-family:var(--sans);font-weight:700;letter-spacing:.14em}
+/* ===== RTS war room: full-bleed map + bottom command deck ===== */
+#game{grid-template-columns:minmax(0,1fr)}
+.hud{min-width:0;overflow:hidden}
+.hud .xp{min-width:120px}
+@media (max-width:1600px){#plan-btn .lbl{display:none}.hud .xpt span{display:none}}
+@media (max-width:1320px){.mini span:nth-child(n+3){display:none}}
+#game{display:grid;grid-template-rows:56px minmax(0,1fr)}
+.stage{position:relative;display:grid;grid-template-rows:minmax(0,1fr) 216px;min-height:0}
+.stage .mapwrap{position:relative;border:0;border-radius:0;min-height:0;overflow:hidden}
+.stage .mapwrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px rgba(0,0,0,.75)}
+.cmd{background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer}
+/* corner-bracket frame: the game HUD look */
+.frame,.slot{--k:#af50ff;background:
+  linear-gradient(var(--k),var(--k)) top left/14px 2px no-repeat,linear-gradient(var(--k),var(--k)) top left/2px 14px no-repeat,
+  linear-gradient(var(--k),var(--k)) top right/14px 2px no-repeat,linear-gradient(var(--k),var(--k)) top right/2px 14px no-repeat,
+  linear-gradient(var(--k),var(--k)) bottom left/14px 2px no-repeat,linear-gradient(var(--k),var(--k)) bottom left/2px 14px no-repeat,
+  linear-gradient(var(--k),var(--k)) bottom right/14px 2px no-repeat,linear-gradient(var(--k),var(--k)) bottom right/2px 14px no-repeat,
+  linear-gradient(180deg,rgba(22,18,34,.93),rgba(9,8,13,.95));
+  border:1px solid rgba(225,189,255,.16);border-radius:4px}
+.stitle{position:absolute;left:10px;top:-1px;transform:translateY(-50%);display:flex;align-items:center;gap:10px;padding:2px 10px;background:#0c0a12;border:1px solid rgba(225,189,255,.3);border-radius:3px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#e1bdff;white-space:nowrap;z-index:2}
+.stitle .lnk{background:none;border:0;padding:0;font:inherit;letter-spacing:.12em;color:#fff;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.stitle .hint{letter-spacing:.08em;color:#9a9ba0;text-transform:none}
+/* the deck */
+.deck{position:relative;display:grid;grid-template-columns:206px 236px minmax(300px,1.35fr) minmax(330px,1.2fr) minmax(250px,.95fr) 128px;gap:10px;padding:18px 10px 10px;background:linear-gradient(180deg,#110d1b,#08070b);border-top:1px solid rgba(225,189,255,.25);box-shadow:0 -1px 0 rgba(175,80,255,.35),0 -30px 60px rgba(0,0,0,.55)}
+.deck::before{content:"";position:absolute;left:50%;top:-1px;transform:translateX(-50%);width:40%;height:2px;background:linear-gradient(90deg,transparent,#af50ff,transparent)}
+.slot{position:relative;min-width:0;min-height:0;padding:16px 10px 8px;overflow:hidden}
+.s-radar .radarc{width:100%;height:100%;display:block}
+.s-radar{padding:14px 6px 6px}
+.s-brain{display:grid;grid-template-rows:minmax(0,1fr) auto auto;padding:14px 8px 6px}
+.s-brain .brainc{width:100%;height:100%;min-height:0;display:block}
+.s-brain .regions{grid-template-columns:1fr 1fr;padding:0 2px;font-size:10.5px;gap:2px 10px}
+.bnote{font-size:10.5px;color:#9a9ba0;line-height:1.3;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* next move */
+#primary{height:100%}
+.nm{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;height:100%;align-content:start}
+.nm .ti{width:52px;height:52px;border-radius:6px;display:grid;place-items:center;font-size:26px;color:#e1bdff;background:radial-gradient(circle at 50% 30%,rgba(175,80,255,.45),rgba(175,80,255,.08));border:1px solid rgba(225,189,255,.45);box-shadow:0 0 18px rgba(175,80,255,.35)}
+.nm .ti .ic{width:28px;height:28px}
+.nm h3{margin:0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:23px;line-height:1.05;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nm .kk{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:#9a9ba0;text-transform:uppercase;margin-bottom:2px}
+.nm .kk .rec{color:#7dffb5}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chips span{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:3px;border:1px solid rgba(225,189,255,.3);color:#e9e2f5}
+.chips .g{color:#7dffb5;border-color:rgba(125,255,181,.4)}
+.nm .why{grid-column:1/-1;font-size:12.5px;line-height:1.4;color:#c9ccd1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px}
+.steps3{grid-column:1/-1;display:flex;gap:6px;align-items:center;font-size:11px;color:#c9ccd1;overflow:hidden;white-space:nowrap}
+.steps3 b{font-family:var(--mono);font-weight:500;color:#e1bdff;font-size:10px}
+.steps3 i{font-style:normal;color:#55575d}
+.nmrow{grid-column:1/-1;display:flex;gap:8px;margin-top:2px}
+.nmrow .go{flex:1;margin:0;padding:10px 12px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;box-shadow:0 0 22px rgba(175,80,255,.35)}
+.nmrow .ghostbtn{margin:0;padding:8px 12px}
+/* agent army: unit tiles */
+.units{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;height:calc(100% - 4px);align-content:center}
+.unit2{position:relative;aspect-ratio:1;min-width:0;max-height:76px;border-radius:5px;border:1px solid rgba(225,189,255,.22);background:linear-gradient(180deg,#191426,#0c0a12);color:#e1bdff;display:grid;place-items:center;cursor:pointer;overflow:hidden;transition:transform .15s,border-color .2s,box-shadow .2s;padding:0}
+.unit2 .ic{width:46%;height:46%}
+.unit2:hover{transform:translateY(-2px);border-color:#e1bdff}
+.unit2 .hk{position:absolute;left:3px;top:2px;font-family:var(--mono);font-size:9px;color:#9a9ba0}
+.unit2 .pr{position:absolute;left:0;right:0;bottom:0;font-family:var(--mono);font-size:9.5px;text-align:center;background:rgba(0,0,0,.6);color:#ffe9b0;padding:1px 0}
+.unit2.locked{filter:grayscale(1);opacity:.4}
+.unit2.hire{color:#8a8396;border-style:dashed}
+.unit2.hire.can{color:#cfc4e6}
+.unit2.ready{border-color:#af50ff;box-shadow:0 0 14px rgba(175,80,255,.55),inset 0 0 18px rgba(175,80,255,.25);color:#fff;animation:readyp 2.4s ease-in-out infinite}
+@keyframes readyp{50%{box-shadow:0 0 22px rgba(175,80,255,.8),inset 0 0 22px rgba(175,80,255,.35)}}
+.unit2.busy::after{content:"";position:absolute;inset:0;background:conic-gradient(rgba(175,80,255,.55) var(--cd,0%),rgba(0,0,0,.55) 0);animation:cd 2.8s linear infinite}
+@keyframes cd{from{--cd:0%}to{--cd:100%}}
+@property --cd{syntax:"<percentage>";inherits:false;initial-value:0%}
+.unit2.rest{opacity:.55}
+.unit2.rest .pr{color:#9a9ba0}
+/* rivals */
+.s-rivals .threats{padding:0;gap:6px;height:100%;overflow:auto;scrollbar-width:thin}
+.threat{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:4px 8px;align-items:center;padding:6px 7px;border-radius:4px}
+.threat .th{display:contents}
+.threat .th img,.threat .th .fp{grid-row:1/3;width:32px;height:32px}
+.threat .nmx{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.threat p{grid-column:2/3;margin:0;font-size:11px;color:#9a9ba0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.threat .cnt{grid-column:3;grid-row:1/3;display:flex;gap:4px;flex-wrap:nowrap}
+.threat .cnt button{width:30px;height:30px;padding:0;flex:none;display:grid;place-items:center;font-size:14px;border-radius:4px}
+.threat .lv{position:absolute;right:6px;top:-7px;font-size:8.5px}
+.threat{position:relative}
+/* end turn */
+.s-end{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.endturn{position:relative;width:104px;height:104px;border-radius:50%;border:2px solid #e1bdff;background:radial-gradient(circle at 50% 35%,#c27aff,#7b2cff 60%,#3a1270);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;box-shadow:0 0 0 6px rgba(175,80,255,.15),0 0 34px rgba(175,80,255,.55);transition:transform .2s}
+.endturn:hover{transform:scale(1.05)}
+.endturn:disabled{filter:grayscale(.8);opacity:.6;cursor:default}
+.endturn span{font-family:var(--mono);font-size:10px;letter-spacing:.3em}
+.endturn b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:26px;line-height:.9}
+.endturn i{font-style:normal;font-size:14px;opacity:.85}
+.endturn::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:1px dashed rgba(225,189,255,.45);animation:spin 18s linear infinite}
+.s-end .note{text-align:center;font-size:10px;line-height:1.3}
+/* floating over the map */
+.clock{left:50%;right:auto;transform:translateX(-50%);top:12px}
+.events{top:14px;left:14px;max-width:34%}
+.council{position:absolute;right:14px;top:14px;width:330px;max-height:calc(100% - 28px);overflow:auto;padding:12px 12px 10px;z-index:4;scrollbar-width:thin}
+.chead{display:flex;align-items:center;gap:10px}
+.chead svg{width:38px;height:38px;flex:none}
+.chead b{display:block;font-family:var(--serif);font-style:italic;font-weight:400;font-size:19px}
+.chead span{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:#9a9ba0;text-transform:uppercase}
+.chead .chip{margin-left:auto}
+.council .brief{margin:10px 0 0;font-size:13px;min-height:0}
+.council .quests{padding:8px 0 0}
+.council #simulate{width:100%;margin-top:8px}
+.ops{position:absolute;left:14px;bottom:12px;width:min(560px,46%);z-index:4;padding:0}
+.ops .opshead{padding:9px 12px}
+.ops .opslog{height:132px}
+.cityp{left:14px;bottom:62px;z-index:5;padding:10px 0}
+.legend{bottom:12px;right:14px}
+@media (max-width:1460px){.council{width:300px}}
+.deck{grid-template-columns:minmax(150px,206px) minmax(160px,236px) minmax(230px,1.35fr) minmax(250px,1.2fr) minmax(200px,.95fr) 116px}
+.stitle{top:7px;transform:none}
+.slot{padding-top:30px}
+.s-radar,.s-brain{padding-top:28px}
+#game .slot{padding:30px 10px 8px}
+#game .s-radar,#game .s-brain{padding:28px 6px 6px}
+.unit2 .pr .ic{width:1em;height:1em}
+.unit2 .pr{display:flex;align-items:center;justify-content:center;gap:2px}
+/* tablets and phones: the deck scrolls sideways under the map */
+@media (max-width:1180px){
+  .stage{grid-template-rows:minmax(0,1fr) 222px}
+  .deck{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:18px 8px 8px;gap:8px}
+  .deck > *{flex:0 0 auto;scroll-snap-align:start}
+  .s-radar{width:200px}.s-brain{width:210px}.s-next{width:min(340px,86vw)}.s-army{width:min(330px,86vw)}.s-rivals{width:min(280px,86vw)}.s-end{width:120px}
+  .council{width:min(300px,calc(100% - 28px));max-height:118px;top:62px;right:14px}
+  .events{display:none}
+  .ops{display:none}
+  .tabbar,.mbar{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -951,8 +1076,8 @@ em{font-style:italic}
 <!-- ======================= WAR ROOM ======================= -->
 <div id="game" hidden>
   <div class="hud">
-    <span class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><path d="M7 28 V5" stroke="#ffb829" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#8052ff"/></svg><span class="bt">CONQUEST</span></span>
-    <div class="cmd"><div class="lvl"><span id="hud-face"></span><b id="lvl-n">I</b></div><div class="xp"><div class="xpt"><b id="age-name">Open Mic</b><span id="xp-text"></span></div><div class="xpbar"><i id="xp-fill"></i></div></div></div>
+    <span class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><path d="M7 28 V5" stroke="#e1bdff" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#af50ff"/></svg><span class="bt">CONQUEST</span></span>
+    <button class="cmd" id="cmd-btn" title="Your intel: profile, factions, live sources"><div class="lvl"><span id="hud-face"></span><b id="lvl-n">I</b></div><div class="xp"><div class="xpt"><b id="age-name">Open Mic</b><span id="xp-text"></span></div><div class="xpbar"><i id="xp-fill"></i></div></div></button>
     <div class="orbs" id="orbs">
       <div class="orbw" id="ow-buzz" title="Buzz: your actions this week. Recharges every Sunday."><div class="orb buzz" id="orb-buzz"><b></b></div><span>Buzz<em id="rate-buzz"></em></span></div>
       <div class="orbw" id="ow-hype" title="Hype: how hard your material hits (1,000-fan panel rating). More hype, more buzz."><div class="orb hype" id="orb-hype"><b></b></div><span>Hype</span></div>
@@ -966,43 +1091,34 @@ em{font-style:italic}
       <button class="icobtn" id="exit" title="Back to the site">Exit</button>
     </div>
   </div>
-  <div class="war">
-    <aside class="rail left" id="rail-left">
-      <section class="panel radarp" id="p-threats"><div class="ptitle">Threat radar</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas><div class="threats" id="threats"></div></section>
-      <section class="panel" id="p-factions"><div class="ptitle">Factions</div><div class="factions" id="factions"></div></section>
-      <section class="panel tabsp" id="p-tabs">
-        <div class="seg" role="tablist"><button role="tab" data-tab="agents" class="on">Agents</button><button role="tab" data-tab="brain">Brain</button><button role="tab" data-tab="intel">Intel</button></div>
-        <div class="tab" id="tab-agents"><div class="agents" id="agents"></div></div>
-        <div class="tab" id="tab-brain" hidden><canvas id="brainp" class="brainc" aria-label="Predicted brain response to your material"></canvas><div class="regions" id="regions"></div><div class="note" style="padding:0 12px 10px" id="brain-note"></div></div>
-        <div class="tab" id="tab-intel" hidden><div class="player" id="player"></div><div class="intel" id="intel"></div></div>
-      </section>
-    </aside>
-    <main class="mapcol">
-      <div class="mapwrap panel" id="mapwrap">
-        <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
-        <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
-        <div class="events" id="events" aria-live="polite"></div>
-        <div class="cityp panel" id="cityp" hidden></div>
-        <div class="legend" id="legend"></div>
-        <div class="banner" id="banner"><span class="rib" id="banner-t"></span><small id="banner-s"></small></div>
-      </div>
-      <section class="panel ops" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="true"><span class="ptitle" style="padding:0">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
-    </main>
-    <aside class="rail right" id="rail-right">
-      <section class="panel advisor"><div class="ptitle">War council <button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
-        <div class="face"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#1a2333" stroke="#f0c46a" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#8052ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#f0c46a"/><circle cx="24" cy="16" r="3" fill="#ffb829"/></svg><div><b>General Conquest</b><span>Your growth agent</span></div></div>
+  <div class="stage">
+    <div class="mapwrap" id="mapwrap">
+      <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
+      <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
+      <div class="events" id="events" aria-live="polite"></div>
+      <aside class="council frame" id="council">
+        <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>General Conquest</b><span>War council</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
         <div class="brief" id="brief"></div>
         <div class="quests" id="quests"></div>
-      </section>
-      <section class="panel primary" id="p-primary"><div class="ptitle">Your next move</div><div id="primary"></div></section>
-      <div class="railbtns"><button class="ghostbtn" id="all-orders">All orders <b id="ocount"></b></button><button class="ghostbtn" id="simulate">▶ Simulate plan</button></div>
-      <div class="endw"><button class="go" id="endturn">End week ⌛</button><div class="note" id="weeknote"></div></div>
-    </aside>
+        <button class="ghostbtn" id="simulate">▶ Simulate my whole plan</button>
+      </aside>
+      <section class="ops frame collapsed" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="false"><span class="stitle" style="position:static">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
+      <div class="cityp frame" id="cityp" hidden></div>
+      <div class="legend" id="legend"></div>
+      <div class="banner" id="banner"><span class="rib" id="banner-t"></span><small id="banner-s"></small></div>
+    </div>
+    <div class="deck" id="deck">
+      <section class="slot s-radar" id="slot-radar"><div class="stitle">Radar</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas></section>
+      <section class="slot s-brain" id="slot-brain"><div class="stitle">Crowd brain</div><canvas id="brainp" class="brainc" aria-label="Predicted brain response to your material"></canvas><div class="regions" id="regions"></div><div class="bnote" id="brain-note"></div></section>
+      <section class="slot s-next" id="slot-next"><div class="stitle">Next move <button class="lnk" id="all-orders">All orders <b id="ocount"></b></button></div><div id="primary"></div></section>
+      <section class="slot s-army" id="slot-army"><div class="stitle">Agent army <span class="hint" id="army-hint"></span></div><div class="units" id="agents"></div></section>
+      <section class="slot s-rivals" id="slot-rivals"><div class="stitle">Rivals</div><div class="threats" id="threats"></div></section>
+      <div class="s-end"><button class="endturn" id="endturn" title="Fast-forward to Sunday midnight: income lands, then the rivals strike"><i>⌛</i><span>END</span><b>WEEK</b></button><div class="note" id="weeknote"></div></div>
+    </div>
   </div>
   <aside class="drawer" id="drawer" aria-hidden="true"><div class="dhead"><b id="drawer-t">All orders</b><button class="icobtn" id="drawer-x" title="Close">✕</button></div><div class="dbody" id="drawer-b"></div></aside>
   <div class="coach" id="coach" hidden role="dialog" aria-live="polite"><div class="ptitle" id="coach-step">Step 1 of 5</div><p id="coach-t"></p><div class="row2"><button class="go" id="coach-go">Continue</button><button class="ghostbtn" id="coach-skip">Skip tutorial</button></div></div>
-  <div class="mbar" id="mbar"></div>
-  <nav class="tabbar" id="tabbar"><button data-sheet="threats">⚔<span>Threats</span></button><button data-sheet="orders">🚩<span>Orders</span></button><button data-sheet="agents">🤖<span>Agents</span></button><button data-sheet="brain">🔥<span>Brain</span></button><button data-sheet="log">📡<span>Log</span></button></nav>
+  <div id="mbar" hidden></div>
 </div>
 
 <div class="victory" id="victory" hidden><div class="vbox panel"><span class="banner on" style="position:static;transform:none;opacity:1"><span class="rib" id="v-title">CAMPAIGN COMPLETE</span></span><dl class="stats" id="v-stats"></dl><p class="note" style="margin:0 26px 10px">Gains are projected from the agent's plan; your real growth comes from doing them.</p><button class="go" id="v-copy">Copy battle plan</button><button class="go" id="v-map">Examine map</button><button class="go" id="v-again">Play again</button><button class="go" id="v-site">Back to site</button></div></div>
@@ -1014,6 +1130,6 @@ em{font-style:italic}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=60"></script>
+<script src="app.js?v=76"></script>
 </body>
 </html>
