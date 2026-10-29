@@ -70,8 +70,13 @@ function stimulusFor(fp: Fingerprint, who: Who) {
   if (!who.text?.trim()) return pickStimulus(fp.audience);
   // custom material: it plays to whichever of the audience's tastes it names
   const text = who.text.trim();
-  const low = text.toLowerCase();
-  const appeals = fp.tags.filter((t) => t.length > 3 && low.includes(t.toLowerCase())).slice(0, 4);
+  // real titles rarely name a tag verbatim, so match on word stems, against
+  // the audience's tags and the artists, shows and brands it loves
+  const stem = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/(ing|ers|er|es|s)$/, "").slice(0, 6);
+  const words = new Set(text.split(/\W+/).filter((w) => w.length >= 4).map(stem));
+  const hits = (t: string) => { const toks = t.split(/\W+/).filter((w) => w.length >= 4).map(stem); return toks.length ? toks.filter((x) => words.has(x)).length / toks.length : 0; };
+  const pool = [...fp.tags, ...Object.values(fp.domains ?? {}).flat().map((e) => e.name)];
+  const appeals = [...new Set(pool)].map((t) => [t, hits(t)] as const).filter(([, s]) => s >= 0.5).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t]) => t);
   return { ...neutralStimulus(text), label: "Your material", appeals };
 }
 

@@ -72,6 +72,8 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await weather(Number(q.get("lat")), Number(q.get("lon")))));
       case "/api/fame":
         return send(res, 200, JSON.stringify(await fame((q.get("names") ?? "").split("|").filter(Boolean).slice(0, 6))));
+      case "/api/xray":
+        return send(res, 200, JSON.stringify(await xray(name, who, q.get("yt") ?? "")));
       case "/api/img":
         return void img(q.get("u") ?? "", res);
       case "/api/trends-check":
@@ -153,6 +155,57 @@ async function fame(names: string[]) {
       }
     }));
     return { status: "ok", source: "Wikipedia pageviews", people: out };
+  });
+}
+
+// Content X-ray: read a creator's latest real YouTube videos (public channel
+// RSS, no key), play each one's title and description to the 1,000-fan panel
+// and the brain model, and say what would happen. Then check the panel's
+// ranking against the videos' real view counts, so the read earns its trust.
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
+async function channelId(yt: string): Promise<string | null> {
+  const s = yt.trim();
+  const direct = s.match(/(UC[A-Za-z0-9_-]{22})/); if (direct) return direct[1]!;
+  const handle = (s.match(/@([A-Za-z0-9._-]{3,30})/) ?? s.match(/^([A-Za-z0-9._-]{3,30})$/))?.[1];
+  if (!handle) return null;
+  return cached(`ytid:${handle.toLowerCase()}`, 7 * 864e5, async () => {
+    const html = await (await fetch(`https://www.youtube.com/@${handle}`, { headers: { "user-agent": UA, "accept-language": "en-US" }, signal: AbortSignal.timeout(10000) })).text();
+    const id = html.match(/"externalId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ?? html.match(/channel_id=(UC[A-Za-z0-9_-]{22})/)?.[1];
+    return id ? { status: "ok", id } : { status: "not_found" };
+  }).then((r: any) => r?.id ?? null);
+}
+function spearman(a: number[], b: number[]) {
+  const rank = (v: number[]) => { const o = v.map((x, i) => [x, i] as const).sort((p, q) => p[0] - q[0]); const r = new Array(v.length); o.forEach(([, i], k) => (r[i] = k)); return r as number[]; };
+  const n = a.length; if (n < 3) return null;
+  const ra = rank(a), rb = rank(b); const d2 = ra.reduce((s, x, i) => s + (x - rb[i]!) ** 2, 0);
+  return Math.round((1 - (6 * d2) / (n * (n * n - 1))) * 100) / 100;
+}
+async function xray(name: string, who: { ids?: string; text?: string }, yt: string) {
+  const id = await channelId(yt).catch(() => null);
+  if (!id) return { status: "not_found", error: "Couldn't find that YouTube channel. Try the @handle from the channel URL." };
+  return cached(`xray:${name}|${who.ids ?? ""}|${id}`, 3600_000, async () => {
+    const xml = await (await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${id}`, { signal: AbortSignal.timeout(10000) })).text();
+    const tag = (s: string, t: string) => (s.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)) ?? [])[1]?.trim().replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"') ?? "";
+    const channel = tag(xml, "title");
+    const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].slice(0, 6).map(([, e = ""]) => ({
+      videoId: tag(e, "yt:videoId"), title: tag(e, "title"), published: tag(e, "published"),
+      views: Number(e.match(/<media:statistics views="(\d+)"/)?.[1] ?? 0), thumb: e.match(/<media:thumbnail url="([^"]+)"/)?.[1] ?? null,
+      description: tag(e, "media:description").slice(0, 600),
+    }));
+    if (!entries.length) return { status: "empty", channel };
+    const videos = [];
+    for (const v of entries) {
+      const r: any = await rehearseReport(name, { ids: who.ids, text: `${v.title}. ${v.description}` });
+      if (r.status !== "ok") return { status: r.status, channel, coverage: r.coverage };
+      const dz = r.tribe?.deadZones ?? [];
+      videos.push({ ...v, mean: Math.round(r.aggregate.mean * 10) / 10, pct45: r.aggregate.pct45, top: r.split?.top ? { city: r.split.top.metro, mean: Math.round(r.split.top.mean * 10) / 10 } : null, bottom: r.split?.bottom ? { city: r.split.bottom.metro, mean: Math.round(r.split.bottom.mean * 10) / 10 } : null, appeals: r.stimulus?.appeals ?? [], deadZones: dz.length, firstDead: dz[0] ? Math.round((dz[0].start / Math.max(1, (r.tribe?.points?.length ?? 25) - 1)) * 100) : null, brain: r.tribe?.points ?? [] });
+    }
+    const avg = videos.reduce((s, v) => s + v.mean, 0) / videos.length;
+    // compare against views per day, so a 2-day-old clip is not judged against a 2-week-old episode
+    const perDay = (v: { views: number; published: string }) => v.views / Math.max(0.5, (Date.now() - Date.parse(v.published)) / 864e5);
+    for (const v of videos) (v as any).perDay = Math.round(perDay(v));
+    const rho = spearman(videos.map((v) => v.mean), videos.map(perDay));
+    return { status: "ok", source: "YouTube channel RSS (public) + 1,000-fan panel + TRIBE stub", channel, channelId: id, avg: Math.round(avg * 100) / 100, rho, videos };
   });
 }
 

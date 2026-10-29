@@ -287,6 +287,7 @@ const PATHS = {
   flame: "M12 21c-4 0-7-2.7-7-6.5 0-3 2-5 3.5-6.5.3 2 1.5 3 2.5 3-1-3 .5-6.5 3-8 0 3 2.5 5 3.5 7 .7 1.4 1.5 2.8 1.5 4.5 0 3.8-3 6.5-7 6.5z",
   skull: "M12 3c-4.4 0-8 3.1-8 7.5 0 2.6 1.3 4.4 3 5.5V20h10v-4c1.7-1.1 3-2.9 3-5.5C20 6.1 16.4 3 12 3z M9 11a1.5 1.5 0 1 0 0 3 M15 11a1.5 1.5 0 1 0 0 3 M10 20v-2 M14 20v-2",
   close: "M6 6l12 12 M18 6 6 18",
+  film: "M3 5h18v14H3z M3 9h18 M7 5l2 4 M12 5l2 4 M17 5l2 4 M10 12.5v4l3.5-2z",
   chev: "M9 6l6 6-6 6",
 };
 const P2D = {};
@@ -297,7 +298,7 @@ function drawIcon(ctx, k, x, y, size, col, lw = 2) {
   ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(pathOf(k)); ctx.restore();
 }
 // emoji → icon key; anything else pictographic is dropped
-const EMO = { "⚡": "bolt", "🪙": "coin", "🛡": "shield", "⚔": "swords", "🕊": "dove", "🤝": "hands", "🔭": "scout", "🎟": "ticket", "💼": "case", "🎙": "mic", "🎤": "mic", "🎭": "eye", "📈": "trend", "🌦": "cloud", "🕵": "crosshair", "✍": "pen", "🎪": "tent", "👂": "ear", "🧪": "flask", "🚩": "flag", "🏴": "flag", "🏰": "castle", "🤖": "bot", "🏆": "star", "⭐": "star", "🔥": "flame", "⏱": "hourglass", "⌛": "hourglass", "📅": "hourglass", "👑": "crown", "💀": "skull", "📡": "radar", "🩸": "swords", "🗡": "swords", "🧱": "shield", "💰": "coin", "🏄": "trend", "✦": "star", "❤": "heart", "🔊": "sound", "🔇": "mute", "📋": "plan" };
+const EMO = { "⚡": "bolt", "🪙": "coin", "🛡": "shield", "⚔": "swords", "🕊": "dove", "🤝": "hands", "🔭": "scout", "🎟": "ticket", "💼": "case", "🎙": "mic", "🎤": "mic", "🎭": "eye", "📈": "trend", "🌦": "cloud", "🕵": "crosshair", "✍": "pen", "🎪": "tent", "👂": "ear", "🧪": "flask", "🚩": "flag", "🏴": "flag", "🏰": "castle", "🤖": "bot", "🏆": "star", "⭐": "star", "🔥": "flame", "⏱": "hourglass", "⌛": "hourglass", "📅": "hourglass", "👑": "crown", "💀": "skull", "📡": "radar", "🩸": "swords", "🗡": "swords", "🧱": "shield", "💰": "coin", "🏄": "trend", "✦": "star", "❤": "heart", "🔊": "sound", "🔇": "mute", "📋": "plan", "🎬": "film" };
 const EMO_RE = /(\p{Extended_Pictographic})️?/gu, EMO_ONE = /\p{Extended_Pictographic}/u;
 const iconFor = (ch) => EMO[ch] ?? EMO[ch.replace(/️/g, "")];
 // split text into a leading icon key and clean text (for the canvas); unmapped glyphs stay
@@ -642,7 +643,7 @@ function typeInto(el, text, receipt) {
 const ACH = {
   blood: ["🩸", "First Blood", "Took your first city"], diplomat: ["🕊️", "Diplomat", "Formed your first alliance"], warlord: ["🤖", "Warlord", "Three agents in your army"],
   surfer: ["🏄", "Trend Surfer", "Rode a live trend"], wall: ["🧱", "Iron Wall", "Held a city against a rival"], paid: ["💰", "Paid Up", "Signed your first sponsor"],
-  rising: ["⭐", "Rising Star", "Advanced an age"], giant: ["🗡️", "Giant Slayer", "Won a battle as the underdog"], seize: ["⏱️", "Seize the Day", "Claimed an opportunity in time"], fest: ["🎪", "Festival King", "Threw a festival night"], real: ["🏆", "Made it real", "Did a mission in real life"],
+  rising: ["⭐", "Rising Star", "Advanced an age"], giant: ["🗡️", "Giant Slayer", "Won a battle as the underdog"], seize: ["⏱️", "Seize the Day", "Claimed an opportunity in time"], fest: ["🎪", "Festival King", "Threw a festival night"], xray: ["🎬", "Know thyself", "X-rayed your real content"], real: ["🏆", "Made it real", "Did a mission in real life"],
 };
 function ach(id) {
   if (!G || G.ach.has(id) || !ACH[id]) return; G.ach.add(id); G.achPts += 250;
@@ -1655,6 +1656,76 @@ async function runTour() {
   G.tour = false; TOURING = false;
 }
 
+
+// ---------------------------------------------------------------- content x-ray
+// Reads your real latest YouTube videos, plays each to the 1,000-fan panel and
+// the brain model, and says what would happen and what to change. It checks
+// itself against the videos' real view counts. Instagram, TikTok and X need
+// your account connected, so they're honest "connect" slots.
+const YT_DEFAULT = { "jason calacanis": "@allin" };
+function ytHandle() {
+  const s = (G.player.socials || []).find((x) => x.network === "youtube");
+  return G.xrayHandle ?? (s ? "@" + s.handle.replace(/^@/, "") : YT_DEFAULT[G.player.name.toLowerCase()] ?? "");
+}
+function brainSpark(points, dead) {
+  if (!points?.length) return "";
+  const W = 150, H = 34, max = Math.max(...points), min = Math.min(...points), n = points.length - 1;
+  const P = points.map((v, i) => `${(i / n) * W},${H - 3 - ((v - min) / Math.max(1, max - min)) * (H - 8)}`).join(" ");
+  return `<svg viewBox="0 0 ${W} ${H}" class="spark" aria-label="Predicted brain response across the video">${(dead ?? []).map((z) => `<rect x="${(z.start / n) * W}" y="0" width="${Math.max(3, ((z.end - z.start) / n) * W)}" height="${H}" fill="rgba(255,92,122,.18)"/>`).join("")}<polyline points="${P}" fill="none" stroke="#e1bdff" stroke-width="1.6"/></svg>`;
+}
+function verdictFor(v, avg) {
+  const d = v.mean - avg;
+  const what = d >= 0.05 ? `Above your average: expect it to outperform with your core fans, strongest in ${v.top?.city ?? "your best city"}.` : d <= -0.05 ? `Below your average: likely to underperform${v.bottom ? `; ${v.bottom.city} cools on it` : ""}.` : `In line with your average: a steady performer${v.top ? `, best in ${v.top.city}` : ""}.`;
+  const fix = [];
+  if (v.deadZones) fix.push(`attention sags ${v.deadZones}×${v.firstDead != null ? ` (first about ${v.firstDead}% in)` : ""}: tighten that stretch`);
+  if (!v.appeals.length) { const t = (G.player.aud?.tags ?? [])[0]; if (t) fix.push(`name what your fans love: lead with ${t}`); }
+  if (v.top) fix.push(`push it to ${v.top.city} first`);
+  return { what, fix: fix.length ? fix.join("; ") : "keep the format: it fits your crowd" };
+}
+function xrayHtml() {
+  const r = G.xray, h = ytHandle();
+  const plat = `<div class="xp-plat"><span class="on">▶ YouTube <b>live</b></span><span data-lock="Instagram's API needs your account connected (Meta login). Connect to X-ray your Reels.">Instagram · connect</span><span data-lock="TikTok's API needs your account connected. Connect to X-ray your TikToks.">TikTok · connect</span><span data-lock="X's API is paid. Connect your X account to X-ray your posts.">X · connect</span></div>`;
+  const form = `<form class="xp-form" id="xp-form"><input id="xp-h" value="${esc(h)}" placeholder="YouTube @handle or channel URL" aria-label="YouTube channel"><button class="go" type="submit" style="width:auto;margin:0">X-ray my last 6 videos</button></form>`;
+  const test = `<div class="dgroup">TEST YOUR NEXT POST BEFORE YOU PUBLISH</div><form class="xp-form col" id="xp-test"><textarea id="xp-t" rows="3" placeholder="Paste a title, caption or script"></textarea><button class="ghostbtn" type="submit" style="margin:0">Predict it</button></form><div id="xp-tr"></div>`;
+  if (G.xrayBusy) return plat + form + `<p class="note" style="margin-top:12px">Reading your channel and playing each video to 1,000 simulated fans…</p>` + test;
+  if (!r) return plat + form + `<p class="note" style="margin-top:12px">Conquest reads your public channel feed (titles, descriptions, real views), plays each video to your simulated fans and the brain model, then tells you what would happen and what to change.</p>` + test;
+  if (r.status !== "ok") return plat + form + `<p class="note" style="color:#ff8fa5;margin-top:12px">${esc(r.error ?? "Couldn't read that channel.")}</p>` + test;
+  const rho = r.rho, trust = rho == null ? "Not enough videos to check against real views yet." : rho >= 0.4 ? `Taste fit tracks your real views per day (ρ ${rho}): use it to pick what to make next.` : rho > 0 ? `Taste fit loosely tracks your real views per day (ρ ${rho}).` : `Your views follow news hooks and format more than taste fit (ρ ${rho}). Use taste fit to choose which clip to push in which city, not to predict raw views.`;
+  return plat + form + `<div class="xp-sum"><b>${esc(r.channel)}</b><span>${esc(trust)} Average taste fit ${r.avg}/5.</span></div>` +
+    r.videos.map((v, i) => { const vd = verdictFor(v, r.avg); return `<div class="xv">${v.thumb ? `<img src="${esc(v.thumb)}" alt="" loading="lazy">` : ""}<div class="xb"><a href="https://youtube.com/watch?v=${esc(v.videoId)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+      <div class="chips"><span>${v.views.toLocaleString()} real views${v.perDay ? ` · ${kfmt(v.perDay)}/day` : ""}</span><span class="g">${v.mean}/5 predicted</span><span>${v.pct45}% love it</span>${v.appeals.slice(0, 2).map((a) => `<span>${esc(a)}</span>`).join("")}</div>
+      ${brainSpark(v.brain, v.deadZones ? [{ start: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)), end: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)) + 2 }] : [])}
+      <p><b>What would happen:</b> ${esc(vd.what)}</p><p><b>Change:</b> ${esc(vd.fix)}.</p>
+      <button class="ghostbtn" data-xm="${i}" style="margin:6px 0 0">📋 Make it a real mission</button></div></div>`; }).join("") + `<p class="note">${esc(r.source)}. Predictions are simulated; the view counts are real.</p>` + test;
+}
+async function runXray(handle) {
+  G.xrayHandle = handle; G.xrayBusy = true; Drawer.render();
+  ops(`<span class="ag">🎬 X-ray</span> reading <b>${esc(handle)}</b> on YouTube…`);
+  const r = await api(`/api/xray?${qs({ ...G.player.q, yt: handle })}`).catch((e) => ({ status: "error", error: String(e) }));
+  G.xray = r; G.xrayBusy = false;
+  if (r.status === "ok") { ops(`<span class="api">YouTube RSS + panel</span> ${r.videos.length} videos x-rayed · ranking vs real views ρ ${r.rho ?? "n/a"} · best: “${esc([...r.videos].sort((a, b) => b.mean - a.mean)[0].title.slice(0, 60))}”`); ach("xray"); }
+  Drawer.render();
+}
+async function testPost(text) {
+  $("#xp-tr").innerHTML = `<p class="note">Playing it to 1,000 simulated fans…</p>`;
+  const r = await api(`/api/rehearse?${qs({ ...G.player.q, text })}`).catch(() => null);
+  if (r?.status !== "ok") { $("#xp-tr").innerHTML = `<p class="note" style="color:#ff8fa5">Couldn't test that.</p>`; return; }
+  const v = { mean: Math.round(r.aggregate.mean * 10) / 10, pct45: r.aggregate.pct45, top: r.split?.top ? { city: r.split.top.metro } : null, bottom: r.split?.bottom ? { city: r.split.bottom.metro } : null, appeals: r.stimulus?.appeals ?? [], deadZones: r.tribe?.deadZones?.length ?? 0, firstDead: null, brain: r.tribe?.points ?? [] };
+  const vd = verdictFor(v, G.xray?.avg ?? G.c.aggregate.mean);
+  $("#xp-tr").innerHTML = `<div class="xv"><div class="xb"><div class="chips"><span class="g">${v.mean}/5 predicted</span><span>${v.pct45}% love it</span>${v.appeals.slice(0, 3).map((a) => `<span>${esc(a)}</span>`).join("")}</div>${brainSpark(v.brain, r.tribe?.deadZones)}<p><b>What would happen:</b> ${esc(vd.what)}</p><p><b>Change:</b> ${esc(vd.fix)}.</p></div></div>`;
+  ops(`<span class="ag">🎬 X-ray</span> tested a new post · ${v.mean}/5 predicted`);
+}
+function bindXray() {
+  $("#xp-form")?.addEventListener("submit", (e) => { e.preventDefault(); const h = $("#xp-h").value.trim(); if (h) runXray(h); });
+  $("#xp-test")?.addEventListener("submit", (e) => { e.preventDefault(); const t = $("#xp-t").value.trim(); if (t) testPost(t); });
+  $$("#drawer-b [data-lock]").forEach((b) => b.addEventListener("click", () => toast(b.dataset.lock)));
+  $$("[data-xm]").forEach((b) => b.addEventListener("click", () => {
+    const v = G.xray.videos[+b.dataset.xm], vd = verdictFor(v, G.xray.avg);
+    G.real.push({ id: "x" + G.real.length, text: `Re-cut “${v.title.slice(0, 60)}”: ${vd.fix}.`, src: "Content X-ray (YouTube + panel)", week: G.week, done: false });
+    hudReal(); saveGame(); toast("Added to your real missions."); b.disabled = true; b.textContent = "✓ Added to Real moves";
+  }));
+}
+
 // ---------------------------------------------------------------- orders, forecasts, previews
 const FORECAST = {
   take: (o) => [["Mon", `Booker holds ${G.c.venues?.[0]?.name ?? "a room"} in ${o.city}`], ["Thu", `Show night in ${o.city}`], ["Sun", `${o.city} flips to you · +${gainOf(o)}%`]],
@@ -1735,6 +1806,7 @@ const Drawer = {
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
     else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $$("[data-real]").forEach((x) => x.addEventListener("click", () => markReal(x.dataset.real))); $("#moves-ics").onclick = downloadIcs; $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
   },
@@ -1970,6 +2042,8 @@ $("#exit").addEventListener("click", toSite);
 $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
 $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
 $("#share-btn").addEventListener("click", openShare);
+$("#xray-btn").addEventListener("click", () => (Drawer.mode === "xray" ? Drawer.close() : Drawer.open("xray")));
+$("#slot-brain").addEventListener("click", () => Drawer.open("xray"));
 $$("[data-tour]").forEach((b) => b.addEventListener("click", runTour));
 $("#v-again").addEventListener("click", () => { $("#victory").hidden = true; startGame(G.c, G.player); });
 $("#v-site").addEventListener("click", () => { $("#victory").hidden = true; toSite(); });

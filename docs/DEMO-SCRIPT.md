@@ -29,6 +29,7 @@ Before you go on stage:
 | 1:30 | **Parley** with an ally | "Or turn the rival into a co-headliner. It finds the smallest offer that works and writes the pitch." |
 | 1:40 | **End week** | "Sunday: income lands, rivals strike, next week's missions are waiting. Come back next week and the campaign remembers you." |
 | 1:50 | **Share** card | "Share your campaign. Then go do the real missions." |
+| bonus | **🎬 X-ray** (top bar, or click the crowd brain) | "And it reads your real content. Jason, these are All-In's last six videos: real views, how your fans' taste reacts, where attention sags in the brain, and what to change. It even tells you when taste fit isn't what's driving your views." *(Prefilled with @allin for Jason. Any channel @handle works.)* |
 
 ## If a judge asks
 
