@@ -7,8 +7,9 @@ import { runPanel, type RespondentMode } from "../panel/respondent.js";
 import { aggregate, citySplit } from "../panel/aggregate.js";
 import { checkClaims } from "../panel/claimcheck.js";
 import { makeVerdicts } from "../panel/verdict.js";
-import { pickStimulus } from "../panel/stimuli.js";
+import { pickStimulus, neutralStimulus } from "../panel/stimuli.js";
 import { findPartners } from "../grow/partners.js";
+import { buildTerritory, planMissions, projected, rivalPlans } from "../grow/campaign.js";
 import { tribeStrip } from "../tribe/strip.js";
 import { ablation } from "../proof/ablation.js";
 import { runBacktest } from "../proof/backtest.js";
@@ -35,17 +36,50 @@ export function serverInfo() {
   return { qlooMode: mode, respondentMode: respMode, panelN: PANEL_N };
 }
 
-async function fingerprintFor(name: string) {
-  const hit = fpCache.get(name.toLowerCase());
+/**
+ * Who we're conquering for. A known performer resolves by name; a creator Qloo
+ * doesn't know passes `ids`: one to three Qloo entities their audience is like,
+ * and Qloo blends those audiences into one fingerprint. `text` is custom
+ * material to battle-test instead of the demo bit.
+ */
+export interface Who {
+  ids?: string;
+  text?: string;
+}
+
+async function fingerprintFor(name: string, who: Who = {}) {
+  const key = (name + "|" + (who.ids ?? "")).toLowerCase();
+  const hit = fpCache.get(key);
   if (hit) return hit;
   const runId = "run_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-  const r = await resolve(gateway, name, runId);
-  if (r.candidates?.length) return { candidates: r.candidates, runId };
-  if (!r.entity) return { empty: true, runId };
-  const fp = await fingerprint(gateway, r.entity, runId);
+  let entity;
+  if (who.ids) entity = { id: who.ids, name, type: "urn:entity:person" };
+  else {
+    const r = await resolve(gateway, name, runId);
+    if (r.candidates?.length) return { candidates: r.candidates, runId };
+    if (!r.entity) return { empty: true, runId };
+    entity = r.entity;
+  }
+  const fp = await fingerprint(gateway, entity, runId);
   const entry = { fp, runId };
-  fpCache.set(name.toLowerCase(), entry);
+  if (fp.coverage.ok) fpCache.set(key, entry); // a thin read may be a Qloo blip: try again next time
   return entry;
+}
+
+function stimulusFor(fp: Fingerprint, who: Who) {
+  if (!who.text?.trim()) return pickStimulus(fp.audience);
+  // custom material: it plays to whichever of the audience's tastes it names
+  const text = who.text.trim();
+  const low = text.toLowerCase();
+  const appeals = fp.tags.filter((t) => t.length > 3 && low.includes(t.toLowerCase())).slice(0, 4);
+  return { ...neutralStimulus(text), label: "Your material", appeals };
+}
+
+/** "Who are you?" — real candidates from Qloo with photo, bio and social handles. */
+export async function profileReport(name: string) {
+  const runId = "profile_" + Date.now();
+  const env = await gateway.call("profile", { name }, runId);
+  return { status: env.status === "ok" ? "ok" : env.status, candidates: env.results ?? [] };
 }
 
 function receiptsFor(runId: string) {
@@ -59,8 +93,8 @@ function receiptsFor(runId: string) {
 }
 
 /** Scene 1 + 2: fingerprint + the 1,000-persona panel. */
-export async function audienceReport(name: string) {
-  const res: any = await fingerprintFor(name);
+export async function audienceReport(name: string, who: Who = {}) {
+  const res: any = await fingerprintFor(name, who);
   if (res.candidates) return { status: "needs_input", candidates: res.candidates };
   if (res.empty) return { status: "empty" };
   const { fp, runId } = res;
@@ -78,7 +112,7 @@ export async function audienceReport(name: string) {
     momentum: fp.momentum,
     refs: fp.refs,
     composition,
-    stimulus: pickStimulus(fp.audience),
+    stimulus: stimulusFor(fp, who),
     personas: personas.map((p) => ({
       id: p.id,
       metro: p.metro,
@@ -91,14 +125,14 @@ export async function audienceReport(name: string) {
 }
 
 /** Scene 3 + verdicts + strip: run the panel against the stimulus. */
-export async function rehearseReport(name: string) {
-  const res: any = await fingerprintFor(name);
+export async function rehearseReport(name: string, who: Who = {}) {
+  const res: any = await fingerprintFor(name, who);
   if (res.candidates) return { status: "needs_input", candidates: res.candidates };
   if (res.empty) return { status: "empty" };
   const { fp, runId } = res;
   if (!fp.coverage.ok) return { status: "refused", coverage: fp.coverage };
 
-  const stimulus = pickStimulus(fp.audience);
+  const stimulus = stimulusFor(fp, who);
   const { personas } = samplePanel(fp, PANEL_N, 42);
   const replies = await runPanel(personas, stimulus, respMode, 7);
   const agg = aggregate(personas, replies);
@@ -131,12 +165,12 @@ export async function rehearseReport(name: string) {
 }
 
 /** Scene 4: the Without-Qloo ablation. */
-export async function ablationReport(name: string) {
-  const res: any = await fingerprintFor(name);
+export async function ablationReport(name: string, who: Who = {}) {
+  const res: any = await fingerprintFor(name, who);
   if (res.empty || res.candidates) return { status: "unavailable" };
   const { fp } = res;
   if (!fp.coverage.ok) return { status: "refused", coverage: fp.coverage };
-  const stimulus = pickStimulus(fp.audience);
+  const stimulus = stimulusFor(fp, who);
   const ab = await ablation(fp, stimulus, PANEL_N, 42);
   return { status: "ok", ...ab };
 }
@@ -147,8 +181,8 @@ export function backtestReport() {
 }
 
 /** Grow: partners to barter with for new reach (people / venues / brands). */
-export async function partnerReport(name: string, kind = "people", location?: string) {
-  const res: any = await fingerprintFor(name);
+export async function partnerReport(name: string, kind = "people", location?: string, who: Who = {}) {
+  const res: any = await fingerprintFor(name, who);
   if (res.candidates) return { status: "needs_input", candidates: res.candidates };
   if (res.empty) return { status: "empty" };
   const { fp, runId } = res;
@@ -164,10 +198,10 @@ export async function partnerReport(name: string, kind = "people", location?: st
  * plan with receipts. The trace is the "agentic" part: every step names the
  * tool it called and what it observed.
  */
-export async function directorReport(name: string, goal = "grow this audience's reach") {
-  const reh: any = await rehearseReport(name);
+export async function directorReport(name: string, goal = "grow this audience's reach", who: Who = {}) {
+  const reh: any = await rehearseReport(name, who);
   if (reh.status !== "ok") return { status: reh.status, coverage: reh.coverage };
-  const part: any = await partnerReport(name, "people");
+  const part: any = await partnerReport(name, "people", undefined, who);
 
   const agg = reh.aggregate;
   const split = reh.split;
@@ -261,4 +295,72 @@ export async function trendsCheckReport() {
   return Object.keys(all).length
     ? { status: "ok", checks: all }
     : { status: "not_run", run: 'npm run trends-check -- "<audience>" <geoMap.csv>' };
+}
+
+/**
+ * Conquest — the campaign. The agent scouts the territory, battle-tests the
+ * material, reads the battlefield (presence x reaction per city), recruits an
+ * ally, finds a stage in the next city to take, and issues missions. Every
+ * step names the tool it used; every mission cites its data.
+ */
+export async function campaignReport(name: string, who: Who = {}) {
+  const reh: any = await rehearseReport(name, who);
+  if (reh.status !== "ok") return { status: reh.status, coverage: reh.coverage };
+  const { fp, runId }: any = await fingerprintFor(name, who);
+
+  // your raw footprint per city (same call the fingerprint made, so it's cached)
+  const footprint = async (id: string) => {
+    const env = await gateway.call("where_popular", { entity: id, within: "United States" }, runId);
+    return Object.fromEntries((env.results ?? []).map((r: any) => [r.name, Number(r.count ?? Math.round((r.affinity ?? 0) * 1000))]));
+  };
+  const you = await footprint(fp.audience.id);
+
+  // people your fans also follow: the best barter partners are allies, the
+  // closest taste overlaps are rivals fighting for the same fans
+  const people = await findPartners(gateway, fp, runId, "people");
+  const rivalPicks = [...people].sort((a, b) => b.overlap - a.overlap).slice(0, 3);
+  const rivals = await Promise.all(rivalPicks.filter((r) => r.id).map(async (r) => ({ id: r.id!, name: r.name, counts: await footprint(r.id!) })));
+
+  const terr = buildTerritory(fp, reh.aggregate, { you, rivals });
+  const plans = rivalPlans(terr, rivalPicks.filter((r) => r.id));
+  // never tell you to recruit the rival you were just told to fight
+  const foes = new Set(plans.filter((p) => p.strategy === "compete").map((p) => p.name));
+  const allies = people.filter((p) => !foes.has(p.name)).slice(0, 3);
+  const venues = terr.target ? (await findPartners(gateway, fp, runId, "venues", terr.target.name)).slice(0, 3) : [];
+  const missions = planMissions(terr, reh.tribe, allies, venues, plans);
+  const names = (cs: { name: string }[]) => cs.slice(0, 3).map((c) => c.name).join(", ") || "none yet";
+
+  const steps = [
+    { n: 1, action: "Scout the territory", tool: "where_popular", observed: `Your fans are concentrated in ${names(terr.cities)}.` },
+    { n: 2, action: "Battle-test the material", tool: "rehearse", observed: `"${reh.stimulus.label}" scored ${reh.aggregate.mean.toFixed(1)}/5 across ${reh.aggregate.n.toLocaleString()} people.` },
+    { n: 3, action: "Spot the rivals", tool: "recommend + where_popular", observed: plans.length ? `${plans.map((p) => p.name).join(", ")} are fighting for your fans. They hold ${terr.rivalHeld.length} of your cities.` : "No rival is close enough to worry about." },
+    {
+      n: 4,
+      action: "Read the battlefield",
+      tool: "panel x footprints",
+      observed: `You hold ${terr.conquest}% of your ground. Strongholds: ${names(terr.strongholds)}. Frontlines: ${names(terr.frontlines)}. Beachheads: ${names(terr.beachheads)}.`,
+      decided: terr.target ? `Next conquest: ${terr.target.name}.` : "No city is ready to take yet.",
+    },
+    { n: 5, action: "Pick allies and enemies", tool: "find_partners", observed: plans.map((p) => `${p.name}: ${p.strategy === "ally" ? "ally" : "compete"}${p.city ? ` in ${p.city}` : ""}`).join(". ") || "No rival plans." },
+    ...(terr.target ? [{ n: 6, action: "Find a stage", tool: "recommend · place", observed: venues[0] ? `Top stage in ${terr.target.name} for your crowd: ${venues[0].name}.` : `No stage in ${terr.target.name} cleared the bar.` }] : []),
+    { n: 7, action: "Plan the campaign", tool: "general", observed: `${missions.length} missions. Complete them all and you could hold ${projected(terr, missions)}% of your ground.`, decided: "Missions ranked. Waiting for your orders." },
+  ];
+
+  return {
+    status: "ok",
+    audience: fp.audience,
+    stimulus: reh.stimulus,
+    aggregate: { mean: reh.aggregate.mean, pct45: reh.aggregate.pct45, n: reh.aggregate.n },
+    tribe: reh.tribe,
+    split: reh.split,
+    narrative: reh.narrative,
+    territory: terr,
+    allies,
+    rivals: plans,
+    venues,
+    missions,
+    projected: projected(terr, missions),
+    steps,
+    receipts: receiptsFor(runId),
+  };
 }

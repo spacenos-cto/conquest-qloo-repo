@@ -192,6 +192,13 @@ export async function mockCall(
         `resolved ${params.name}`,
       );
     }
+    case "profile": {
+      const slug = slugFor(String(params.name ?? ""));
+      const c = slug === "thin" ? THIN : CASES[slug]!;
+      return ok([
+        { entity_id: `mock:${slug}`, name: params.name, type: c.type, popularity: slug === "thin" ? 0.1 : 0.9, image: null, bio: null, socials: [] },
+      ]);
+    }
     case "audience_demographics": {
       const c = caseFor(String(params.entity));
       return ok(c.demo.map(([label, value]) => ({ label, value })));
@@ -201,8 +208,17 @@ export async function mockCall(
       return ok(aff(c.tags, 0.99, 0.004));
     }
     case "where_popular": {
-      const c = caseFor(String(params.entity));
-      return ok(c.metros.map(([name, affinity]) => ({ name, affinity })));
+      const id = String(params.entity);
+      if (id.startsWith("mock:cand:")) {
+        // a rival in mock mode: a deterministic footprint over the same cities
+        let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return ok(CASES.cedric!.metros.map(([name], i) => {
+          const a = ((h >> (i % 13)) % 97) / 97;
+          return { name, affinity: +a.toFixed(2), count: Math.round(a * 1400) };
+        }));
+      }
+      const c = caseFor(id);
+      return ok(c.metros.map(([name, affinity]) => ({ name, affinity, count: Math.round(affinity * 1500) })));
     }
     case "recommend": {
       const c = caseFor(String(params.entity));

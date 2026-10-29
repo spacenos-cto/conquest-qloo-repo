@@ -8,6 +8,7 @@ export type Mode = "mock" | "live";
 /** Human-readable endpoint label per workflow, for the Receipts view. */
 const ENDPOINT: Record<string, string> = {
   describe: "/search",
+  profile: "/search",
   resolve: "/search",
   find_tags: "/v2/tags",
   entity_tags: "/v2/insights · urn:tag",
@@ -65,7 +66,9 @@ export class QlooGateway {
       break;
     }
 
-    this.ledger.cacheSet(key, JSON.stringify(env));
+    // never cache a failure or an empty answer: Qloo has transient blips, and a
+    // cached blank would poison every later run for that entity
+    if (env!.status === "ok" && (env!.result_count ?? 1) > 0) this.ledger.cacheSet(key, JSON.stringify(env));
     this.record(workflow, params, env!, runId, false);
     return env!;
   }

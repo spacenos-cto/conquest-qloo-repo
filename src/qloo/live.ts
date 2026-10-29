@@ -54,6 +54,36 @@ export async function liveCall(
   if (!KEY) return errEnv("QLOO_API_KEY not set — export it or put it in .env (QLOO_MODE=live).");
   try {
     switch (workflow) {
+      case "profile": {
+        // who is this? real candidates with photo, bio and the social handles Qloo knows
+        const d = await qloo("/search", { query: String(params.name), take: 6 });
+        const URLS: Record<string, (id: string) => string> = {
+          instagram: (id) => `https://instagram.com/${id}`,
+          twitter: (id) => `https://x.com/${id}`,
+          youtube: (id) => `https://youtube.com/${id.startsWith("UC") ? "channel/" + id : "@" + id}`,
+          tiktok: (id) => `https://tiktok.com/@${id}`,
+          spotify: (id) => `https://open.spotify.com/artist/${id}`,
+          imdb: (id) => `https://imdb.com/name/${id}`,
+        };
+        return ok(
+          (d.results ?? []).map((r: any) => {
+            const ext = r.properties?.external ?? r.external ?? {};
+            const socials = Object.entries(URLS)
+              .map(([k, f]) => { const v = ext[k]; const id = Array.isArray(v) ? v[0]?.id : v?.id; return id ? { network: k, handle: String(id), url: f(String(id)) } : null; })
+              .filter(Boolean);
+            return {
+              entity_id: r.entity_id,
+              name: r.name,
+              type: (r.types ?? [])[0] ?? "urn:entity",
+              popularity: r.popularity ?? 0,
+              image: r.properties?.image?.url ?? null,
+              bio: r.properties?.short_description ?? null,
+              socials,
+            };
+          }),
+        );
+      }
+
       case "describe": {
         const d = await qloo("/search", { query: String(params.name) });
         return ok(
@@ -139,7 +169,9 @@ export async function liveCall(
           counts.push(...got);
         }
         const max = Math.max(1, ...counts.map((c) => c.n));
-        return ok(counts.filter((c) => c.n > 0).map((c) => ({ name: c.name, affinity: c.n / max })));
+        // affinity = share of this audience's own footprint; count = raw cells,
+        // comparable across performers (used to see who owns each city)
+        return ok(counts.filter((c) => c.n > 0).map((c) => ({ name: c.name, affinity: c.n / max, count: c.n })));
       }
 
       case "recommend": {

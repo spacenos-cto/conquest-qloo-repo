@@ -6,6 +6,7 @@ import {
   backtestReport,
   partnerReport,
   directorReport,
+  campaignReport,
   youtubeBacktestReport,
   trendsCheckReport,
   serverInfo,
@@ -60,6 +61,16 @@ const TOOLS = [
     description:
       "Return the frozen-method backtest: how well Qloo-grounded vs flat LLM-only panels track reference demographic splits (Pearson r, MAE, misses).",
     inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "plan_campaign",
+    description:
+      "Conquest: treat a performer's audience as a map. Returns every city as stronghold / frontline / beachhead / hard ground (Qloo presence x panel reaction), the conquest %, the next city to take, allies and stages there, and missions with projected gains.",
+    inputSchema: {
+      type: "object",
+      properties: { audience: { type: "string", description: "Performer or creator name" } },
+      required: ["audience"],
+    },
   },
   {
     name: "direct",
@@ -122,6 +133,8 @@ async function callTool(name: string, args: any) {
       return asText(backtestReport());
     case "find_partners":
       return asText(await partnerReport(String(args?.audience ?? ""), String(args?.kind ?? "people"), args?.location ? String(args.location) : undefined));
+    case "plan_campaign":
+      return asText(await campaignReport(String(args?.audience ?? "")));
     case "direct":
       return asText(await directorReport(String(args?.audience ?? ""), args?.goal ? String(args.goal) : undefined));
     case "backtest_youtube":
