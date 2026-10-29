@@ -1282,20 +1282,63 @@ body.dragging-agent #mapwrap{outline:2px dashed rgba(47,211,165,.55);outline-off
 @media (max-aspect-ratio:1/1){#hook{background:linear-gradient(180deg,#b7c8dd,#e9e0cc 45%,#bfae8f)}.hk-art{width:250vw;height:140.6vw;animation-name:hkzoomp;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent)}#hook .hk-tag.you{left:31%!important;top:26%!important}#hook .hk-tag.fans{left:52%!important;top:74%!important}}
 @keyframes hkzoomp{from{transform:translate(-43%,-50%) scale(1.02)}to{transform:translate(-43%,-50%) scale(1.25)}}
 @media (prefers-reduced-motion:reduce){.hk-art{animation:none}.hk-tag{transition:none}}
+
+/* ===== landing v3: headings, enterprise, army faces; game type follows the landing ===== */
+.sechead{margin:0 0 36px}
+a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
+.plans2{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.plan2.ent{border-color:rgba(225,189,255,.35)}
+.plan2.ent .price2{font-size:clamp(30px,3vw,40px)}
+.plan2.ent .pill2{display:inline-block;margin-top:16px;text-decoration:none;font-size:13px}
+.arow h3 .aface{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:25px;flex:none;background:radial-gradient(circle at 35% 25%,var(--g1),var(--g2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -6px 12px rgba(0,0,0,.25),0 6px 14px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.18);position:relative;overflow:hidden}
+.arow h3 .aface::after{content:"";position:absolute;left:10%;top:4%;width:80%;height:38%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0))}
+.arow .more{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.arow .more .aface{width:38px;height:38px;font-size:20px;border-radius:11px}
+.arow .more span{display:flex;align-items:center;gap:8px;font-size:15px;color:#d9dce0}
+/* game + modals: same type system as the landing (sans labels, serif accents, mono only for numbers) */
+:is(#game,#drawer,.modal,#intro,#scan,.victory,#tourbar) :is(.ptitle,.age small,.clock small,.fc b,.orbw span,.dgroup,.label,.route small,.pmid small,.seg button,.cityp .who,.banner small,.pcard .pk,.stitle,.stitle .lnk,.nm .kk,.chead span,.pow li b,.isub,.tb-k,.xb p b,.up-q,.sc-pct small,.br-k,.br-side small,.br-pals small,.br-goal small,.bp small,.lv2,.rc-t,.trc dt,.itl span,.wb-k,.wb-stat small){font-family:var(--sans);font-weight:600;letter-spacing:.08em}
+:is(#game,#drawer,.modal,#intro,#scan) :is(.brief,.note,.quest small,.trc dd,.move small){font-family:var(--sans)}
+/* welcome back, as an in-game screen */
+.wb .wb-hero{display:flex;align-items:center;gap:16px;margin:14px 0 6px}
+.wb .wb-hero .av,.wb .wb-hero img{width:72px;height:72px;border-radius:50%;border:2px solid #af50ff;box-shadow:0 0 24px rgba(175,80,255,.45);object-fit:cover;flex:none}
+.wb .wb-hero small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#e1bdff;font-weight:600}
+.wb .wb-hero b{display:block;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(28px,3.4vw,40px);line-height:1.05}
+.wb .wb-hero span{font-size:13px;color:var(--ash)}
+.wb-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}
+@media (max-width:640px){.wb-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.wb-stat{border:1px solid rgba(225,189,255,.22);border-radius:10px;padding:10px 10px 8px;background:rgba(175,80,255,.06);text-align:center}
+.wb-stat .emo{font-size:20px;display:block}
+.wb-stat b{display:block;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.wb-stat small{display:block;font-size:9.5px;text-transform:uppercase;color:var(--ash);margin-top:2px}
+.wb-real{border:1px solid var(--hair);border-radius:10px;padding:12px 14px;margin-top:10px}
+.wb-real .wb-k{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;text-transform:uppercase;color:#e1bdff;margin-bottom:8px}
+.wb-real .wb-k em{font-style:normal;font-family:var(--sans);letter-spacing:0;text-transform:none;font-size:12px;color:#c9ffe4;background:rgba(61,255,154,.1);border:1px solid rgba(61,255,154,.35);border-radius:999px;padding:2px 9px}
+.wb-real p{margin:0;font-size:13.5px;color:var(--mist)}
+.wb-act{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:16px}
+.wb-act .go,.wb-act .ghostbtn{margin:0}
+
+/* hook v2.1: readable caption, gentle zoom that keeps everyone in frame, sound chip */
+#hook .hk-cap{font-size:clamp(20px,2.4vw,32px);max-width:min(760px,90vw);padding:8px 18px;border-radius:999px;background:rgba(255,250,240,.55);backdrop-filter:blur(3px);text-shadow:none}
+.hk-art{transform-origin:50% 50%;animation-name:hkzoom2}
+@keyframes hkzoom2{from{transform:translate(-50%,-50%) scale(1)}to{transform:translate(-50%,-50%) scale(1.05)}}
+@media (max-aspect-ratio:1/1){.hk-art{animation-name:hkzoomp2}}
+@keyframes hkzoomp2{from{transform:translate(-43%,-50%) scale(1)}to{transform:translate(-43%,-50%) scale(1.04)}}
+.hk-snd{position:absolute;right:20px;bottom:20px;z-index:3;border:1px solid rgba(28,21,48,.25);background:rgba(255,250,240,.8);color:#1c1530;border-radius:999px;padding:8px 14px;font:600 13px var(--sans);cursor:pointer;box-shadow:0 6px 16px rgba(60,30,120,.18)}
+.hk-snd:hover{background:#fff}
 </style>
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
 <div id="hook" hidden style="--tx:43%;--ty:44%">
   <div class="hk-art" aria-hidden="true"><img src="img/hook.jpg" alt="" onerror="this.closest('#hook').classList.add('noart')"><span class="hk-tag you" style="left:15%;top:31%">You <span class="emo">🎤</span></span><span class="hk-tag fans" style="left:76%;top:74%">Your next 1,000 fans <span class="emo">📱</span></span><span class="hk-zap"></span></div>
-  <div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">click anywhere to skip</div></div>
+  <div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">click anywhere to skip</div><button class="hk-snd" id="hook-snd" hidden><span class="emo">🔊</span> Tap for sound</button></div>
 
 <!-- ======================= SITE ======================= -->
 <div id="site">
   <header class="nav2"><div class="navin">
     <a class="brand2" href="#top"><b>CONQUEST</b><span>.AGENT</span></a>
-    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a></nav>
-    <div class="navcta"><button class="btn-dark" id="signin">Sign in</button><button class="btn-line" data-play>Play now</button></div>
+    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a><a href="mailto:venky@spacenos.com?subject=Onboard%20me%20to%20Conquest&body=Hi%20Venky%2C%0A%0AI'd%20like%20to%20be%20onboarded%20to%20Conquest.%0A%0AName%20%2F%20stage%20name%3A%0AYouTube%20or%20Instagram%3A%0A">Onboard</a></nav>
+    <div class="navcta"><a class="btn-dark" href="mailto:venky@spacenos.com?subject=Conquest%20Enterprise&body=Hi%20Venky%2C%0A%0AWe'd%20like%20the%20Enterprise%20version%20of%20Conquest%20for%20our%20roster.%0A%0ACompany%3A%0ANumber%20of%20performers%3A%0A" title="Mail venky@spacenos.com for the Enterprise version">Get Enterprise</a><button class="btn-line" data-play>Start your Conquest</button></div>
   </div></header>
 
   <!-- hero: twilight sky, campaign pass -->
@@ -1383,14 +1426,14 @@ body.dragging-agent #mapwrap{outline:2px dashed rgba(47,211,165,.55);outline-off
 
   <!-- army: stamped heading + feature rows -->
   <section class="army2" id="army"><div class="wrap2">
-    <div class="stamp">Y O U R &nbsp; A R M Y</div>
+    <h2 class="mix2 sechead">Your <em>army.</em></h2>
     <div class="rows" id="armygrid"></div>
   </div></section>
 
 
   <!-- what you get every week -->
   <section class="value" id="value"><div class="wrap2">
-    <div class="stamp">W H A T &nbsp; Y O U &nbsp; G E T</div>
+    <h2 class="mix2 sechead">What you <em>get.</em></h2>
     <p class="lead2">Every Monday, a battle plan built from live data. Every Sunday, what you actually did.</p>
     <div class="val6">
       <div><span class="emo">🎟️</span><b>The next city to play</b><span>and the room whose crowd fits yours</span></div>
@@ -1438,15 +1481,16 @@ body.dragging-agent #mapwrap{outline:2px dashed rgba(47,211,165,.55);outline-off
   </div></section>
 
   <section id="pricing" class="pricing2"><div class="wrap2">
-    <div class="stamp">P R I C I N G</div>
+    <h2 class="mix2 sechead">Simple <em>pricing.</em></h2>
     <div class="plans2">
       <div class="plan2"><small>CREATOR</small><div class="price2">$19<span>/mo</span></div><ul><li>Your battle map and radar</li><li>5 agents, 10 battle-tests a month</li><li>Weekly campaign and battle plan</li></ul></div>
       <div class="plan2 bloom"><small>HEADLINER</small><div class="price2">$49<span>/mo</span></div><ul><li>All 12 agents, unlimited tests</li><li>Rival tracking and alerts</li><li>Sponsor and venue picks per city</li></ul></div>
       <div class="plan2"><small>MANAGER</small><div class="price2">$149<span>/mo</span></div><ul><li>Up to 10 performers</li><li>Tour planning across a roster</li><li>Your agents as MCP tools</li></ul></div>
+      <div class="plan2 ent"><small>ENTERPRISE</small><div class="price2">Let's talk</div><ul><li>Labels, agencies and venues</li><li>Your data and roster, private</li><li>Onboarding with our team</li></ul><a class="pill2" href="mailto:venky@spacenos.com?subject=Conquest%20Enterprise&body=Hi%20Venky%2C%0A%0AWe'd%20like%20the%20Enterprise%20version%20of%20Conquest%20for%20our%20roster.%0A%0ACompany%3A%0ANumber%20of%20performers%3A%0A">Mail venky@spacenos.com</a></div>
     </div>
   </div></section>
 
-  <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your audience is a map.<br><em>Go conquer it.</em></h2><button class="playbtn center-b" data-play><span>Start your campaign</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
+  <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your audience is a map.<br><em>Go conquer it.</em></h2><button class="playbtn center-b" data-play><span>Start your Conquest</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
     <div class="live2"><span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain (stub)</span><span><i class="stub"></i>X · TikTok · Reddit: connect</span></div></div></section>
 
   <footer class="coord" aria-hidden="true"><span class="plus">+</span><span>Play Direct</span><span>Growth Agent</span><span class="coords" id="coords">33.7490° N, 84.3880° W</span><span class="heart">♥</span></footer>
@@ -1550,6 +1594,6 @@ body.dragging-agent #mapwrap{outline:2px dashed rgba(47,211,165,.55);outline-off
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=155"></script>
+<script src="app.js?v=161"></script>
 </body>
 </html>

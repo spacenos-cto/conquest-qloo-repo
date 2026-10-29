@@ -193,7 +193,32 @@ const Sound = (() => {
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
   }
+  // percussion for the opener: a pitched-down sine is a drum, filtered noise is a cymbal
+  function drum(f0, f1, at, dur, vol) {
+    const a = ctx(), t = a.currentTime + at, o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function noise(at, dur, vol, type = "highpass", freq = 6000) {
+    const a = ctx(), t = a.currentTime + at, n = Math.ceil(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); src.buffer = buf; f.type = type; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t + dur + 0.05);
+  }
+  // a low pad that opens up, like a studio logo swelling in
+  function swell(at, dur, vol) {
+    const a = ctx(), t = a.currentTime + at, f = a.createBiquadFilter(), g = a.createGain();
+    f.type = "lowpass"; f.frequency.setValueAtTime(180, t); f.frequency.exponentialRampToValueAtTime(2600, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.85); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.25);
+    f.connect(g).connect(a.destination);
+    for (const fr of [110, 164.8, 220, 277.2]) { const o = a.createOscillator(); o.type = "sawtooth"; o.frequency.value = fr; o.detune.value = (Math.random() - 0.5) * 14; o.connect(f); o.start(t); o.stop(t + dur + 0.3); }
+  }
   const SONGS = {
+    tadum: () => { drum(120, 42, 0, 0.55, 0.55); noise(0, 0.18, 0.12, "lowpass", 500); drum(96, 34, 0.3, 0.9, 0.6); noise(0.3, 0.25, 0.14, "lowpass", 420); },
+    swell: () => swell(0, 3.1, 0.05),
+    rimshot: () => { drum(210, 140, 0, 0.14, 0.4); noise(0, 0.05, 0.12, "bandpass", 2200); drum(150, 82, 0.17, 0.22, 0.45); noise(0.4, 0.9, 0.22, "highpass", 7000); noise(0.4, 0.05, 0.15, "bandpass", 3500); },
     tick: () => tone(1320, 0, 0.06, "sine", 0.04),
     select: () => { tone(660, 0, 0.08, "square", 0.025); tone(990, 0.05, 0.1, "square", 0.025); },
     conquer: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.35, "triangle", 0.08)); tone(131, 0, 0.7, "sawtooth", 0.03); },
@@ -206,7 +231,7 @@ const Sound = (() => {
     ageup: () => { [[392, 494, 587], [523, 659, 784]].forEach((ch, i) => ch.forEach((f) => tone(f, i * 0.32, 0.6, "sawtooth", 0.028))); tone(1047, 0.64, 0.9, "triangle", 0.06); },
     victory: () => { [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.13, 0.32, "triangle", 0.08)); },
   };
-  return { get on() { return on; }, toggle() { on = !on; return on; }, play(k) { if (!on) return; try { SONGS[k]?.(); } catch {} } };
+  return { get on() { return on; }, toggle() { on = !on; return on; }, get live() { try { return ctx().state === "running"; } catch { return false; } }, unlock() { try { return ctx().resume(); } catch { return Promise.resolve(); } }, play(k) { if (!on) return; try { SONGS[k]?.(); } catch {} } };
 })();
 
 // ---------------------------------------------------------------- small UI helpers
@@ -1586,13 +1611,22 @@ function welcomeBack(s) {
     const days = (Date.now() - s.ts) / 864e5, open = s.real.filter((m) => !m.done), ticked = new Set();
     const away = days < 1 / 24 ? "moments ago" : days < 1 ? `${Math.round(days * 24)} hours ago` : `${Math.round(days)} day${Math.round(days) === 1 ? "" : "s"} ago`;
     const box = $("#intro-body"); G.modal = true;
-    box.innerHTML = `<div class="ibanner">Welcome back, Commander ${esc(G.player.name.split(" ")[0])}</div>
-      <div class="igrid"><div><div class="itl">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span>last played ${away} · week ${s.week} of ${WEEKS} · ${s.conquest}% · ${esc(ageOf(s.conquest)[2])}</span></div>
-        <ul class="pow"><li><b>${s.over ? "Last campaign: finished" : "Your campaign is waiting"}</b>${s.over ? `You took your ground from ${s.start}% to ${s.conquest}%. Start a new campaign: your open missions come with you.` : `Your agents held their posts. ${days >= 6 ? "A real week has passed: your rivals made their moves while you were away." : "Pick up where you left off."}`}</li>
-        <li><b>Returning bonus</b>${days >= 0.5 ? "+2 buzz for coming back." : "Come back tomorrow for a returning bonus."}</li></ul></div>
-        <div><div class="isub">Did you do these for real?</div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p class="itip">No open missions. Execute orders and they become real missions for your week.</p>`}
-        <p class="itip" style="margin-top:10px">Each one you've done pays +1 buzz and +200 score.</p></div></div>
-      <div class="orow" style="justify-content:center;gap:12px">${s.over ? "" : `<button class="go ibegin" id="wb-go" style="margin:18px 0 0">Continue campaign</button>`}<button class="ghostbtn" id="wb-new" style="margin-top:18px">New campaign</button></div>`;
+    const [, an, aname] = ageOf(s.conquest), goal = AGES.find((x) => x[0] > s.conquest) ?? AGES.at(-1);
+    const held = (s.cities ?? []).filter(([, st]) => st === "stronghold" || st === "frontline").length, agents = (s.crew ?? []).filter(([, c]) => c?.recruited).length;
+    const stat = (e, v, k) => `<div class="wb-stat"><span class="emo">${e}</span><b>${v}</b><small>${k}</small></div>`;
+    const bonus = days >= 0.5 ? "+⚡2 for coming back" : "Come back tomorrow: +⚡2";
+    box.innerHTML = `<div class="br wb">
+      <div class="br-k">${s.over ? "CAMPAIGN COMPLETE" : "CAMPAIGN SAVED"} · WEEK ${s.week} OF ${WEEKS} · LAST PLAYED ${away.toUpperCase()}</div>
+      <div class="wb-hero">${avatar(G.player.image, G.player.name)}<div><small>Welcome back, Commander</small><b>${esc(G.player.name)}</b><span>Age ${an} · ${esc(aname)}${s.over ? ` · finished at ${s.conquest}%` : ""}</span></div></div>
+      <div class="br-goal"><div><small>${s.over ? "Final ground" : "Next age"}</small><b>${s.over ? `You took ${s.start}% → ${s.conquest}%` : `Reach ${esc(goal[2])} (${goal[0]}%)`}</b></div><div class="xpbar"><i style="width:${Math.min(100, (s.conquest / goal[0]) * 100)}%"></i></div><span>${s.conquest}% → ${goal[0]}%</span></div>
+      <div class="wb-stats">${stat("🏙️", held, "cities held")}${stat("⚡", s.buzz, "buzz")}${stat("🪙", s.gold, "gold")}${stat("🤖", agents, "agents")}${stat("🏆", s.realDone ?? 0, "real moves")}</div>
+      <div class="br-pow">
+        <div class="bp"><span class="bp-i emo">${s.over ? "🏁" : "⏳"}</span><div><small>${s.over ? "LAST CAMPAIGN" : "YOUR CAMPAIGN"}</small><b>${s.over ? "Finished" : "Waiting for orders"}</b><p>${s.over ? "Start a new one: your open missions come with you." : `Your agents held their posts${days >= 6 ? ". A real week has passed: rivals moved too" : ""}.`}</p></div></div>
+        <div class="bp"><span class="bp-i emo">🎁</span><div><small>RETURNING BONUS</small><b>${bonus}</b><p>Play a little every week and your real missions carry over.</p></div></div>
+      </div>
+      <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +⚡1 · +200 score</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Execute orders in the game and each one becomes a real mission for your week.</p>`}</div>
+      <div class="wb-act">${s.over ? "" : `<button class="go ibegin" id="wb-go">▶ Continue campaign</button>`}<button class="ghostbtn" id="wb-new">New campaign</button></div>
+    </div>`;
     $("#intro").hidden = false;
     $$("[data-wb]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.wb; if (ticked.has(id)) { ticked.delete(id); b.textContent = ""; b.parentElement.classList.remove("done"); } else { ticked.add(id); b.textContent = "✓"; b.parentElement.classList.add("done"); Sound.play("potion"); } }));
     const done = (mode) => { $("#intro").hidden = true; G.modal = false; resolve({ mode, ticked: [...ticked], days }); };
@@ -1994,8 +2028,16 @@ function playHook() {
   const cap = $("#hook-cap"), lines = [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]];
   const t = lines.map(([ms, text]) => setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
   t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400));
-  t.push(setTimeout(() => { el.classList.add("touch"); try { Sound.play("conquer"); } catch {} }, 4300));
-  const end = () => { t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); try { sessionStorage.setItem("conquest-hook", "1"); } catch {} setTimeout(() => el.remove(), 900); };
+  t.push(setTimeout(() => el.classList.add("touch"), 4300));
+  // sound, like a studio logo: ta-dum, a swell while they hesitate, ba-dum-tss on the touch.
+  // Browsers keep a page silent until the first tap, so the chip turns sound on without skipping.
+  let touched = false; const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
+  cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);
+  const chip = $("#hook-snd");
+  Sound.unlock().then(() => { if (!Sound.live && chip) chip.hidden = false; }, () => chip && (chip.hidden = false));
+  setTimeout(() => { if (!Sound.live && chip) chip.hidden = false; }, 400);
+  chip?.addEventListener("click", (e) => { e.stopPropagation(); Sound.unlock().then(() => { chip.hidden = true; if (!touched) Sound.play("swell"); }); });
+  const end = () => { if (!touched) Sound.unlock().then(() => Sound.live && Sound.play("rimshot")); touched = true; t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); try { sessionStorage.setItem("conquest-hook", "1"); } catch {} setTimeout(() => el.remove(), 900); };
   t.push(setTimeout(end, 6200));
   el.addEventListener("click", end, { once: true });
 }
@@ -2418,8 +2460,8 @@ const AGENT_LONG = {
   herald: "Finds the podcasts your fans already listen to, so your next guest spot lands with the right ears.",
   reader: "Shows how real simulated fans in a city react to your material, one by one, with the brain response.",
 };
-$("#armygrid").innerHTML = AGENTS.slice(0, 6).map((a) => `<div class="arow"><div><h3>${a.icon} ${a.name}</h3><button class="go2" data-play><i>→</i> Deploy in the war room</button></div><div><p>${AGENT_LONG[a.id] ?? a.role}</p><span class="src">${a.src.toUpperCase()} · LIVE</span></div></div>`).join("")
-  + `<div class="arow"><div><h3>🤖 +${AGENTS.length - 6} more</h3></div><div><p>${AGENTS.slice(6).map((a) => a.name).join(", ")}. Waiting for orders.</p></div></div>`;
+$("#armygrid").innerHTML = AGENTS.slice(0, 6).map((a) => `<div class="arow"><div><h3><span class="aface emo" style="${agentGrad(a.id)}">${a.icon}</span>${a.name}</h3><button class="go2" data-play><i>→</i> Deploy in the war room</button></div><div><p>${AGENT_LONG[a.id] ?? a.role}</p><span class="src">${a.src.toUpperCase()} · LIVE</span></div></div>`).join("")
+  + `<div class="arow"><div><h3>+${AGENTS.length - 6} more</h3></div><div><div class="more">${AGENTS.slice(6).map((a) => `<span><i class="aface emo" style="${agentGrad(a.id)}">${a.icon}</i>${a.name}</span>`).join("")}</div></div></div>`;
 $$("#armygrid [data-play]").forEach((b) => b.addEventListener("click", () => openWho()));
 
 // twinkling stars in the upper sky
@@ -2615,7 +2657,6 @@ function openWho(name) {
 $$("[data-play]").forEach((b) => b.addEventListener("click", () => openWho()));
 $$("[data-as]").forEach((b) => b.addEventListener("click", () => openWho(b.dataset.as)));
 $("#who-close").addEventListener("click", () => ($("#who").hidden = true));
-$("#signin").addEventListener("click", () => toast("Sign-in is mocked in the demo. Press Conquest to jump in."));
 $("#who").addEventListener("click", (e) => { if (e.target.id === "who") $("#who").hidden = true; });
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("#who").hidden = true; });
 
@@ -2691,6 +2732,7 @@ async function scan() {
   const q = qs(player.q);
   const audP = api(`/api/audience?${q}`).catch(() => null);
   const campP = api(`/api/campaign?${q}`).catch((e) => ({ status: "error", error: String(e) }));
+  const scanT0 = Date.now();
   set(0, "on"); await sleep(700); set(0, "done");
   set(1, "on");
   const aud = await audP; player.aud = aud;
@@ -2712,6 +2754,7 @@ async function scan() {
   set(4, "done", obs[2]); await sleep(600);
   set(5, "done", c.rivals.map((r) => `${r.name}: ${r.strategy === "ally" ? "potential ally" : "nemesis"}`).join(" · ") || obs[3]); await sleep(600);
   set(6, "done", obs[7]); await sleep(1100);
+  await sleep(Math.max(0, (TOURING ? 5000 : 8000) - (Date.now() - scanT0)));
   startGame(c, player);
 }
 
