@@ -1368,6 +1368,23 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 .say-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .say-act button{width:auto;margin:0;padding:7px 10px;font-size:12px;min-height:0}
 .rv .lv{white-space:nowrap;font-size:8px;letter-spacing:.04em}
+
+/* ===== HUD: stats as one strip, actions grouped; clock lives above the radar ===== */
+#game .mini{gap:0;flex-wrap:nowrap;border:1px solid var(--hair);border-radius:999px;padding:3px 4px}
+#game .mini span{border:0;background:none;border-radius:0;padding:3px 11px;font-family:var(--sans);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+#game .mini span+span{border-left:1px solid var(--hair)}
+.hgrp{display:flex;align-items:center;border:1px solid var(--hair);border-radius:10px;overflow:hidden}
+#game .hgrp .icobtn{border:0;border-radius:0;background:none;padding:7px 12px}
+#game .hgrp .icobtn+.icobtn{border-left:1px solid var(--hair)}
+#game .hgrp .icobtn:hover{background:rgba(247,249,250,.06)}
+.hgrp.quiet{border-color:transparent}
+#game .hgrp.quiet .icobtn{color:var(--ash);padding:7px 9px}
+#game .hgrp.quiet .icobtn+.icobtn{border-left:0}
+#mapside .clock{position:relative;left:auto;right:auto;top:auto;transform:none;justify-content:space-between;padding:8px 10px;border-radius:10px;background:rgba(12,10,18,.9);border:1px solid rgba(225,189,255,.22)}
+#mapside .clock b{font-size:15px;white-space:nowrap}
+.achs{top:70px}
+/* the tutorial steps aside while a battle or parley is open */
+body:has(.modal.gm:not([hidden])) :is(#coach,.coachdim){visibility:hidden}
 </style>
 </head>
 <body>
@@ -1584,12 +1601,16 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
     </div>
     <div class="mini" id="mini"></div>
     <div class="hudr">
+      <div class="hgrp">
       <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">Real moves</span> <b id="real-n"></b></button>
       <button class="icobtn" id="xray-btn" title="X-ray your real YouTube content with the brain + 1,000 fans">🎬 <span class="lbl">X-ray</span></button>
       <button class="icobtn" id="share-btn" title="Share your campaign card">⭐ <span class="lbl">Share</span></button>
+      </div>
+      <div class="hgrp quiet">
       <button class="icobtn" id="help" title="Replay the guided first turn">?</button>
       <button class="icobtn" id="sound" title="Sound on or off">🔊</button>
       <button class="icobtn" id="exit" title="Back to the site">Exit</button>
+      </div>
     </div>
   </div>
   <div class="stage">
@@ -1638,6 +1659,6 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=181"></script>
+<script src="app.js?v=191"></script>
 </body>
 </html>

@@ -2166,6 +2166,12 @@ function sparkline(o) {
   const P = (arr) => arr.map((v, i) => `${(i / n) * (W - 40) + 4},${H - 6 - ((v - lo) / (hi - lo)) * (H - 14)}`).join(" ");
   return `<svg viewBox="0 0 ${W} ${H}" aria-label="Projected conquest with and without this order"><polyline points="${P(without)}" fill="none" stroke="#5f5f66" stroke-width="1.5" stroke-dasharray="4 3"/><polyline points="${P(withP)}" fill="none" stroke="#ffb829" stroke-width="2.2"/><text x="${W - 34}" y="12" fill="#ffb829" font-size="10" font-family="IBM Plex Mono">${withP.at(-1)}%</text><text x="${W - 34}" y="${H - 4}" fill="#8a8f99" font-size="10" font-family="IBM Plex Mono">${without.at(-1)}%</text></svg>`;
 }
+// the tutorial's first move is one that lands right away: no battle, no negotiation
+function tutorialPick() {
+  const open = G.orders.map((o, i) => [o, i]).filter(([o]) => !o.done && !["defend", "rivalry", "alliance", "ally"].includes(o.kind));
+  const aff = open.filter(([o]) => costOf(o) <= G.buzz).sort(([a], [b]) => gainOf(b) - gainOf(a));
+  return (aff[0] ?? open[0])?.[1] ?? recommended();
+}
 function recommended() {
   const open = G.orders.map((o, i) => [o, i]).filter(([o]) => !o.done);
   const d = open.find(([o]) => o.kind === "defend"); if (d) return d[1];
@@ -2319,7 +2325,7 @@ async function execute(i) {
   // fights are battles with real odds; partnerships are negotiations
   if (o.kind === "rivalry" || o.kind === "defend") {
     const foe = facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid) ?? [...G.fac.values()][0];
-    if (ct && foe) { const r = await battle({ city: ct, f: foe, cost, title: o.kind === "defend" ? `Break the siege · ${ct.name}` : `Battle for ${ct.name}` }); if (r !== "win") { hud(); renderOrders(); council(); return; } paid = true; }
+    if (ct && foe) { const r = await battle({ city: ct, f: foe, cost, title: o.kind === "defend" ? `Break the siege · ${ct.name}` : `Battle for ${ct.name}` }); if (r !== "win") { hud(); renderOrders(); council(); Coach.executed(o, ct, true); return; } paid = true; }
   } else if (o.kind === "alliance" || o.kind === "ally") {
     const name = o.rival ?? o.title.replace(/^Recruit /, ""), f = facByName(name), a = (G.c.allies || []).find((x) => x.name === name);
     const r = await parley({ name, f, barter: f?.plan.barter ?? a?.barter, netnew: f?.plan.netnew ?? a?.netnew, convert: f?.plan.convert ?? a?.convert, city: o.city ?? f?.plan.city });
@@ -2461,6 +2467,9 @@ $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; ope
 $("#share-btn").addEventListener("click", openShare);
 $("#xray-btn").addEventListener("click", () => (Drawer.mode === "xray" ? Drawer.close() : Drawer.open("xray")));
 $("#slot-brain").addEventListener("click", () => Drawer.open("xray"));
+// on desktop the world clock sits at the top of the right column, above the radar; phones keep it top centre
+function placeClock() { const c = $("#clock"), side = $("#mapside"), mw = $("#mapwrap"); if (!c || !side || !mw) return; if (innerWidth > 900) { if (c.parentElement !== side) side.prepend(c); } else if (c.parentElement !== mw) mw.appendChild(c); }
+placeClock(); addEventListener("resize", placeClock);
 $$("[data-tour]").forEach((b) => b.addEventListener("click", runTour));
 $("#v-again").addEventListener("click", () => { $("#victory").hidden = true; startGame(G.c, G.player); });
 $("#v-site").addEventListener("click", () => { $("#victory").hidden = true; toSite(); });
@@ -2496,7 +2505,7 @@ const Coach = (() => {
   const mobile = () => innerWidth < 1180;
   const STEPS = [
     { spot: () => "#mapwrap", go: "Continue", t: () => `This is your ground. Fans already live here. ${G.capital ?? "Your capital"} is your capital and you hold ${held()} cit${held() === 1 ? "y" : "ies"}.`, enter: () => { const p = capP(); if (p) { boom(p, COL.you); float(p, "👑 YOUR CAPITAL"); } } },
-    { spot: () => "#slot-next", go: null, t: () => { const o = G.orders[recommended()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = recommended(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
+    { spot: () => "#slot-next", go: null, t: () => { const o = G.orders[tutorialPick()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = tutorialPick(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
     { spot: () => "#rivalstrip", go: "Continue", t: () => { const it = G.intents[0], f = it && G.fac.get(it.fid); return f ? `A rival is moving: ${f.name} is marching on ${it.city} and arrives Sunday. Fortify the city or strike first.` : "Rivals show up on the radar days before they strike. Fortify or strike first."; }, enter: () => { ensureThreat(); hud(); } },
     { spot: () => "#orbs", go: "Continue", t: () => "Three resources run your campaign. ⚡ Buzz = your actions this week. ❤ Hype = how hard your material hits. 🪙 Gold = money for agents and walls.", enter: () => ["#orb-buzz", "#orb-hype", "#orb-gold"].forEach((id, k) => setTimeout(() => { const e = $(id); e.classList.remove("pulse"); void e.offsetWidth; e.classList.add("pulse"); }, k * 450)) },
     { spot: () => "#slot-army", go: "Got it", t: () => "Your agents are units. Recruit one here, click it, then click any city on the map (or drag it there). It marches on the clock, works with live data, and earns while stationed." },
@@ -2517,8 +2526,9 @@ const Coach = (() => {
   return {
     start() { if (!G || G.over) return; G.coach = true; step = -1; $("#coach").hidden = false; Drawer.close(); next(); },
     // after the first order lands, a free Booker proves it's real data
-    async executed(o, ct) {
+    async executed(o, ct, failed) {
       if (step !== 1 || !G.coach) return;
+      if (failed) { $("#coach-t").textContent = "Battles can be lost: prepare the city first and the odds go up. On to the next step."; clear(); await sleep(2200); return next(); }
       $("#coach-t").textContent = "Watch: your Booker is calling Qloo for a real stage there…"; clear();
       const city = ct ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
       if (city) await runAgent(AGENTS.find((a) => a.id === "booker"), city);
