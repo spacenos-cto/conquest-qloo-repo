@@ -4,6 +4,7 @@ import { resolve } from "../qloo/resolve.js";
 import { fingerprint } from "../qloo/fingerprint.js";
 import { samplePanel } from "../panel/sampler.js";
 import { runPanel, type RespondentMode } from "../panel/respondent.js";
+import { aiMode } from "../ai/llm.js";
 import { aggregate, citySplit } from "../panel/aggregate.js";
 import { checkClaims } from "../panel/claimcheck.js";
 import { makeVerdicts } from "../panel/verdict.js";
@@ -25,7 +26,8 @@ import type { Fingerprint } from "../qloo/types.js";
  */
 
 const mode = (process.env.QLOO_MODE as Mode) || "mock";
-const respMode = (process.env.REHEARSAL_RESPONDENT_MODE as RespondentMode) || "mock";
+// live when the AI layer is on (hosted), mock on localhost; the env var still forces either
+const respModeOf = (): RespondentMode => (process.env.REHEARSAL_RESPONDENT_MODE as RespondentMode) || (aiMode() === "claude" ? "live" : "mock");
 const ledger = new Ledger(process.env.REHEARSAL_DB || ":memory:");
 const gateway = new QlooGateway(mode, ledger);
 
@@ -33,7 +35,7 @@ const PANEL_N = Number(process.env.REHEARSAL_PANEL_N || 1000);
 const fpCache = new Map<string, { fp: Fingerprint; runId: string }>();
 
 export function serverInfo() {
-  return { qlooMode: mode, respondentMode: respMode, panelN: PANEL_N };
+  return { qlooMode: mode, respondentMode: respModeOf(), panelN: PANEL_N };
 }
 
 /**
@@ -139,7 +141,7 @@ export async function rehearseReport(name: string, who: Who = {}) {
 
   const stimulus = stimulusFor(fp, who);
   const { personas } = samplePanel(fp, PANEL_N, 42);
-  const replies = await runPanel(personas, stimulus, respMode, 7);
+  const replies = await runPanel(personas, stimulus, respModeOf(), 7);
   const agg = aggregate(personas, replies);
   const split = citySplit(agg);
   const tribe = tribeStrip(stimulus);
@@ -162,7 +164,7 @@ export async function rehearseReport(name: string, who: Who = {}) {
     tribe,
     verdicts,
     narrative: checked,
-    respondentMode: respMode,
+    respondentMode: respModeOf(),
     // per-person scores [personaId, score] so the map can light each dot up
     reactions: replies.map((r) => [r.personaId, r.score]),
     receipts: receiptsFor(runId),

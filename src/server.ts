@@ -15,6 +15,8 @@ import {
   trendsCheckReport,
   serverInfo,
 } from "./service/engine.js";
+import { aiStatus, AiOff } from "./ai/llm.js";
+import { strategist, writeFor, adviseVideo, Board, WriteReq, type Deps } from "./ai/agents.js";
 
 /**
  * Rehearsal's HTTP server. Serves the single-page UI from public/ and a small
@@ -79,6 +81,8 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await xray(name, who, q.get("yt") ?? "")));
       case "/api/img":
         return void img(q.get("u") ?? "", res);
+      case "/api/ai":
+        return send(res, 200, JSON.stringify(aiStatus()));
       case "/api/trends-check":
         return send(res, 200, JSON.stringify(await trendsCheckReport()));
       default:
@@ -271,14 +275,33 @@ async function serveStatic(pathname: string, res: any) {
   }
 }
 
+// The thinking agents take the board as a JSON body. With the AI layer off they
+// answer { status: "off" } and the browser keeps its templates.
+const deps: Deps = { audience: audienceReport, rehearse: rehearseReport, trends: googleTrends, weather, fame };
+async function agentApi(path: string, req: any, res: any) {
+  let raw = "";
+  for await (const chunk of req) { raw += chunk; if (raw.length > 64_000) return send(res, 413, JSON.stringify({ error: "too large" })); }
+  try {
+    const body = JSON.parse(raw || "{}");
+    if (path === "/api/agent/strategist") return send(res, 200, JSON.stringify(await strategist(Board.parse(body), deps)));
+    if (path === "/api/agent/write") return send(res, 200, JSON.stringify(await writeFor(WriteReq.parse(body))));
+    if (path === "/api/agent/xray") return send(res, 200, JSON.stringify(await adviseVideo(body)));
+    return send(res, 404, JSON.stringify({ error: "not found" }));
+  } catch (e: any) {
+    // budget hit, refusal or a bad answer: the game falls back to templates
+    return send(res, 200, JSON.stringify({ status: e instanceof AiOff ? "off" : "error", error: String(e?.message ?? e).slice(0, 200) }));
+  }
+}
+
 createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+  if (req.method === "POST" && url.pathname.startsWith("/api/agent/")) return void agentApi(url.pathname, req, res);
   if (url.pathname.startsWith("/api/")) return void api(url, res);
   return void serveStatic(url.pathname, res);
 }).listen(PORT, () => {
   const info = serverInfo();
   console.log(`Conquest on http://localhost:${PORT}`);
-  console.log(`  Qloo=${info.qlooMode}  respondents=${info.respondentMode}  panel=${info.panelN}`);
+  console.log(`  Qloo=${info.qlooMode}  respondents=${info.respondentMode}  panel=${info.panelN}  ai: ${aiStatus().note}`);
   void prewarm();
 });
 
