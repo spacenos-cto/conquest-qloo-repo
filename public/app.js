@@ -308,7 +308,7 @@ function iconize(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (EMO_ONE.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
   const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
   for (const n of nodes) {
-    if (n.parentNode?.closest?.("svg,script,style,textarea,input,canvas")) continue;
+    if (n.parentNode?.closest?.("svg,script,style,textarea,input,canvas,.emo")) continue;
     const frag = document.createDocumentFragment(); let last = 0; const s = n.nodeValue;
     s.replace(EMO_RE, (m, ch, off) => { const k = iconFor(ch); if (!k) return m; if (off > last) frag.append(s.slice(last, off)); const t = document.createElement("template"); t.innerHTML = I(k); frag.append(t.content); last = off + m.length; return m; });
     if (!last) continue;
@@ -505,25 +505,6 @@ const MapView = (() => {
     if (o && !o.done && o.city) { const to = G.cities.find((c) => c.name === o.city); if (to) arrow(fromFor(to).p, to.p, o.kind === "alliance" ? COL.allied : o.kind === "defend" ? "#fff" : "#e1bdff", now, 3.4); }
     G.temp = G.temp.filter((tr) => now - tr.t0 <= 3500);
     for (const tr of G.temp) arrow(tr.from, tr.to, tr.col, now, 2.4);
-    // radar sweep from your capital: rival cities ping as the beam passes
-    const cap = G.cities.find((c) => c.name === G.capital);
-    if (cap && !REDUCED) {
-      const [CX, CY] = toS(cap.p), R = 420 * s, beam = -(now / 1000) * 1.1;
-      if (ctx.createConicGradient) {
-        const g = ctx.createConicGradient(beam, CX, CY);
-        g.addColorStop(0, "rgba(225,189,255,0.22)"); g.addColorStop(0.07, "rgba(225,189,255,0.04)"); g.addColorStop(0.1, "rgba(225,189,255,0)"); g.addColorStop(1, "rgba(225,189,255,0)");
-        ctx.save(); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, R, 0, 6.283); ctx.fill();
-        ctx.strokeStyle = "rgba(225,189,255,0.12)"; ctx.lineWidth = 1 * d; for (const k of [0.33, 0.66, 1]) { ctx.beginPath(); ctx.arc(CX, CY, R * k, 0, 6.283); ctx.stroke(); }
-        ctx.restore();
-      }
-      for (const ct of G.cities) {
-        if (ct.state !== "rival" || sideOf(ct) === "allied") continue;
-        const [X, Y] = toS(ct.p), ang = Math.atan2(Y - CY, X - CX), lag = (((ang - beam) % 6.283) + 6.283) % 6.283;
-        if (Math.hypot(X - CX, Y - CY) > R || lag > 1.4) continue;
-        const k = lag / 1.4; ctx.strokeStyle = colOf(sideOf(ct)); ctx.globalAlpha = 1 - k; ctx.lineWidth = 2 * d;
-        ctx.beginPath(); ctx.arc(X, Y, (14 + k * 26) * d, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1;
-      }
-    }
     for (const ct of G.cities) token(ct, now, night);
     // rival armies on the march toward the city they mean to take this week
     for (const it of G.intents.slice(0, 2)) {
@@ -543,7 +524,7 @@ const MapView = (() => {
       ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `italic 400 ${22 * d}px "Instrument Serif", serif`; ctx.textAlign = "center";
       ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; iconText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d, f.col, 17 * d, "800"); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
-    armyTick(); drawArmy(ctx, toS, bez, at, d, s, now);
+    armyTick(); drawArmy(ctx, toS, bez, at, d, s, now); placeUnitPop();
     // the tutorial's free agent run
     for (const u of G.units) {
       const k = clamp01((now - u.t0) / u.dur), back = u.phase === "back";
@@ -584,14 +565,14 @@ const MapView = (() => {
   cv.addEventListener("click", (e) => {
     if (!G) return;
     if (G.justDragged) { G.justDragged = false; return; }
-    if (unitAt(e.offsetX * d, e.offsetY * d, d)) return; // selected on mousedown
+    { const uu = unitAt(e.offsetX * d, e.offsetY * d, d); if (uu) { openUnitPop(uu.id); return; } } // selected on mousedown
     const h = hit([e.offsetX, e.offsetY]); if (!h) { G.pinned = null; $("#cityp").hidden = true; select(null); return; }
     if (G.selected?.type === "unit") { sendUnit(G.selected.id, h); return; } // RTS: with a unit selected, a city click is a move order
     G.pinned = h.name; cityPanel(h); select({ type: "city", name: h.name });
   });
   // ownership changed: snapshot the old layer for the flood animation, draw the new one
   function flip(p) { const old = G.layer; relayer(); if (old && p) G.anim = { old, p, t0: performance.now() }; }
-  return { frame, flip, relayer };
+  return { frame, flip, relayer, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
 })();
 
 // the city an order marches from: your nearest held city, else the capital
@@ -708,6 +689,7 @@ function council() {
   else if (!afford.length) msg = `You're low on buzz (⚡${G.buzz}). Claim an opportunity, drink a trend potion, or end the week for +⚡${regen()}.`;
   else msg = `Best value now: “${best.title}”, +${gainOf(best)}% for ⚡${costOf(best)}.${G.prep.has(best.city) ? " Your agents already prepared that city." : best.city ? ` Send a Scout or Booker to ${best.city} first and it costs less and gains more.` : ""} ${left} week${left > 1 ? "s" : ""} left.`;
   typeInto($("#brief"), msg, `Week ${G.week} of ${WEEKS} · rival moves are simulated from their real Qloo footprints and Wikipedia momentum`);
+  renderAdvice();
 }
 
 // ---------------------------------------------------------------- HUD and panels
@@ -725,7 +707,7 @@ function orb(id, frac, label) {
 }
 let saveT = 0;
 function hud(delta) {
-  clearTimeout(saveT); saveT = setTimeout(saveGame, 800);
+  clearTimeout(saveT); saveT = setTimeout(saveGame, 800); renderAdvice();
   const [a0, n, name] = ageOf(G.conquest), nx = AGES.find((x) => x[0] > G.conquest);
   $("#lvl-n").textContent = n; $("#age-name").textContent = name;
   $("#xp-fill").style.width = `${nx ? ((G.conquest - a0) / (nx[0] - a0)) * 100 : 100}%`;
@@ -1054,17 +1036,15 @@ function renderAgents() {
     else if (G.army.get(a.id)?.state === "moving") { cls += " busy"; tag = "MOVE"; tip += ". On the march."; }
     else if (c.week === G.week) { cls += " rest"; tag = "WK " + (G.week + 1); tip += ". Back next week."; }
     else { cls += " ready"; tag = G.army.get(a.id)?.state === "stationed" ? "HOLD" : "GO"; tip += ". Click to select, then click a city on the map (or drag this tile onto one)."; }
-    return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '"><span class="hk">' + hk + "</span>" + a.icon + '<span class="pr">' + tag + "</span></button>";
+    return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '" style="' + agentGrad(a.id) + '"><span class="hk">' + hk + '</span><span class="face emo">' + a.icon + '</span><span class="nm2">' + a.name + '</span><span class="pr">' + tag + "</span></button>";
   }).join("");
   $$("[data-unit]").forEach((b) => { b.addEventListener("click", () => unitAction(b.dataset.unit)); if (G.crew.get(b.dataset.unit)?.recruited) { b.draggable = true; b.addEventListener("dragstart", (e) => { G.dragTile = b.dataset.unit; e.dataTransfer.setData("text/plain", b.dataset.unit); }); b.addEventListener("dragend", () => (G.dragTile = null)); } });
   $$("[data-unit]").forEach((b) => b.classList.toggle("sel", G.selected?.type === "unit" && G.selected.id === b.dataset.unit));
 }
 function unitAction(id) {
   const a = AGENTS.find((x) => x.id === id), c = G.crew.get(id); if (!a || !G || G.over) return;
-  if (a.locked) return toast("Reddit blocks anonymous apps. Connect a Reddit account to unlock the Listener.");
-  if (!c?.recruited) { if (G.gold < a.cost) { Sound.play("nope"); return toast("Not enough gold: " + a.name + " costs " + a.cost + "."); } return recruit(id); }
-  if (G.selected?.type === "unit" && G.selected.id === id) return deploy(id);
-  select({ type: "unit", id }); Sound.play("select");
+  if (c?.recruited) select({ type: "unit", id });
+  openUnitPop(id);
 }
 function recruit(id) {
   const a = AGENTS.find((x) => x.id === id); if (!a || G.gold < a.cost) return;
@@ -1219,6 +1199,7 @@ async function arrive(u, city) {
     c.busy = false;
   }
   u.state = sideOf(city) === "you" || sideOf(city) === "allied" ? "stationed" : "idle";
+  if (G.pop === u.id) renderUnitPop();
   if (u.state === "stationed") ops(`<span class="ag">${a.icon} ${a.name}</span> stationed in ${esc(city.name)} · ${yieldText(u.id)}`);
   hud(); renderAgents(); renderOrders(); renderSel(); council();
 }
@@ -1288,12 +1269,12 @@ function drawArmy(ctx, toS, bez, at, d, s, now) {
       ctx.fillStyle = "#e1bdff"; ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText(`ETA ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168)).toUpperCase()}`, b0[0], b0[1] - 12 * d);
       u._s = q;
     } else u._s = toS(P);
-    const [X, Y] = u._s, r = 12 * d, bob = u.state === "moving" ? Math.sin(now / 120) * 1.5 * d : 0;
+    const [X, Y] = u._s, r = 15 * d, bob = u.state === "moving" ? Math.sin(now / 120) * 1.5 * d : 0;
     if (isSel) { ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.6 * d; ctx.setLineDash([5 * d, 4 * d]); ctx.lineDashOffset = now / 40; ctx.beginPath(); ctx.arc(X, Y + bob, r + 6 * d, 0, 6.283); ctx.stroke(); ctx.restore(); }
     if (u.state === "stationed") { ctx.fillStyle = "rgba(175,80,255,.18)"; ctx.beginPath(); ctx.arc(X, Y, r + 9 * d + Math.sin(now / 500) * 2 * d, 0, 6.283); ctx.fill(); }
     ctx.fillStyle = "#0b0a10"; ctx.strokeStyle = isSel ? "#fff" : "#af50ff"; ctx.lineWidth = 2.2 * d; ctx.shadowColor = "#af50ff"; ctx.shadowBlur = 12 * d;
     ctx.beginPath(); ctx.arc(X, Y + bob, r, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-    drawIcon(ctx, deEmoji(a.icon).icon ?? "bot", X, Y + bob, 14 * d, "#e1bdff", 2.2);
+    { const [g1, g2] = AG_COL[u.id] ?? ["#af50ff", "#4c1a91"], gr = ctx.createRadialGradient(X - r * 0.3, Y + bob - r * 0.4, 0, X, Y + bob, r); gr.addColorStop(0, g1); gr.addColorStop(1, g2); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y + bob, r - 1.5 * d, 0, 6.283); ctx.fill(); ctx.font = `${15 * d}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(a.icon, X, Y + bob + 1 * d); ctx.textBaseline = "alphabetic"; }
     if (u.state === "working") { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.4 * d; ctx.beginPath(); ctx.arc(X, Y, r + 4 * d, now / 200, now / 200 + 1.8); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText("WORKING", X, Y - r - 8 * d); }
     if (isSel || u === G.hoverUnit) { ctx.fillStyle = "#fff"; ctx.font = `italic 400 ${15 * d}px "Instrument Serif", serif`; ctx.textAlign = "center"; ctx.fillText(a.name, X, Y + r + 14 * d); }
   }
@@ -1726,6 +1707,92 @@ function bindXray() {
   }));
 }
 
+
+// ---------------------------------------------------------------- agents as characters, and their mission pop-up
+// Each agent gets a colour, like an app icon, and a full-colour emoji face.
+// Clicking one opens a mission card on the map: what it does, where it could
+// go (with why, how long, and what you get), or what it costs to hire.
+const AG_COL = { scout: ["#1fb6a6", "#0b5c63"], booker: ["#ff8a3d", "#a3381a"], diplomat: ["#5aa8ff", "#1f4fa8"], sponsor: ["#f5c542", "#a36c12"], herald: ["#ff5fa8", "#9c1f63"], reader: ["#b27dff", "#5a2aa8"], trend: ["#3ddc84", "#13804a"], oracle: ["#7ad1ff", "#2a6fa8"], spy: ["#8a93a6", "#2c3240"], scribe: ["#ff7a6b", "#a3332a"], showrunner: ["#ff4d6d", "#8c1235"], listener: ["#ff6a2b", "#8c2c0a"] };
+const AG_GAIN = { scout: "what your fans there also love · city prepared", booker: "the best stage there · city prepared", diplomat: "a partner and a written pitch", sponsor: "a sponsor paying you every week", herald: "a podcast guest spot · +2 buzz", reader: "real reactions, fan by fan · city prepared", trend: "trending searches there → potions", oracle: "the driest show night · city prepared", spy: "rivals' fame and their next attack", scribe: "a ready-to-post caption · +1 buzz", showrunner: "a whole festival night · +200 gold", listener: "what Reddit says (connect first)" };
+const agentGrad = (id) => { const [a, b] = AG_COL[id] ?? ["#af50ff", "#4c1a91"]; return `--g1:${a};--g2:${b}`; };
+// three places worth sending this agent, each with a reason
+function missionTargets(id) {
+  const out = [], add = (c, why) => { if (c && !out.some((x) => x.c === c)) out.push({ c, why }); };
+  const o = G.orders[G.primary], sg = G.sieges[0], it = G.intents.find((x) => !G.forts.has(x.city));
+  if (sg) add(G.cities.find((c) => c.name === sg.city), `under siege by ${G.fac.get(sg.fid)?.name}`);
+  if (it) add(G.cities.find((c) => c.name === it.city), `${G.fac.get(it.fid)?.name} arrives Sunday`);
+  if (o?.city) add(G.cities.find((c) => c.name === o.city), `your next move: ${o.title}`);
+  const t = G.c.territory.target?.name; add(G.cities.find((c) => c.name === t), "ripe for conquest");
+  if (YIELD[id]?.gold || YIELD[id]?.buzz) add(G.cities.find((c) => c.name === G.capital), `station it home: ${yieldText(id)}`);
+  const rv = [...G.fac.values()].map((f) => strikeCity(f)).find(Boolean); add(rv, "a rival's city: prepare a strike");
+  return out.slice(0, 3);
+}
+function openUnitPop(id) {
+  if (!G) return; G.pop = id; renderUnitPop(); Sound.play("select");
+}
+function closeUnitPop() { if (!G) return; G.pop = null; $("#unitpop").hidden = true; }
+function renderUnitPop() {
+  const id = G?.pop, el = $("#unitpop"); if (!id) { el.hidden = true; return; }
+  const a = agentOf(id), c = G.crew.get(id), u = G.army.get(id);
+  const head = `<div class="up-h" style="${agentGrad(id)}"><span class="up-face emo">${a.icon}</span><div><b>${esc(a.name)}</b><small>${esc(a.role)} · ${esc(a.src)}</small></div><button class="up-x" title="Close">✕</button></div>`;
+  let body;
+  if (a.locked) body = `<p>Reddit blocks anonymous apps. Connect your Reddit account to hire the Listener.</p>`;
+  else if (!c?.recruited) body = `<p><b>Brings you:</b> ${esc(AG_GAIN[id])}.</p><button class="go up-go" id="up-hire" ${G.gold >= a.cost ? "" : "disabled"}>Hire for 🪙${a.cost}</button>${G.gold < a.cost ? `<p class="note">You have 🪙${G.gold}. Cities, caravans and sponsors pay more gold.</p>` : ""}`;
+  else if (u?.state === "moving") body = `<p>On the march to <b>${esc(u.toCity)}</b>. ETA ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168))}.</p>`;
+  else if (u?.state === "working") body = `<p>Working in <b>${esc(u.at)}</b>: calling ${esc(a.src)} right now…</p>`;
+  else {
+    const used = c.week === G.week;
+    body = `<p class="up-q">Where should ${esc(a.name)} go?</p>` + missionTargets(id).map(({ c: ct, why }) => { const dist = Math.hypot(ct.p[0] - (u?.p[0] ?? ct.p[0]), ct.p[1] - (u?.p[1] ?? ct.p[1])), hrs = Math.max(1.5, dist / SPEED); return `<button class="up-t" data-goto="${esc(ct.name)}"><span><b>${esc(ct.name)}</b><small>${esc(why)}</small></span><em>${u?.at === ct.name ? "here" : Math.round(hrs) + "h"}</em></button>`; }).join("") +
+      `<p class="note">${used ? "Its job already ran this week; it can still move and hold a city." : `On arrival: ${esc(AG_GAIN[id])}.`} Or click any city on the map.</p>`;
+  }
+  el.innerHTML = head + `<div class="up-b">${body}</div>`; el.hidden = false;
+  el.querySelector(".up-x").onclick = closeUnitPop;
+  $("#up-hire")?.addEventListener("click", () => { recruit(id); openUnitPop(id); });
+  $$("[data-goto]").forEach((b) => b.addEventListener("click", () => { const ct = G.cities.find((x) => x.name === b.dataset.goto); if (ct) { sendUnit(id, ct); renderUnitPop(); } }));
+  placeUnitPop();
+}
+// keep the card next to its unit (or the capital, before it's hired)
+function placeUnitPop() {
+  const el = $("#unitpop"); if (!G?.pop || el.hidden) return;
+  const u = G.army.get(G.pop), cap = G.cities.find((c) => c.name === G.capital);
+  const p = u?._s ? MapView.css(u._s) : cap ? MapView.screen(cap.p) : [200, 200];
+  const box = $("#mapwrap").getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  let x = p[0] + 26, y = p[1] - h / 2; if (x + w > box.width - 80) x = p[0] - w - 26;
+  el.style.left = `${Math.max(10, Math.min(box.width - w - 10, x))}px`; el.style.top = `${Math.max(10, Math.min(box.height - h - 10, y))}px`;
+}
+
+// ---------------------------------------------------------------- the strategist's one-click advice
+function adviceAction() {
+  const open = G.orders.filter((o) => !o.done), sg = G.sieges.slice().sort((a, b) => a.left - b.left)[0];
+  const inc = G.intents.find((it) => !G.forts.has(it.city) && !G.fac.get(it.fid)?.allied);
+  const afford = open.filter((o) => costOf(o) <= G.buzz && o.gain), best = afford.sort((a, b) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a))[0];
+  if (sg) { const i = G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city); if (i >= 0) return { label: `🛡 Defend ${sg.city}`, fn: () => execute(i) }; }
+  if (inc && G.gold >= 80) return { label: `🛡 Fortify ${inc.city} · 🪙80`, fn: () => fortify(inc.city) };
+  if (best) return { label: `🚩 ${best.title}`, fn: () => execute(G.orders.indexOf(best)) };
+  if (G.potions.some((p) => !p.used)) return { label: "🧪 Ride a trend for buzz", fn: () => Drawer.open("trends") };
+  return { label: "⌛ End the week", fn: () => Clock.finishWeek() };
+}
+function renderAdvice() {
+  const b = $("#council-do"); if (!b || !G) return;
+  const act = adviceAction(); b.textContent = act.label; b.onclick = () => { if (!G.busy && !G.modal) act.fn(); };
+}
+
+// ---------------------------------------------------------------- the landing hook
+// A lighter opener: you and your next 1,000 fans, both too shy to make the
+// first move 👉👈. Then the fingertips touch, and Conquest makes it.
+function playHook() {
+  const el = $("#hook"); if (!el) return;
+  let seen = false; try { seen = sessionStorage.getItem("conquest-hook") === "1"; } catch {}
+  if (seen || new URLSearchParams(location.search).has("tour") || new URLSearchParams(location.search).has("play")) { el.remove(); return; }
+  el.hidden = false; document.body.classList.add("hooked");
+  const cap = $("#hook-cap"), lines = [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]];
+  const t = lines.map(([ms, text]) => setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
+  t.push(setTimeout(() => { el.classList.add("touch"); try { Sound.play("conquer"); } catch {} }, 4300));
+  const end = () => { t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); try { sessionStorage.setItem("conquest-hook", "1"); } catch {} setTimeout(() => el.remove(), 900); };
+  t.push(setTimeout(end, 6200));
+  el.addEventListener("click", end, { once: true });
+}
+
 // ---------------------------------------------------------------- orders, forecasts, previews
 const FORECAST = {
   take: (o) => [["Mon", `Booker holds ${G.c.venues?.[0]?.name ?? "a room"} in ${o.city}`], ["Thu", `Show night in ${o.city}`], ["Sun", `${o.city} flips to you · +${gainOf(o)}%`]],
@@ -2123,7 +2190,7 @@ addEventListener("keydown", (e) => {
   if (/^[1-9]$/.test(e.key) && G.orders[+e.key - 1]) selectOrder(+e.key - 1);
   if ((e.key === "Enter" || e.key === "e" || e.key === "E") && G.primary >= 0) { e.preventDefault(); execute(G.primary); }
   if (e.key === " ") { e.preventDefault(); Clock.toggle(); }
-  if (e.key === "Escape") select(null);
+  if (e.key === "Escape") { select(null); closeUnitPop(); }
   const hk = HOTKEYS.indexOf(e.key.toUpperCase()); if (hk >= 0 && AGENTS[hk] && e.key.length === 1) unitAction(AGENTS[hk].id);
 });
 function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site").hidden = false; Field.setMode("site"); Neuro.reset(); if (G) G.over = true; }
@@ -2449,6 +2516,7 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
   else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); safe("stars", Stars.frame, now); safe("globe", Globe.frame, now); safe("story", Story.frame, now); safe("feed", Feed.frame, now); }
 })(performance.now());
 // a shareable link: ?play=Name opens the game as that person
+playHook();
 const autoplay = new URLSearchParams(location.search).get("play");
 if (new URLSearchParams(location.search).has("tour")) setTimeout(runTour, 800);
 else if (autoplay) openWho(autoplay);

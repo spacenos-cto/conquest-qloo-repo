@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conquest</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Noto+Color+Emoji&display=swap">
 <style>
 /* Two worlds. The site is a black void with a constellation brain (one violet
    action, amber labels, huge light type). The game is a war room: a dark
@@ -1003,10 +1003,68 @@ em{font-style:italic}
 .xb p{margin:5px 0 0;font-size:12.5px;line-height:1.45;color:#d9dce0}
 .xb p b{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#e1bdff}
 .spark{display:block;width:100%;max-width:220px;height:34px;margin-top:6px}
+/* ===== agent faces, mission pop-up, strategist, landing hook ===== */
+.emo{font-family:"Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif;font-style:normal}
+.units{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px 6px;align-content:start}
+.unit2{aspect-ratio:auto;max-height:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px 2px;background:transparent;border:1px solid transparent;border-radius:8px;overflow:visible}
+.unit2:hover{transform:translateY(-2px);border-color:rgba(225,189,255,.25)}
+.unit2 .face{position:relative;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:22px;line-height:1;background:radial-gradient(circle at 35% 25%,var(--g1),var(--g2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -6px 12px rgba(0,0,0,.25),0 4px 10px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);overflow:hidden}
+.unit2 .face::after{content:"";position:absolute;left:10%;top:4%;width:80%;height:38%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0));pointer-events:none}
+.unit2 .nm2{font-size:10px;line-height:1.1;color:#e6e7ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.unit2 .pr{position:static;background:none;padding:0;font-size:9px;line-height:1.1;color:#ffe9b0}
+.unit2 .hk{left:2px;top:0;z-index:2;font-size:8.5px;color:#7d7f86}
+.unit2.hire .face{filter:saturate(.45) brightness(.75)}
+.unit2.hire.can .face{filter:saturate(.8) brightness(.9)}
+.unit2.locked{opacity:.55}.unit2.locked .face{filter:grayscale(1)}
+.unit2.ready{border-color:transparent;box-shadow:none;animation:none}
+.unit2.ready .face{box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 16px var(--g1),inset 0 1px 0 rgba(255,255,255,.5)}
+.unit2.ready .pr{color:#7dffb5}
+.unit2.sel{box-shadow:none;border-color:rgba(255,255,255,.6);background:rgba(175,80,255,.12)}
+.unit2.busy::after{inset:4px auto auto 50%;width:40px;height:40px;transform:translateX(-50%);border-radius:11px}
+.unit2.rest .face{filter:brightness(.6)}
+/* the mission card on the map */
+.unitpop{position:absolute;z-index:6;width:300px;border-radius:12px;background:rgba(14,12,20,.97);border:1px solid rgba(225,189,255,.45);box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 30px rgba(175,80,255,.25);overflow:hidden;animation:achin .3s var(--ease) both}
+.up-h{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:12px;background:linear-gradient(135deg,var(--g1),var(--g2))}
+.up-face{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;font-size:32px;background:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 4px 12px rgba(0,0,0,.3)}
+.up-h b{display:block;font-family:var(--serif);font-style:italic;font-weight:400;font-size:24px;line-height:1;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+.up-h small{display:block;margin-top:3px;font-size:11.5px;color:rgba(255,255,255,.92)}
+.up-x{align-self:start;width:26px;height:26px;border:0;border-radius:6px;background:rgba(0,0,0,.25);color:#fff;padding:0}
+.up-b{padding:10px 12px 12px;font-size:13px;line-height:1.45;color:#d9dce0}
+.up-b p{margin:4px 0}
+.up-q{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#e1bdff}
+.up-t{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;border:1px solid var(--hair2);background:rgba(255,255,255,.03);color:#fff;text-align:left;cursor:pointer}
+.up-t:hover{border-color:#e1bdff;background:rgba(175,80,255,.14)}
+.up-t b{font-weight:600}.up-t small{display:block;font-size:11.5px;color:#9a9ba0}
+.up-t em{font-style:normal;font-family:var(--mono);font-size:12px;color:#e1bdff;white-space:nowrap}
+.up-go{margin-top:8px}
+/* the strategist's one-click advice */
+.council-do{width:100%;margin:10px 0 0;padding:10px 12px;font-size:13.5px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the landing hook: 👉👈 */
+#hook{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:radial-gradient(ellipse at 50% 45%,#ffffff,#efe9fb 60%,#e2d8f7);cursor:pointer;transition:opacity .8s var(--ease),transform .8s var(--ease)}
+#hook[hidden]{display:none}
+#hook.out{opacity:0;transform:scale(1.08);pointer-events:none}
+body.hooked{overflow:hidden}
+.hk-cap{min-height:1.2em;font-family:var(--serif);font-style:italic;font-size:clamp(30px,4.6vw,58px);color:#1c1530;text-align:center;padding:0 24px;opacity:0;transform:translateY(10px);transition:opacity .5s,transform .5s}
+.hk-cap.in{opacity:1;transform:none}
+.hk-stage{position:relative;display:flex;align-items:center;justify-content:center;height:clamp(110px,18vw,230px)}
+.hk-l,.hk-r{font-size:clamp(90px,15vw,200px);line-height:1;filter:drop-shadow(0 18px 24px rgba(60,30,120,.25))}
+.hk-l{animation:inL 1.3s cubic-bezier(.2,.9,.3,1) .2s both,shyL 1s ease-in-out 1.6s 2}
+.hk-r{animation:inR 1.3s cubic-bezier(.2,.9,.3,1) .2s both,shyR 1s ease-in-out 1.6s 2}
+@keyframes inL{from{transform:translateX(-70vw) rotate(-14deg)}to{transform:translateX(-18px)}}
+@keyframes inR{from{transform:translateX(70vw) rotate(14deg)}to{transform:translateX(18px)}}
+@keyframes shyL{0%,100%{transform:translateX(-18px)}50%{transform:translateX(2px) rotate(4deg)}}
+@keyframes shyR{0%,100%{transform:translateX(18px)}50%{transform:translateX(-2px) rotate(-4deg)}}
+#hook.touch .hk-l{animation:none;transform:translateX(6px);transition:transform .35s cubic-bezier(.2,1.6,.4,1)}
+#hook.touch .hk-r{animation:none;transform:translateX(-6px);transition:transform .35s cubic-bezier(.2,1.6,.4,1)}
+.hk-spark{position:relative;width:0;height:0}
+#hook.touch .hk-spark::before{content:"";position:absolute;left:-110px;top:-110px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#fff 0,#e1bdff 25%,rgba(175,80,255,.6) 45%,rgba(175,80,255,0) 70%);animation:burst 1s ease-out .2s both}
+@keyframes burst{from{transform:scale(.1);opacity:1}to{transform:scale(3.2);opacity:0}}
+.hk-skip{position:absolute;bottom:26px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8a7fa6}
 </style>
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
+<div id="hook" hidden><div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">click anywhere to skip</div></div>
 
 <!-- ======================= SITE ======================= -->
 <div id="site">
@@ -1174,13 +1232,15 @@ em{font-style:italic}
       <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
       <div class="events" id="events" aria-live="polite"></div>
       <aside class="council frame" id="council">
-        <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>General Conquest</b><span>War council</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
+        <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>Your AI strategist</b><span>Reads the board · picks your best move</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
         <div class="brief" id="brief"></div>
+        <button class="go council-do" id="council-do"></button>
         <div class="quests" id="quests"></div>
         <button class="ghostbtn" id="simulate">▶ Simulate my whole plan</button>
       </aside>
       <section class="ops frame collapsed" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="false"><span class="stitle" style="position:static">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
       <div class="cityp frame" id="cityp" hidden></div>
+      <div class="unitpop" id="unitpop" hidden></div>
       <div class="rivalstrip" id="rivalstrip"></div>
       <div class="scoreboard" id="scoreboard"></div>
       <div class="legend" id="legend"></div>
@@ -1209,6 +1269,6 @@ em{font-style:italic}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=96"></script>
+<script src="app.js?v=100"></script>
 </body>
 </html>
