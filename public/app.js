@@ -722,7 +722,9 @@ function orb(id, frac, label) {
   if (lastOrb[id] != null && lastOrb[id] !== label) { el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
   lastOrb[id] = label;
 }
+let saveT = 0;
 function hud(delta) {
+  clearTimeout(saveT); saveT = setTimeout(saveGame, 800);
   const [a0, n, name] = ageOf(G.conquest), nx = AGES.find((x) => x[0] > G.conquest);
   $("#lvl-n").textContent = n; $("#age-name").textContent = name;
   $("#xp-fill").style.width = `${nx ? ((G.conquest - a0) / (nx[0] - a0)) * 100 : 100}%`;
@@ -902,7 +904,7 @@ function battle({ city, f, cost, title }) {
     $("#retreat").onclick = () => close("cancel");
     $("#charge").onclick = async () => {
       G.buzz -= cost; hud(); $("#brow").innerHTML = ""; Sound.play("week");
-      const win = Math.random() < o.p, t0 = performance.now(), tug = $("#tug");
+      const win = G.tour || Math.random() < o.p, t0 = performance.now(), tug = $("#tug");
       await new Promise((done) => { const step = (now) => { const k = (now - t0) / 2200; if (k >= 1) return done(); tug.style.width = `${Math.max(3, Math.min(97, o.p * 100 + Math.sin(k * 26) * 30 * (1 - k) + (win ? 1 : -1) * k * 40))}%`; requestAnimationFrame(step); }; requestAnimationFrame(step); });
       tug.style.width = win ? "100%" : "0%";
       const v = $("#verdict"); v.className = "verdict " + (win ? "win" : "lose"); v.textContent = win ? "VICTORY" : "REPELLED";
@@ -946,7 +948,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
       const x = offers[+btn.dataset.of]; G.buzz -= x.buzz; G.gold -= x.gold; hud();
       $$("[data-of]").forEach((e) => (e.disabled = true)); const v = $("#pverdict"); v.className = "verdict"; v.textContent = "Waiting for their reply…";
       await sleep(1400);
-      const yes = Math.random() < x.p;
+      const yes = G.tour || Math.random() < x.p;
       v.className = "verdict " + (yes ? "win" : "lose"); v.textContent = yes ? "DEAL!" : "THEY PASSED";
       Sound.play(yes ? "alliance" : "nope");
       if (yes) { G.pitches.push(pitch.replace(/\n/g, " ")); if (f) { f.allied = true; f.last = "Fighting at your side"; G.intents = G.intents.filter((it) => it.fid !== f.id); G.sieges = G.sieges.filter((s) => s.fid !== f.id); } G.allies++; ach("diplomat"); ops(`<span class="ok">🤝 ${esc(name)} accepted: ${esc(x.name)}</span>`); float(capP(), "🤝 ALLY", COL.allied); MapView.relayer(); }
@@ -991,7 +993,7 @@ async function addTrends(geo, where) {
   const r = await api(`/api/trends?geo=${geo}`).catch(() => null);
   if (r?.status !== "ok") return [];
   const got = [];
-  for (const it of r.items.slice(0, 3)) if (!G.potions.some((p) => p.title === it.title)) { const p = { ...it, where, used: false }; G.potions.unshift(p); got.push(p); }
+  for (const it of r.items.slice(0, 3)) if (!G.potions.some((p) => p.title === it.title)) { const p = { ...it, where, used: G.usedTrends?.has(it.title) ?? false }; G.potions.unshift(p); got.push(p); }
   renderTrends(); return got;
 }
 async function loadTrends() {
@@ -1450,6 +1452,209 @@ function planIntentsRaw() {
   }
 }
 
+
+// ---------------------------------------------------------------- the campaign remembers you
+// Your campaign saves itself in this browser. Come back and the welcome screen
+// asks about the real missions you committed to; ticking them pays out, a real
+// week away lets the rivals move, and unfinished missions follow you into a
+// new campaign.
+const SAVE_KEY = (name) => "conquest:v1:" + String(name).toLowerCase();
+let TOURING = false;
+function snapshot() {
+  return {
+    v: 1, name: G.player.name, ts: Date.now(), over: G.over, week: G.week, hour: G.hour,
+    conquest: G.conquest, start: G.start, startHeld: G.startHeld, buzz: G.buzz, gold: G.gold, morale: G.morale,
+    allies: G.allies, taken: G.taken, saved: G.saved, lost: G.lost, missions: G.missions, achPts: G.achPts, realDone: G.realDone,
+    cities: G.cities.map((c) => [c.name, c.state, c.owner, c.contested]),
+    fac: [...G.fac.values()].map((f) => [f.id, f.allied, f.last]),
+    orders: G.orders, doneLog: G.doneLog, crew: [...G.crew], sponsors: G.sponsors, intel: [...G.intel], prep: [...G.prep], forts: [...G.forts],
+    intents: G.intents, sieges: G.sieges, used: G.potions.filter((p) => p.used).map((p) => p.title), nights: G.nights, drafts: G.drafts, pitches: G.pitches,
+    real: G.real, ach: [...G.ach], parleyed: [...G.parleyed],
+    army: [...G.army.values()].map((u) => (u.state === "moving" ? { id: u.id, p: u.to, at: u.toCity, state: "idle" } : { id: u.id, p: u.p, at: u.at, state: u.state === "working" ? "stationed" : u.state })),
+  };
+}
+function saveGame() { if (!G || G.tour || G.noSave) return; try { localStorage.setItem(SAVE_KEY(G.player.name), JSON.stringify(snapshot())); } catch {} }
+function loadSave(name) { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY(name)) || "null"); return s?.v === 1 ? s : null; } catch { return null; } }
+function restore(s) {
+  for (const [name, state, owner, contested] of s.cities) { const c = G.cities.find((x) => x.name === name); if (c) Object.assign(c, { state, owner, contested }); }
+  for (const [id, allied, last] of s.fac) { const f = G.fac.get(id); if (f) Object.assign(f, { allied, last }); }
+  Object.assign(G, { week: s.week, hour: s.hour, conquest: s.conquest, start: s.start, startHeld: s.startHeld, buzz: s.buzz, gold: s.gold, morale: s.morale, allies: s.allies, taken: s.taken, saved: s.saved, lost: s.lost, missions: s.missions, achPts: s.achPts, realDone: s.realDone,
+    orders: s.orders, doneLog: s.doneLog, crew: new Map(s.crew.map(([k, v]) => [k, { ...v, busy: false }])), sponsors: s.sponsors, intel: new Map(s.intel), prep: new Set(s.prep), forts: new Set(s.forts),
+    intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used) });
+  G.army = new Map(s.army.map((u) => [u.id, { ...u }]));
+  assignStates(); G.layer = null;
+}
+// the welcome-back screen: what you committed to, and whether you did it
+function welcomeBack(s) {
+  return new Promise((resolve) => {
+    const days = (Date.now() - s.ts) / 864e5, open = s.real.filter((m) => !m.done), ticked = new Set();
+    const away = days < 1 / 24 ? "moments ago" : days < 1 ? `${Math.round(days * 24)} hours ago` : `${Math.round(days)} day${Math.round(days) === 1 ? "" : "s"} ago`;
+    const box = $("#intro-body"); G.modal = true;
+    box.innerHTML = `<div class="ibanner">Welcome back, Commander ${esc(G.player.name.split(" ")[0])}</div>
+      <div class="igrid"><div><div class="itl">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span>last played ${away} · week ${s.week} of ${WEEKS} · ${s.conquest}% · ${esc(ageOf(s.conquest)[2])}</span></div>
+        <ul class="pow"><li><b>${s.over ? "Last campaign: finished" : "Your campaign is waiting"}</b>${s.over ? `You took your ground from ${s.start}% to ${s.conquest}%. Start a new campaign: your open missions come with you.` : `Your agents held their posts. ${days >= 6 ? "A real week has passed: your rivals made their moves while you were away." : "Pick up where you left off."}`}</li>
+        <li><b>Returning bonus</b>${days >= 0.5 ? "+2 buzz for coming back." : "Come back tomorrow for a returning bonus."}</li></ul></div>
+        <div><div class="isub">Did you do these for real?</div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p class="itip">No open missions. Execute orders and they become real missions for your week.</p>`}
+        <p class="itip" style="margin-top:10px">Each one you've done pays +1 buzz and +200 score.</p></div></div>
+      <div class="orow" style="justify-content:center;gap:12px">${s.over ? "" : `<button class="go ibegin" id="wb-go" style="margin:18px 0 0">Continue campaign</button>`}<button class="ghostbtn" id="wb-new" style="margin-top:18px">New campaign</button></div>`;
+    $("#intro").hidden = false;
+    $$("[data-wb]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.wb; if (ticked.has(id)) { ticked.delete(id); b.textContent = ""; b.parentElement.classList.remove("done"); } else { ticked.add(id); b.textContent = "✓"; b.parentElement.classList.add("done"); Sound.play("potion"); } }));
+    const done = (mode) => { $("#intro").hidden = true; G.modal = false; resolve({ mode, ticked: [...ticked], days }); };
+    $("#wb-go")?.addEventListener("click", () => done("continue"));
+    $("#wb-new").addEventListener("click", () => done("new"));
+  });
+}
+function applyReturn(r, s) {
+  if (r.mode === "continue") {
+    restore(s);
+    for (const id of r.ticked) markReal(id);
+    if (r.days >= 0.5) { G.buzz = Math.min(BUZZ_MAX, G.buzz + 2); event("🔥 Returning bonus: +2 buzz.", "good"); }
+    ops(`<span class="ok">campaign restored</span> · week ${G.week}, ${G.conquest}% · ${G.real.filter((m) => !m.done).length} real missions open`);
+    if (r.days >= 6) setTimeout(() => { event("📅 A real week passed. Your rivals made their moves.", "bad"); endWeek(); }, 1500);
+  } else {
+    // a fresh campaign, but the missions you haven't done yet come with you
+    const carry = s.real.filter((m) => !m.done && !r.ticked.includes(m.id)).map((m, i) => ({ ...m, id: "c" + i, week: "earlier" }));
+    G.real = carry; if (r.ticked.length) { G.realDone += r.ticked.length; G.achPts += 200 * r.ticked.length; ach("real"); }
+    if (carry.length) ops(`<span class="ok">carried over</span> ${carry.length} real mission${carry.length > 1 ? "s" : ""} from your last campaign`);
+  }
+  hud(); hudReal(); renderOrders(); renderAgents(); renderRivalStrip(); MapView.relayer();
+}
+addEventListener("beforeunload", saveGame);
+setInterval(() => { if (G && !$("#game").hidden) saveGame(); }, 12000);
+
+// ---------------------------------------------------------------- the share card
+// A 1200x630 card of your campaign: your map, your age, the climb, and the one
+// real thing you're doing this week. Portraits come through our own origin so
+// the canvas can be exported.
+const proxied = (u) => (u && /^https:\/\/images\.qloo\.com\//.test(u) ? `/api/img?u=${encodeURIComponent(u)}` : null);
+function loadImg(src) { return new Promise((res) => { if (!src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
+async function shareCard() {
+  const W = 1200, H = 630, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
+  await document.fonts?.ready;
+  const bg = x.createRadialGradient(W * 0.72, H * 0.45, 0, W * 0.72, H * 0.45, W * 0.7); bg.addColorStop(0, "#2a1450"); bg.addColorStop(0.55, "#0f0a1a"); bg.addColorStop(1, "#090909");
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  x.strokeStyle = "rgba(225,189,255,.25)"; x.lineWidth = 1; x.strokeRect(20.5, 20.5, W - 41, H - 41);
+  x.fillStyle = "#af50ff"; for (const [px, py, dx, dy] of [[20, 20, 1, 1], [W - 20, 20, -1, 1], [20, H - 20, 1, -1], [W - 20, H - 20, -1, -1]]) { x.fillRect(px, py, 26 * dx, 3 * dy); x.fillRect(px, py, 3 * dx, 26 * dy); }
+  // the map
+  const mw = 600, mh = mw * (MH / MW), mx = W - mw - 50, my = 110, s = mw / MW;
+  x.save(); x.setTransform(s, 0, 0, s, mx, my); const P = d3.geoPath(null, x);
+  x.beginPath(); P(Atlas.nation); x.fillStyle = "#141219"; x.shadowColor = "rgba(175,80,255,.7)"; x.shadowBlur = 30; x.fill(); x.shadowBlur = 0;
+  for (const st of Atlas.states) { const g = G.gov.get(st.id); if (!g) continue; const key = sideOf(g.city); x.beginPath(); P(st.f); x.globalAlpha = (key === "you" ? 0.75 : key === "allied" ? 0.55 : key === "open" || key === "fog" ? 0.18 : 0.5) * g.k; x.fillStyle = colOf(key); x.fill(); }
+  x.globalAlpha = 1; x.beginPath(); P(Atlas.inner); x.strokeStyle = "rgba(247,249,250,.15)"; x.lineWidth = 0.8 / s; x.stroke(); x.restore();
+  for (const c of G.cities) { if (sideOf(c) !== "you") continue; const X = mx + c.p[0] * s, Y = my + c.p[1] * s; x.fillStyle = "#fff"; x.beginPath(); x.arc(X, Y, c.name === G.capital ? 6 : 3.5, 0, 6.283); x.fill(); }
+  // the commander
+  const face = await loadImg(proxied(G.player.image));
+  x.save(); x.beginPath(); x.arc(118, 168, 58, 0, 6.283); x.closePath(); x.fillStyle = "#151821"; x.fill(); if (face) { x.clip(); const k = Math.max(116 / face.naturalWidth, 116 / face.naturalHeight); x.drawImage(face, 118 - (face.naturalWidth * k) / 2, 168 - (face.naturalHeight * k) / 2.6, face.naturalWidth * k, face.naturalHeight * k); } x.restore();
+  x.strokeStyle = "#af50ff"; x.lineWidth = 4; x.beginPath(); x.arc(118, 168, 58, 0, 6.283); x.stroke();
+  x.fillStyle = "#f7f9fa"; x.font = '700 22px "Inter Tight", sans-serif'; x.fillText("CONQUEST", 60, 70); x.font = '300 22px "Inter Tight", sans-serif'; x.fillText(".AGENT", 180, 70);
+  x.font = 'italic 400 52px "Instrument Serif", serif'; x.fillText(G.player.name.length > 22 ? G.player.name.slice(0, 21) + "…" : G.player.name, 196, 168);
+  const [, an, aname] = ageOf(G.conquest);
+  x.font = '500 15px "IBM Plex Mono", monospace'; x.fillStyle = "#e1bdff"; x.fillText(`AGE ${an} · ${aname.toUpperCase()} · WEEK ${G.week} OF ${WEEKS}`, 198, 200);
+  x.fillStyle = "#fff"; x.font = '700 108px "Inter Tight", sans-serif'; x.fillText(`${G.start}→${G.conquest}%`, 56, 360);
+  x.font = '300 22px "Inter Tight", sans-serif'; x.fillStyle = "#c9ccd1"; x.fillText("of my audience map conquered", 60, 398);
+  const stats = [["CITIES", `${held()}/${ground()}`], ["ALLIES", G.allies], ["AGENTS", [...G.crew.values()].filter((c) => c.recruited).length], ["REAL MOVES", `${G.real.filter((m) => m.done).length}/${G.real.length}`], ["SCORE", score().toLocaleString()]];
+  stats.forEach(([k, v], i) => { const X = 60 + i * 108; x.fillStyle = "#828384"; x.font = '500 11px "IBM Plex Mono", monospace'; x.fillText(k, X, 450); x.fillStyle = "#f7f9fa"; x.font = '700 28px "Inter Tight", sans-serif'; x.fillText(String(v), X, 484); });
+  const m = G.real.find((r) => !r.done) ?? G.real.at(-1);
+  x.fillStyle = "#e1bdff"; x.font = '500 12px "IBM Plex Mono", monospace'; x.fillText(m ? (m.done ? "DONE FOR REAL" : "THIS WEEK, FOR REAL") : "PLAYED ON LIVE DATA", 60, 540);
+  x.fillStyle = "#f7f9fa"; x.font = 'italic 400 26px "Instrument Serif", serif';
+  const line = m ? m.text : "Qloo taste graph · 1,000 simulated fans · live trends";
+  x.fillText(line.length > 64 ? line.slice(0, 63) + "…" : line, 60, 574);
+  x.fillStyle = "#828384"; x.font = '400 14px "IBM Plex Mono", monospace'; x.textAlign = "right"; x.fillText("Play your audience → conquest.agent", W - 50, H - 46); x.textAlign = "left";
+  return cv;
+}
+async function openShare() {
+  if (!G) return;
+  const cv = await shareCard(), url = cv.toDataURL("image/png"), [, , aname] = ageOf(G.conquest);
+  const text = `I took my audience map from ${G.start}% to ${G.conquest}% in Conquest (${aname} age). My real move this week: ${(G.real.find((m) => !m.done) ?? G.real.at(-1))?.text ?? "play the next city"}`;
+  $("#intro-body").innerHTML = `<div class="ibanner">Share your campaign</div><div style="padding:18px 22px 0"><img src="${url}" alt="Your Conquest campaign card" style="width:100%;border-radius:8px;border:1px solid var(--hair)"></div>
+    <div class="orow" style="justify-content:center;gap:10px;padding:14px 22px 0"><button class="go" id="sh-dl" style="width:auto;margin:0">Download image</button>${navigator.share ? `<button class="ghostbtn" id="sh-share" style="margin:0">Share…</button>` : ""}<button class="ghostbtn" id="sh-copy" style="margin:0">Copy caption</button><button class="ghostbtn" id="sh-x" style="margin:0">Close</button></div>`;
+  $("#intro").hidden = false; G.modal = true;
+  const close = () => { $("#intro").hidden = true; G.modal = false; };
+  $("#sh-x").onclick = close;
+  $("#sh-dl").onclick = () => { const a = document.createElement("a"); a.href = url; a.download = `conquest-${G.player.name.toLowerCase().replace(/\W+/g, "-")}.png`; a.click(); };
+  $("#sh-copy").onclick = async () => { try { await navigator.clipboard.writeText(text); toast("Caption copied."); } catch {} };
+  $("#sh-share")?.addEventListener("click", () => cv.toBlob(async (b) => { try { await navigator.share({ text, files: [new File([b], "conquest.png", { type: "image/png" })] }); } catch { try { await navigator.share({ text }); } catch {} } }));
+}
+
+// ---------------------------------------------------------------- the 2-minute jury tour
+// Plays the whole loop by itself with captions: pick a name, scout, the briefing,
+// move an agent, take a city, a real mission, the radar, a battle, a parley,
+// the week ending, and the share card. The tour's dice always land.
+const until = async (fn, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await sleep(150); } return false; };
+function caption(step, n, text) {
+  let bar = $("#tourbar");
+  if (!bar) { bar = document.createElement("div"); bar.id = "tourbar"; bar.innerHTML = `<div class="tb-k" id="tb-k"></div><div class="tb-t" id="tb-t"></div><button id="tb-x">Skip tour</button>`; document.body.appendChild(bar); $("#tb-x").onclick = stopTour; }
+  bar.hidden = false; bar.classList.toggle("ingame", !$("#game").hidden);
+  $("#tb-k").textContent = `JURY TOUR · ${step}/${n} · ${Math.round((Date.now() - TOUR_T0) / 1000)}s`; $("#tb-t").textContent = text;
+}
+let TOUR_T0 = 0, tourSpot = null;
+function spot(sel) { tourSpot?.classList.remove("spot"); tourSpot = sel ? $(sel) : null; tourSpot?.classList.add("spot"); }
+function stopTour() { TOURING = false; spot(null); const b = $("#tourbar"); if (b) b.hidden = true; if (G) { G.tour = false; Clock.reset(); } }
+async function runTour() {
+  if (TOURING) return; TOURING = true; TOUR_T0 = Date.now(); const N = 11, live = () => TOURING;
+  try { localStorage.setItem("conquest-coached", "1"); } catch {}
+  caption(1, N, "Conquest is the growth agent you play like a strategy game. Watch a full week in two minutes.");
+  await sleep(4000); if (!live()) return;
+  openWho("Jason Calacanis");
+  caption(2, N, "Type any name: Qloo finds you, with your photo and verified socials.");
+  await until(() => $('[data-me="0"]')); await sleep(2500); if (!live()) return;
+  $('[data-me="0"]').click();
+  caption(3, N, "Agents scout your real audience: ~100 live Qloo calls and 1,000 simulated fans.");
+  await until(() => G && !$("#game").hidden && !$("#intro").hidden, 90000); if (!live()) return;
+  G.tour = true;
+  caption(4, N, "Your powers come from real data. Your rivals are the people your fans also follow.");
+  await sleep(5500); if (!live()) return; $("#intro-go")?.click();
+  await sleep(600);
+  caption(5, N, "This is your audience as territory. Violet is you. Rivals hold the rest.");
+  spot("#mapwrap"); await sleep(5000); spot(null); if (!live()) return;
+  // move an agent
+  const tgt = G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => sideOf(c) !== "you") ?? G.cities[0];
+  if (!G.crew.get("booker")?.recruited) { G.gold = Math.max(G.gold, 200); recruit("booker"); }
+  select({ type: "unit", id: "booker" }); spot("#slot-army");
+  caption(6, N, `Agents are units. Send the Booker to ${tgt.name}: it marches on the world clock, then makes a live Qloo call.`);
+  await sleep(1500); spot(null); sendUnit("booker", tgt); Clock.fast();
+  await until(() => G.crew.get("booker")?.week === G.week && !G.crew.get("booker")?.busy && G.army.get("booker")?.state !== "moving", 30000); Clock.fast(); if (!live()) return;
+  caption(6, N, `Back with a real stage: ${(G.intel.get(tgt.name) ?? []).find((t) => t.startsWith("🎟️"))?.replace(/^🎟️ /, "") ?? "a venue its crowd fits"}`);
+  await sleep(3500); if (!live()) return;
+  // take a city → real mission
+  const oi = G.orders.findIndex((o) => !o.done && ["take", "hold", "edit"].includes(o.kind) && costOf(o) <= G.buzz);
+  if (oi >= 0) {
+    caption(7, N, "Execute the next move. The city floods violet…");
+    spot("#slot-next"); await sleep(1500); spot(null); await execute(oi); await sleep(1200);
+    caption(7, N, "…and it becomes a real mission for your week. Tick it when you've done it for real.");
+    Drawer.open("moves"); await sleep(5000); Drawer.close(); if (!live()) return;
+  }
+  // the radar
+  ensureThreat(); hud(); const it = G.intents[0], foe = it && G.fac.get(it.fid);
+  caption(8, N, foe ? `The radar sees ${foe.name} marching on ${it.city}, days ahead. Fortify, strike first, or parley.` : "The radar sees rivals coming days ahead.");
+  spot("#slot-radar"); if (foe) select({ type: "rival", id: foe.id }); await sleep(4500); spot(null); if (!live()) return;
+  if (foe && it && G.gold >= 80) { fortify(it.city); await sleep(1200); }
+  // a battle
+  const enemy = [...G.fac.values()].find((f) => !f.allied && strikeCity(f));
+  if (enemy) {
+    G.buzz = Math.max(G.buzz, 4);
+    caption(9, N, `Battle ${enemy.name} for ${strikeCity(enemy).name}. Odds come from real numbers: your fans and hype vs their footprint and Wikipedia momentum.`);
+    strike(enemy.id); await until(() => !$("#battle").hidden, 5000); await sleep(2500); $("#charge")?.click(); await until(() => $("#bdone"), 6000); await sleep(1800); $("#bdone")?.click(); await sleep(1500);
+  }
+  if (!live()) return;
+  // a parley
+  const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally") ?? [...G.fac.values()].find((f) => !f.allied);
+  if (pal) {
+    G.buzz = Math.max(G.buzz, 3);
+    caption(10, N, `Or turn a rival into a co-headliner. Conquest finds the smallest offer that works and writes the pitch.`);
+    parley({ name: pal.name, f: pal, barter: pal.plan.barter, netnew: pal.plan.netnew, convert: pal.plan.convert, city: pal.plan.city });
+    await until(() => !$("#parley").hidden, 5000); await sleep(3000); ($(".offer.best:not(:disabled)") ?? $(".offer:not(:disabled)"))?.click(); await until(() => $("#pdone"), 6000); await sleep(1800); $("#pdone")?.click(); await sleep(1200);
+  }
+  if (!live()) return;
+  // the week ends
+  caption(11, N, "Sunday: income lands, rivals strike, and next week's real missions are waiting. Then share it.");
+  Clock.finishWeek(); await until(() => G.week >= 2 && !G.busy, 25000); await sleep(1200);
+  await openShare(); spot(null);
+  caption(11, N, "That's Conquest: a game whose every move is a real growth move. Your turn.");
+  $("#tb-x").textContent = "Play it yourself";
+  G.tour = false; TOURING = false;
+}
+
 // ---------------------------------------------------------------- orders, forecasts, previews
 const FORECAST = {
   take: (o) => [["Mon", `Booker holds ${G.c.venues?.[0]?.name ?? "a room"} in ${o.city}`], ["Thu", `Show night in ${o.city}`], ["Sun", `${o.city} flips to you · +${gainOf(o)}%`]],
@@ -1597,9 +1802,13 @@ async function startGame(c, player) {
   Sound.play("ageup");
   loadTrends();
   renderSel(); renderRivalStrip();
-  await intro(); renderOrders();
+  if (TOURING) { G.tour = true; G.noSave = true; } // a tour campaign is a demo: never saved
+  const saved = TOURING ? null : loadSave(player.name);
+  if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") await intro(); }
+  else await intro();
+  renderOrders(); saveGame();
   let coached = false; try { coached = localStorage.getItem("conquest-coached") === "1"; } catch {}
-  if (!coached) setTimeout(() => Coach.start(), 500);
+  if (!coached && !TOURING && !saved) setTimeout(() => Coach.start(), 500);
   api(`/api/rehearse?${qs(player.q)}`).then((r) => { for (const [id, s] of r?.reactions ?? []) G.reactions.set(id, s); }).catch(() => {});
   api(`/api/fame?names=${encodeURIComponent([player.name, ...[...fac.values()].map((f) => f.name)].join("|"))}`).then((r) => {
     if (r?.status === "ok") for (const p of r.people) G.fame.set(p.name, p);
@@ -1740,7 +1949,7 @@ function victory() {
     ["Age reached", `${n} · ${name}`],
     ["Final score", score().toLocaleString()],
   ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  $("#victory").hidden = false; Sound.play(grew > 0 ? "victory" : "lost");
+  $("#victory").hidden = false; Sound.play(grew > 0 ? "victory" : "lost"); saveGame();
 }
 
 function battlePlan() {
@@ -1759,6 +1968,9 @@ $("#cfast").addEventListener("click", () => Clock.fast());
 $("#sound").addEventListener("click", () => { $("#sound").textContent = Sound.toggle() ? "🔊" : "🔇"; });
 $("#exit").addEventListener("click", toSite);
 $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
+$("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
+$("#share-btn").addEventListener("click", openShare);
+$$("[data-tour]").forEach((b) => b.addEventListener("click", runTour));
 $("#v-again").addEventListener("click", () => { $("#victory").hidden = true; startGame(G.c, G.player); });
 $("#v-site").addEventListener("click", () => { $("#victory").hidden = true; toSite(); });
 $("#v-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Battle plan copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } });
@@ -2164,4 +2376,5 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
 })(performance.now());
 // a shareable link: ?play=Name opens the game as that person
 const autoplay = new URLSearchParams(location.search).get("play");
-if (autoplay) openWho(autoplay);
+if (new URLSearchParams(location.search).has("tour")) setTimeout(runTour, 800);
+else if (autoplay) openWho(autoplay);

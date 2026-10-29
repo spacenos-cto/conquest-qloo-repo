@@ -974,6 +974,14 @@ em{font-style:italic}
 .move.real.done span{color:#9a9ba0;text-decoration:line-through}
 #real-n{font-family:var(--mono);font-weight:500;color:#7dffb5}
 @media (max-width:1180px){.rivalstrip{top:80px}.rv{width:46px;height:46px}.scoreboard{display:none}.council{top:62px;width:min(280px,58%);max-height:124px}}
+/* ===== jury tour ===== */
+#tourbar{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:90;width:min(760px,calc(100vw - 24px));display:grid;grid-template-columns:1fr auto;gap:2px 14px;align-items:center;padding:12px 16px 12px 20px;border-radius:12px;background:rgba(14,12,20,.94);border:1px solid rgba(225,189,255,.5);box-shadow:0 0 40px rgba(175,80,255,.3);backdrop-filter:blur(8px)}
+#tourbar.ingame{bottom:236px}
+#tourbar[hidden]{display:none}
+.tb-k{grid-column:1;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:#e1bdff}
+.tb-t{grid-column:1;font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.2}
+#tb-x{grid-column:2;grid-row:1/3;background:transparent;border:1px solid rgba(247,249,250,.3);border-radius:8px;color:#fff;padding:8px 12px;font-size:12.5px}
+@media (max-width:1180px){#tourbar.ingame{bottom:240px}.tb-t{font-size:18px}}
 </style>
 </head>
 <body>
@@ -994,7 +1002,7 @@ em{font-style:italic}
       <div class="hleft">
         <h1 class="mix"><span class="l">Your</span> <em>next</em><br><b>audience is</b><br><b>a map.</b><br><em class="ghosty">go conquer it</em></h1>
         <p class="hsub">The growth agent for comedians, creators and performers. Played like a strategy game.</p>
-        <button class="playbtn" data-play><span>See it in 90s</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
+        <button class="playbtn" data-tour><span>Watch the 2-min tour</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
       </div>
       <div class="pass" aria-label="Campaign pass">
         <div class="ptop"><svg class="ic" viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg> Campaign Pass</div>
@@ -1003,7 +1011,7 @@ em{font-style:italic}
         <h3>Free instant campaign</h3>
         <button class="pill2" data-as="Jason Calacanis">Play as Jason Calacanis</button>
         <button class="pill2" data-as="Cedric the Entertainer">Play as Cedric the Entertainer</button>
-        <button class="lnk2" data-play>or type your own name →</button>
+        <button class="lnk2" data-play>or type your own name →</button> <button class="lnk2" data-tour>· watch the jury tour</button>
         <i class="barcode" aria-hidden="true"></i>
       </div>
     </div>
@@ -1132,6 +1140,7 @@ em{font-style:italic}
     <div class="mini" id="mini"></div>
     <div class="hudr">
       <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">Real moves</span> <b id="real-n"></b></button>
+      <button class="icobtn" id="share-btn" title="Share your campaign card">⭐ <span class="lbl">Share</span></button>
       <button class="icobtn" id="help" title="Replay the guided first turn">?</button>
       <button class="icobtn" id="sound" title="Sound on or off">🔊</button>
       <button class="icobtn" id="exit" title="Back to the site">Exit</button>
@@ -1168,7 +1177,7 @@ em{font-style:italic}
   <div id="mbar" hidden></div>
 </div>
 
-<div class="victory" id="victory" hidden><div class="vbox panel"><span class="banner on" style="position:static;transform:none;opacity:1"><span class="rib" id="v-title">CAMPAIGN COMPLETE</span></span><dl class="stats" id="v-stats"></dl><p class="note" style="margin:0 26px 10px">Gains are projected from the agent's plan; your real growth comes from doing them.</p><button class="go" id="v-copy">Copy battle plan</button><button class="go" id="v-map">Examine map</button><button class="go" id="v-again">Play again</button><button class="go" id="v-site">Back to site</button></div></div>
+<div class="victory" id="victory" hidden><div class="vbox panel"><span class="banner on" style="position:static;transform:none;opacity:1"><span class="rib" id="v-title">CAMPAIGN COMPLETE</span></span><dl class="stats" id="v-stats"></dl><p class="note" style="margin:0 26px 10px">Gains are projected from the agent's plan; your real growth comes from doing them.</p><button class="go" id="v-share">Share card</button><button class="go" id="v-copy">Copy battle plan</button><button class="go" id="v-map">Examine map</button><button class="go" id="v-again">Play again</button><button class="go" id="v-site">Back to site</button></div></div>
 
 <div class="modal gm" id="parley" hidden role="dialog" aria-modal="true"><div class="sheet panel" id="parley-body"></div></div>
 <div class="modal gm" id="battle" hidden role="dialog" aria-modal="true"><div class="sheet panel" id="battle-body"></div></div>
@@ -1178,6 +1187,6 @@ em{font-style:italic}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=81"></script>
+<script src="app.js?v=91"></script>
 </body>
 </html>

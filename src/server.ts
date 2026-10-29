@@ -72,6 +72,8 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await weather(Number(q.get("lat")), Number(q.get("lon")))));
       case "/api/fame":
         return send(res, 200, JSON.stringify(await fame((q.get("names") ?? "").split("|").filter(Boolean).slice(0, 6))));
+      case "/api/img":
+        return void img(q.get("u") ?? "", res);
       case "/api/trends-check":
         return send(res, 200, JSON.stringify(await trendsCheckReport()));
       default:
@@ -152,6 +154,27 @@ async function fame(names: string[]) {
     }));
     return { status: "ok", source: "Wikipedia pageviews", people: out };
   });
+}
+
+// Same-origin copies of Qloo portraits, so the share card can draw them onto a
+// canvas and still export it (Qloo's image CDN sends no CORS headers).
+const imgCache = new Map<string, { type: string; body: Buffer }>();
+async function img(u: string, res: any) {
+  let url: URL;
+  try { url = new URL(u); } catch { return send(res, 400, "bad url", "text/plain"); }
+  if (url.protocol !== "https:" || url.hostname !== "images.qloo.com") return send(res, 403, "not allowed", "text/plain");
+  let hit = imgCache.get(url.href);
+  if (!hit) {
+    try {
+      const r = await fetch(url.href, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return send(res, 404, "not found", "text/plain");
+      hit = { type: r.headers.get("content-type") ?? "image/jpeg", body: Buffer.from(await r.arrayBuffer()) };
+      if (imgCache.size > 200) imgCache.clear();
+      imgCache.set(url.href, hit);
+    } catch { return send(res, 502, "fetch failed", "text/plain"); }
+  }
+  res.writeHead(200, { "content-type": hit.type, "cache-control": "public, max-age=86400" });
+  res.end(hit.body);
 }
 
 async function serveStatic(pathname: string, res: any) {
