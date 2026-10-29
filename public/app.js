@@ -618,7 +618,7 @@ function cityPanel(ct) {
   $("#cityp").innerHTML = `<div class="ptitle">City report</div><h4>${esc(ct.name)}</h4><div class="who" style="color:${colOf(key)}">${esc(owner)}</div>
     <dl><dt>Your fan signal</dt><dd>${ct.you.toLocaleString()}</dd><dt>Material rating</dt><dd>${ct.mean != null ? ct.mean + "/5" : "—"}</dd><dt>Simulated fans here</dt><dd>${ct.n}</dd>${top && top.count ? `<dt>${esc(top.name)}</dt><dd>${top.count.toLocaleString()}</dd>` : ""}<dt>Worth</dt><dd>${pts(ct)}% conquest</dd><dt>Local time</dt><dd>${Clock.localLabel(ct)}</dd></dl>
     <p>${esc(text)}</p>${G.intel.get(ct.name) ? `<p style="color:#7fd8ff">${esc(G.intel.get(ct.name))}</p>` : ""}${sg ? `<p style="color:#ff8fa5">⚔ Under siege by ${esc(G.fac.get(sg.fid)?.name)}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""} unless you defend.</p>` : ct.contested && key === "you" ? `<p style="color:#ff8fa5">⚔ ${esc(ct.contested)} is close behind you here.</p>` : ""}`;
-  if (G.cid && METROS[ct.name]) $("#cityp").insertAdjacentHTML("beforeend", `<a class="ghostbtn cbrief" href="/brief/${encodeURIComponent(G.cid)}/${encodeURIComponent(ct.name)}" target="_blank" rel="noopener">📄 City Brief ↗</a>`);
+  if (G.cid && METROS[ct.name]) { $("#cityp").insertAdjacentHTML("beforeend", `<button class="ghostbtn cbrief">📄 City Brief</button>`); $("#cityp .cbrief").addEventListener("click", () => openDoc(briefHref(ct.name), `City Brief · ${ct.name}`)); }
   $("#cityp").hidden = false;
 }
 
@@ -926,10 +926,10 @@ function tourHtml() {
     <button class="go" type="submit" id="tf-go">${G.tourBusy ? "Planning…" : p ? "Re-plan" : "Plan my tour"}</button></form>`;
   if (!p) return form + `<p class="note">Scores every city on your map: 40% fans (Qloo), 20% venue crowd fit (Qloo), 15% trends (Google), 15% dry evenings (Open-Meteo), 10% rivals. Then routes it and books Thu–Sat nights.</p>`;
   return form + `<div class="tsum"><b>${p.totals.nights} nights · ${p.totals.fansReachable.toLocaleString()} fans reachable</b><span>${p.totals.miles.toLocaleString()} miles · ${p.totals.driveHours} h driving${p.totals.flights ? ` · ${p.totals.flights} flight${p.totals.flights > 1 ? "s" : ""}` : ""}${p.ai ? ` · order by ${esc(p.ai.model)}` : ""}</span></div>
-    <div class="tacts"><a class="go" href="${p.links.ics}">📅 Add to calendar</a><a class="ghostbtn" href="${p.links.csv}">CSV</a><button class="ghostbtn" id="t-copy">Copy as text</button><button class="ghostbtn" id="t-briefs">📄 Make City Briefs</button><button class="ghostbtn" id="t-share">⭐ Share</button><a class="ghostbtn" href="${p.links.page}" target="_blank" rel="noopener">Open plan page ↗</a></div>
+    <div class="tacts"><a class="go" href="${p.links.ics}">📅 Add to calendar</a><a class="ghostbtn" href="${p.links.csv}">CSV</a><button class="ghostbtn" id="t-copy">Copy as text</button><button class="ghostbtn" id="t-briefs">📄 Make City Briefs</button><button class="ghostbtn" id="t-share">⭐ Share</button><button class="ghostbtn" id="t-page">🗺 Plan page</button></div>
     <div class="tstops">${p.stops.map((st) => `<div class="tstop"><b class="tn">${st.n}</b><div><div class="tl"><b>${esc(st.city)}</b> · ${st.night ? new Date(st.night + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "<i>doesn't fit</i>"} · ${st.drive.mode === "fly" ? "✈ fly" : `🚗 ${st.drive.hours} h`}</div>
       <div class="tv">${esc(st.venue?.name ?? "send a Booker")}${st.backup ? ` <small>(backup: ${esc(st.backup.name)})</small>` : ""} · <b>${st.fit ?? "?"}% fit</b> · ${st.fans.toLocaleString()} fans</div>
-      <div class="tw">${esc(st.why)}</div><div class="tc">confidence: ${st.confidence.level} · ${esc(st.confidence.reason)}</div></div></div>`).join("")}</div>
+      <div class="tw">${esc(st.why)}</div><div class="tc">confidence: ${st.confidence.level} · ${esc(st.confidence.reason)}${G.cid ? ` · <a href="#" data-tbrief="${esc(st.city)}">📄 brief</a>` : ""}</div></div></div>`).join("")}</div>
     <p class="note">${esc(p.method)}</p>`;
 }
 function bindTour() {
@@ -947,12 +947,24 @@ function bindTour() {
   });
   $("#t-copy")?.addEventListener("click", async () => { try { await navigator.clipboard.writeText(await (await fetch(G.tourPlan.links.txt)).text()); toast("Tour copied."); } catch { toast("Couldn't reach the clipboard."); } });
   $("#t-share")?.addEventListener("click", () => openShare({ tour: G.tourPlan }));
+  $("#t-page")?.addEventListener("click", () => openDoc(G.tourPlan.links.page, `Tour plan · ${G.tourPlan.totals.nights} nights`));
+  $$("[data-tbrief]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); openDoc(briefHref(a.dataset.tbrief), `City Brief · ${a.dataset.tbrief}`); }));
   $("#t-briefs")?.addEventListener("click", async (e) => {
     const b = e.currentTarget; b.disabled = true; let n = 0;
     for (const st of G.tourPlan.stops) { b.textContent = `📄 ${st.city}… (${++n}/${G.tourPlan.stops.length})`; await post("/api/brief", { campaignId: G.cid, city: st.city }, 60000); }
-    b.textContent = "📄 Briefs ready"; b.disabled = false; open(`/briefs/${encodeURIComponent(G.cid)}`, "_blank");
+    b.textContent = "📄 Briefs ready"; b.disabled = false; openDoc(`/briefs/${encodeURIComponent(G.cid)}`, "City Briefs");
   });
 }
+// City Briefs and Tour Plans open inside the game, over the map; print from here
+function openDoc(href, title) {
+  const m = $("#docv"), f = $("#dv-frame"), was = G?.modal;
+  $("#dv-title").textContent = title; $("#dv-tab").href = href; f.src = href;
+  m.hidden = false; if (G) G.modal = true; Sound.play("select");
+  const close = () => { m.hidden = true; f.src = "about:blank"; if (G) G.modal = was; $("#dv-x").onclick = m.onclick = null; };
+  $("#dv-x").onclick = close; m.onclick = (e) => { if (e.target === m) close(); };
+  $("#dv-print").onclick = () => { try { f.contentWindow.print(); } catch { open(href, "_blank"); } };
+}
+const briefHref = (city) => `/brief/${encodeURIComponent(G.cid)}/${encodeURIComponent(city)}`;
 // each night of the tour becomes a real move
 function tourMissions(p) {
   G.real = G.real.filter((m) => m.src !== "Tour Planner");
@@ -1908,9 +1920,10 @@ function welcomeBack(s) {
       <div class="wb-hero">${avatar(G.player.image, G.player.name)}<div><small>Welcome back, Commander</small><b>${esc(G.player.name)}</b><span>Age ${an} · ${esc(aname)}${s.over ? ` · finished at ${s.conquest}%` : ""}</span></div></div>
       <div class="br-goal"><div><small>${s.over ? "Final ground" : "Next age"}</small><b>${s.over ? `You took ${s.start}% → ${s.conquest}%` : `Reach ${esc(goal[2])} (${goal[0]}%)`}</b></div><div class="xpbar"><i style="width:${Math.min(100, (s.conquest / goal[0]) * 100)}%"></i></div><span>${s.conquest}% → ${goal[0]}%</span></div>
       <div class="wb-stats">${stat("🏙️", held, "cities held")}${stat("⚡", s.buzz, "buzz")}${stat("🪙", s.gold, "gold")}${stat("🤖", agents, "agents")}${stat("🏆", s.realDone ?? 0, "real moves")}</div>
-      <div class="br-pow">
-        <div class="bp"><span class="bp-i emo">${s.over ? "🏁" : "⏳"}</span><div><small>${s.over ? "LAST CAMPAIGN" : "YOUR CAMPAIGN"}</small><b>${s.over ? "Finished" : "Waiting for orders"}</b><p>${s.over ? "Start a new one: your open missions come with you." : `Your agents held their posts${days >= 6 ? ". A real week has passed: rivals moved too" : ""}.`}</p></div></div>
-        <div class="bp"><span class="bp-i emo">🎁</span><div><small>RETURNING BONUS</small><b>${bonus}</b><p>Play a little every week and your real missions carry over.</p></div></div>
+      <div class="wb-rep"><div class="wb-k">📰 Your war report <span>week ${s.week} · live from Qloo, Google Trends and your map</span></div>
+        <div class="wb-cols"><div class="wb-col"><h4>What changed</h4><ul id="wb-changes"><li class="none wb-load">Reading the map…</li></ul></div>
+        <div class="wb-col"><h4>Your 3 moves</h4><div id="wb-moves" style="display:grid;gap:6px"><span class="wb-load">Asking your strategist…</span></div></div></div>
+        <div class="wb-chips"><span class="wb-chip">${s.over ? "🏁 Finished: start a new one, your open missions come with you" : `⏳ Your agents held their posts${days >= 6 ? " · a real week passed, rivals moved" : ""}`}</span><span class="wb-chip${days >= 0.5 ? " good" : ""}">🎁 ${bonus}</span><span id="wb-tour"></span></div>
       </div>
       <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +⚡1 · +200 score</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Execute orders in the game and each one becomes a real mission for your week.</p>`}</div>
       <div class="wb-act">${s.over ? "" : `<button class="go ibegin" id="wb-go">▶ Continue campaign</button>`}<button class="ghostbtn" id="wb-new">New campaign</button></div>
@@ -1920,7 +1933,35 @@ function welcomeBack(s) {
     const done = (mode) => { $("#intro").hidden = true; G.modal = false; resolve({ mode, ticked: [...ticked], days }); };
     $("#wb-go")?.addEventListener("click", () => done("continue"));
     $("#wb-new").addEventListener("click", () => done("new"));
+    warReport(s, () => done("continue"));
   });
+}
+// The Monday email, as a screen: what changed and the 3 moves, each opening the thing that does it
+async function warReport(s, resume) {
+  const rival = (id) => G.fac.get(id)?.name ?? "A rival";
+  let rep = s.cid ? await fetch(`/api/report?campaign=${encodeURIComponent(s.cid)}`).then((r) => r.ok ? r.json() : null).catch(() => null) : null;
+  if (!rep?.moves) {
+    // offline or never synced: the same rules, from the save itself
+    const changes = [...(s.sieges ?? []).map((x) => `${rival(x.fid)} is besieging ${x.city}: it falls in ${x.left} week${x.left > 1 ? "s" : ""}`), ...(s.intents ?? []).map((x) => `${rival(x.fid)} is moving on ${x.city}, arriving Sunday`)].slice(0, 3);
+    const moves = [...(s.sieges ?? []).map((x) => ({ text: `Defend ${x.city}: post to your fans there this week`, href: "" })), ...(s.orders ?? []).filter((o) => !o.done).map((o) => ({ text: o.title, href: "" })), ...s.real.filter((m) => !m.done).map((m) => ({ text: m.text, href: "" }))].slice(0, 3);
+    rep = { changes, moves, tour: null };
+  }
+  const ch = $("#wb-changes"), mv = $("#wb-moves"); if (!ch || !mv) return;
+  ch.innerHTML = rep.changes.length ? rep.changes.map((c) => `<li>${esc(c)}</li>`).join("") : `<li class="none">Quiet week. Nothing moved against you.</li>`;
+  const act = (h) => /\.ics$/.test(h) ? "📅 calendar" : /^\/brief\//.test(h) ? "📄 brief" : "▶ do it";
+  mv.innerHTML = rep.moves.length ? rep.moves.map((m, i) => /\.ics$/.test(m.href)
+    ? `<a class="wb-move" href="${esc(m.href)}" download><b>${i + 1}</b><span>${esc(m.text)}</span><i>${act(m.href)}</i></a>`
+    : `<button class="wb-move" data-href="${esc(m.href)}"><b>${i + 1}</b><span>${esc(m.text)}</span><i>${act(m.href)}</i></button>`).join("")
+    : `<span class="wb-load">No moves waiting. Continue and give your agents orders.</span>`;
+  $$("#wb-moves button.wb-move").forEach((b) => b.addEventListener("click", () => {
+    const h = b.dataset.href, city = decodeURIComponent((h.match(/^\/brief\/[^/]+\/([^/#]+)/) ?? [])[1] ?? "");
+    if (city) openDoc(h, `City Brief · ${city}`); else resume();
+  }));
+  const t = rep.tour, tb = $("#wb-tour");
+  if (t?.id && tb) {
+    tb.outerHTML = `<button class="wb-chip" id="wb-tour">🗺 Tour: ${t.nights} nights${t.next ? ` · next ${esc(t.next.city)}, ${new Date(t.next.night + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}` : ""}</button>`;
+    $("#wb-tour").addEventListener("click", () => openDoc(`/tour/${t.id}`, `Tour plan · ${t.nights} nights`));
+  }
 }
 function applyReturn(r, s) {
   if (r.mode === "continue") {
@@ -2358,9 +2399,9 @@ function playHook() {
   function run() {
     t.forEach(clearTimeout); t = []; touched = false; el.classList.remove("you", "fans", "touch");
     const art = el.querySelector(".hk-art"); if (art) { art.style.animation = "none"; void art.offsetWidth; art.style.animation = ""; }
-    // three beats and the name: the fans exist, they are waiting, go take them
-    cap.classList.remove("brand");
-    for (const [ms, text] of [[300, "Your fans are already out there."], [2100, "City by city, waiting to be won."], [4300, "Go conquer them."], [5300, "CONQUEST"]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.toggle("brand", text === "CONQUEST"); cap.classList.add("in"); }, ms));
+    // the picture speaks for itself; one line lands on the touch
+    cap.classList.remove("in"); cap.textContent = "";
+    t.push(setTimeout(() => { cap.textContent = "Let's conquer."; cap.classList.add("in"); }, 4300));
     t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400), setTimeout(() => el.classList.add("touch"), 4300), setTimeout(end, 6900));
     const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
     cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);

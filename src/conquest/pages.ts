@@ -25,11 +25,12 @@ ul.moves{list-style:none;padding:0;margin:0}ul.moves li{padding:3px 0}ul.moves l
 .foot{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--mute);font-size:10.5px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin:0 auto 10px;max-width:820px}.bar a,.bar button{font:600 12.5px "Inter Tight",sans-serif;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;cursor:pointer}.bar .p{background:var(--lav);color:#fff;border-color:var(--lav)}
 .conf{font-size:11px;color:var(--mute)}
+.embed a[href*="resume="]{display:none}.embed .page{margin-top:12px}.embed .bar{margin-top:12px}
 @media print{html,body{background:#fff}.page{margin:0;box-shadow:none;border-radius:0;padding:0}.bar{display:none}@page{margin:12mm}}
 `;
 const shell = (title: string, body: string, extraHead = "") => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;600;700&family=Instrument+Serif:ital@0;1&display=swap">
-<style>${BASE_CSS}</style>${extraHead}</head><body>${body}</body></html>`;
+<style>${BASE_CSS}</style><script>if(window.top!==window)document.documentElement.classList.add("embed")</script>${extraHead}</head><body>${body}</body></html>`;
 
 export function briefHtml(b: Brief, links: { index?: string; game?: string } = {}): string {
   const none = `<p class="none">${e(NO_SIGNAL)}</p>`;

@@ -54,7 +54,7 @@ export function makeRoutes(d: Deps, send: Send) {
 
   async function brief(cid: string, city: string, req: any, fresh = false) {
     const snap = db.getCampaign(cid); if (!snap) throw new Error("unknown campaign: open it in the game once so it syncs");
-    const key = `${cid}|${city}|${snap.week ?? 1}|${week()}`;
+    const key = `v2|${cid}|${city}|${snap.week ?? 1}|${week()}`; // bump v when the brief's sources change
     const hit = !fresh && db.getBrief(key); if (hit) return hit;
     const b = await buildBrief({ ...d, write: aiMode() === "claude" ? aiWrite : undefined }, { name: snap.name, ids: snap.q?.ids, city, snapshot: snap });
     db.saveBrief(key, cid, city, b);
@@ -133,6 +133,15 @@ export function makeRoutes(d: Deps, send: Send) {
       }
       if (req.method === "POST" && p === "/api/mail/subscribe") { const b = SubReq.parse(await body(req)); const s = db.subscribe(b.campaignId, b.email, b.firstName, b.tz || "America/Los_Angeles"); json(res, 200, { ok: true, tz: s.tz }); return true; }
       if (p === "/mail/unsubscribe") { const ok = db.unsubscribe(url.searchParams.get("t") ?? ""); html(res, `<!doctype html><meta charset="utf-8"><body style="font:16px system-ui;padding:40px">${ok ? "You're unsubscribed from the Monday war report." : "That link has expired or was already used."}</body>`); return true; }
+      // the same war report, for the in-game welcome-back screen (relative links)
+      if (p === "/api/report") {
+        const cid = url.searchParams.get("campaign") ?? "", snap = db.getCampaign(cid); if (!snap) { json(res, 404, { error: "unknown campaign" }); return true; }
+        const tour = db.latestTour(cid), today = new Date().toISOString().slice(0, 10);
+        const next = tour?.stops?.find((s: any) => s.night && s.night >= today);
+        json(res, 200, { status: "ok", changes: await changesFor(d, snap, db.campaignWeek(cid, (snap.week ?? 1) - 1)), moves: movesFor(snap, tour, "", cid),
+          tour: tour ? { id: tour.id, nights: tour.totals?.nights, next: next ? { city: next.city, night: next.night, venue: next.venue?.name ?? null } : null } : null, subscribed: !!db.getSub(cid) && !db.getSub(cid)!.unsub });
+        return true;
+      }
       if (p === "/api/mail/preview") {
         const cid = url.searchParams.get("campaign") ?? db.listCampaigns()[0]?.id; if (!cid) { json(res, 404, { error: "no campaigns yet" }); return true; }
         const { mail } = await mailFor(cid, baseOf(req));
