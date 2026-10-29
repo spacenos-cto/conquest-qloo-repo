@@ -10,7 +10,7 @@
     "rehearse": "tsx src/cli.ts rehearse",
     "ablation": "tsx src/cli.ts ablation",
     "backtest": "tsx src/cli.ts backtest",
-    "serve": "tsx src/server.ts",
+    "serve": "node --env-file-if-exists=.env --import tsx src/server.ts",
     "mcp": "tsx src/mcp.ts",
     "probe": "tsx src/probe.ts",
     "resolve": "tsx src/cli.ts resolve",
