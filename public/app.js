@@ -1991,7 +1991,7 @@ async function runTour() {
 // the brain model, and says what would happen and what to change. It checks
 // itself against the videos' real view counts. Instagram, TikTok and X need
 // your account connected, so they're honest "connect" slots.
-const YT_DEFAULT = { "jason calacanis": "@allin" };
+const YT_DEFAULT = { "jason calacanis": "@allin", "los angeles dodgers": "@Dodgers" };
 // find the creator's channel automatically (Qloo socials first, then a channel search by name)
 async function ensureChannel() {
   if (G.xrayHandle || G.ytFound) return;
