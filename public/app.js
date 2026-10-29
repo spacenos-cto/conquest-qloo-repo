@@ -2225,8 +2225,10 @@ function playHook() {
   function run() {
     t.forEach(clearTimeout); t = []; touched = false; el.classList.remove("you", "fans", "touch");
     const art = el.querySelector(".hk-art"); if (art) { art.style.animation = "none"; void art.offsetWidth; art.style.animation = ""; }
-    for (const [ms, text] of [[300, "POV: you and the fans who would love you"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
-    t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400), setTimeout(() => el.classList.add("touch"), 4300), setTimeout(end, 6400));
+    // three beats and the name: the fans exist, they are waiting, go take them
+    cap.classList.remove("brand");
+    for (const [ms, text] of [[300, "Your fans are already out there."], [2100, "City by city, waiting to be won."], [4300, "Go conquer them."], [5300, "CONQUEST"]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.toggle("brand", text === "CONQUEST"); cap.classList.add("in"); }, ms));
+    t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400), setTimeout(() => el.classList.add("touch"), 4300), setTimeout(end, 6900));
     const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
     cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);
   }

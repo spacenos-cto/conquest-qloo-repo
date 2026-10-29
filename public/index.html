@@ -1433,12 +1433,13 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 #game .mini.statsp span{display:grid!important}
 .goalbar em{display:block;font-style:normal;font-size:11px;color:var(--ash);margin-top:6px}
 .dym{margin:0 0 10px;font-size:15px;color:var(--mist)}.dym b{color:#e1bdff;font-weight:600}
+#hook .hk-cap.brand{font-family:var(--sans);font-style:normal;font-weight:800;letter-spacing:.28em;font-size:clamp(30px,4.4vw,60px);background:rgba(28,21,48,.88);color:#fff;padding:12px 30px 12px 40px;box-shadow:0 0 40px rgba(175,80,255,.55)}
 </style>
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
 <div id="hook" hidden style="--tx:43%;--ty:44%">
-  <div class="hk-art" aria-hidden="true"><img src="img/hook.jpg" alt="" onerror="this.closest('#hook').classList.add('noart')"><span class="hk-tag you" style="left:15%;top:31%">You <span class="emo">🎤</span></span><span class="hk-tag fans" style="left:76%;top:74%">Fans who would love you <span class="emo">📱</span></span><span class="hk-zap"></span></div>
+  <div class="hk-art" aria-hidden="true"><img src="img/hook.jpg" alt="" onerror="this.closest('#hook').classList.add('noart')"><span class="hk-tag you" style="left:15%;top:31%">You <span class="emo">🎤</span></span><span class="hk-tag fans" style="left:76%;top:74%">Your crowd <span class="emo">👑</span></span><span class="hk-zap"></span></div>
   <div class="hk-cap" id="hook-cap"></div><div class="hk-stage" aria-hidden="true"><span class="hk-l emo">👉</span><span class="hk-spark"></span><span class="hk-r emo">👈</span></div><div class="hk-skip">tap for sound · tap again to skip</div><button class="hk-snd" id="hook-snd" hidden><span class="emo">🔊</span> Tap anywhere for sound</button></div>
 
 <!-- ======================= SITE ======================= -->
@@ -1706,6 +1707,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=231"></script>
+<script src="app.js?v=232"></script>
 </body>
 </html>
