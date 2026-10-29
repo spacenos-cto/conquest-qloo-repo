@@ -116,18 +116,27 @@ export async function liveCall(
         // one heatmap call per metro; weight = audience footprint (point count),
         // normalised to 0..1. mean affinity is rank-normalised and doesn't
         // discriminate, but how many cells light up does.
+        // run the per-metro heatmap calls concurrently (in bounded batches, to
+        // stay friendly with rate limits) so the first load is seconds, not ~30s
         const counts: { name: string; n: number }[] = [];
-        for (const m of METROS) {
-          try {
-            const d = await insights({
-              "filter.type": "urn:heatmap",
-              "filter.location.query": m,
-              "signal.interests.entities": params.entity,
-            });
-            counts.push({ name: m, n: (d.results?.heatmap ?? []).length });
-          } catch {
-            /* skip a metro that errors */
-          }
+        const BATCH = 8;
+        for (let i = 0; i < METROS.length; i += BATCH) {
+          const slice = METROS.slice(i, i + BATCH);
+          const got = await Promise.all(
+            slice.map(async (m) => {
+              try {
+                const d = await insights({
+                  "filter.type": "urn:heatmap",
+                  "filter.location.query": m,
+                  "signal.interests.entities": params.entity,
+                });
+                return { name: m, n: (d.results?.heatmap ?? []).length };
+              } catch {
+                return { name: m, n: 0 };
+              }
+            }),
+          );
+          counts.push(...got);
         }
         const max = Math.max(1, ...counts.map((c) => c.n));
         return ok(counts.filter((c) => c.n > 0).map((c) => ({ name: c.name, affinity: c.n / max })));
