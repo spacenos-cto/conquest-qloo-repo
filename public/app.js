@@ -960,31 +960,72 @@ function oddsFor(ct, f) {
   if (mo) mods.push(`their fame ${mo >= 0 ? "▲" : "▼"}${Math.abs(mo)}%`);
   return { me: Math.round(me), them: Math.round(them), p: Math.max(0.15, Math.min(0.9, me / (me + them) + 0.08)), mods };
 }
+// A battle is a head-to-head night in that city, decided in five rounds.
+// Four rounds come straight from data (Qloo fan counts, your panel rating
+// there, Wikipedia momentum, your agents' groundwork); the last is the live
+// crowd on the night, the only luck in it. The fans in the middle switch
+// sides round by round, so you can see how you won (or why you didn't).
+function battleRounds(city, f, o) {
+  const theirs = Math.max(1, city.rivals?.find((r) => r.id === f.id)?.count ?? 0), mo = G.fame.get(f.name)?.momentum ?? 0, myMo = G.fame.get(G.player.name)?.momentum ?? 0;
+  const c01 = (x) => Math.max(0.08, Math.min(0.92, x));
+  const ratio = city.you / theirs, prep = G.prep.has(city.name), walls = G.forts.has(city.name), intel = (G.intel.get(city.name) ?? []).length > 0;
+  const mean = city.mean ?? G.morale, first = f.name.split(" ").pop();
+  return [
+    { k: "Fan base", src: "Qloo", w: 0.35, s: c01(city.you / (city.you + theirs)),
+      say: ratio >= 1.2 ? `Your ${kfmt(city.you)} fans in ${city.name} outnumber ${first}'s ${kfmt(theirs)}, ${ratio >= 2 ? Math.round(ratio) + " to 1" : "and it shows"}.` : ratio <= 0.8 ? `${first} brings ${kfmt(theirs)} fans to your ${kfmt(city.you)}. Outnumbered.` : `Dead even: ${kfmt(city.you)} fans against ${kfmt(theirs)}.` },
+    { k: "The material", src: "1,000-fan panel", w: 0.25, s: c01(0.5 + (mean - 3.4) / 2.4),
+      say: mean >= 3.8 ? `Your material rates ${(+mean).toFixed(1)}/5 here. The room is laughing.` : mean >= 3.3 ? `Your material rates ${(+mean).toFixed(1)}/5 here. Solid, not a knockout.` : `Only ${(+mean).toFixed(1)}/5 here. The jokes aren't landing in ${city.name}.` },
+    { k: "Momentum", src: "Wikipedia", w: 0.15, s: c01(0.5 + (myMo - mo) / 200),
+      say: mo < -10 ? `Searches for ${first} are down ${Math.abs(mo)}% this month. Their crowd is drifting.` : mo > 10 ? `${first} is up ${mo}% in searches. Their buzz is real.` : `Neither of you is trending this month.` },
+    { k: "Groundwork", src: "Your agents", w: 0.25, s: c01(0.4 + (prep ? 0.18 : 0) + (walls ? 0.18 : 0) + (intel ? 0.1 : 0)),
+      say: prep || walls || intel ? [prep && "your agents prepared the room", walls && "your walls held the line", intel && "your intel found the soft spots"].filter(Boolean).join(", ").replace(/^./, (x) => x.toUpperCase()) + "." : `You walked in cold: no agent prepared ${city.name}.` },
+  ];
+}
 function battle({ city, f, cost, title }) {
   return new Promise((resolve) => {
-    const o = oddsFor(city, f), box = $("#battle-body"); G.modal = true;
-    box.innerHTML = `<div class="ptitle">Battle</div><h2>${esc(title)}</h2><p class="sub2">Your crowd vs ${esc(f.name)}'s crowd in ${esc(city.name)}</p>
-      <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span>power ${kfmt(o.me)}</span></div><div class="vsx">VS</div><div class="side" style="--c:${f.col}">${avatar(f.img, f.name)}<b>${esc(f.name)}</b><span>power ${kfmt(o.them)}</span></div></div>
-      <div class="tug" style="--rc:${f.col}"><i id="tug" style="width:${o.p * 100}%"></i></div>
-      <div class="odds">Odds of winning: <b>${Math.round(o.p * 100)}%</b>${o.mods.length ? ` · ${esc(o.mods.join(" · "))}` : ""}</div>
-      <div class="verdict" id="verdict"></div>
-      <div class="row2" id="brow"><button class="go" id="charge" ${G.buzz >= cost ? "" : "disabled"}>⚔ Charge · ⚡${cost}</button><button class="ghostbtn" id="retreat" style="margin-top:4px">Retreat</button></div>
-      <p class="note" style="text-align:center;margin:10px 18px 0">Raise your odds first: send a Scout or Booker to ${esc(city.name)}, or fortify it.</p>`;
+    const o = oddsFor(city, f), box = $("#battle-body"), R = battleRounds(city, f, o), FANS = 48; G.modal = true;
+    box.innerHTML = `<div class="ptitle">Battle · ${esc(city.name)}</div><h2>${esc(title)}</h2><p class="sub2">One night, five rounds, your crowd against ${esc(f.name)}'s</p>
+      <div class="vs bt-vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span id="bt-me">0</span></div>
+        <div class="bt-crowd" id="bt-crowd" style="--rc:${f.col}">${Array.from({ length: FANS }, (_, i) => `<i style="--d:${(i % 12) * 30}ms"></i>`).join("")}</div>
+        <div class="side" style="--c:${f.col}">${avatar(f.img, f.name)}<b>${esc(f.name)}</b><span id="bt-them">0</span></div></div>
+      <div class="tug" style="--rc:${f.col}"><i id="tug" style="width:50%"></i></div>
+      <div class="bt-rounds" id="bt-rounds">${R.concat([{ k: "The night", src: "Live crowd" }]).map((r, i) => `<div class="bt-r" id="btr${i}"><b>${i + 1}</b><span><em>${esc(r.k)}</em><small>${esc(r.src)}</small></span><p>${i < 4 ? "" : "Who the room picks on the night"}</p><i class="bt-bar"><u></u></i></div>`).join("")}</div>
+      <div class="odds">Odds before the night: <b>${Math.round(o.p * 100)}%</b></div>
+      <div class="verdict" id="verdict"></div><div class="bt-why" id="bt-why"></div>
+      <div class="row2" id="brow"><button class="go" id="charge" ${G.buzz >= cost ? "" : "disabled"}>⚔ Start the night · ⚡${cost}</button><button class="ghostbtn" id="retreat" style="margin-top:4px">Retreat</button></div>
+      <p class="note" style="text-align:center;margin:10px 18px 0" id="bt-tip">Raise your odds first: send a Scout or Booker to ${esc(city.name)}, or fortify it.</p>`;
     $("#battle").hidden = false; Sound.play("threat");
     const close = (r) => { $("#battle").hidden = true; G.modal = false; resolve(r); };
     $("#retreat").onclick = () => close("cancel");
     $("#charge").onclick = async () => {
-      G.buzz -= cost; hud(); $("#brow").innerHTML = ""; Sound.play("week");
-      const win = G.tour || Math.random() < o.p, t0 = performance.now(), tug = $("#tug");
-      await new Promise((done) => { const step = (now) => { const k = (now - t0) / 2200; if (k >= 1) return done(); tug.style.width = `${Math.max(3, Math.min(97, o.p * 100 + Math.sin(k * 26) * 30 * (1 - k) + (win ? 1 : -1) * k * 40))}%`; requestAnimationFrame(step); }; requestAnimationFrame(step); });
-      tug.style.width = win ? "100%" : "0%";
+      G.buzz -= cost; hud(); $("#brow").innerHTML = ""; $("#bt-tip").hidden = true; Sound.play("week");
+      const win = G.tour || Math.random() < o.p;
+      // the last round is the luck: it lands wherever it must for the night's result
+      const base = R.reduce((t, r) => t + r.s * r.w, 0);
+      const night = win ? Math.max(0.56, Math.min(0.92, base + 0.15)) : Math.min(0.44, Math.max(0.08, base - 0.15));
+      const rounds = R.concat([{ k: "The night", s: night, say: win ? `The room goes your way. ${city.name} is chanting your name.` : `${f.name.split(" ").pop()} kills on the night. The room turns.` }]);
+      const dots = [...$$("#bt-crowd i")], tug = $("#tug"); let won = 0, lost = 0, share = 0.5;
+      for (let i = 0; i < rounds.length; i++) {
+        const r = rounds[i], el = $("#btr" + i); el.classList.add("on");
+        el.querySelector("p").textContent = r.say; el.querySelector("u").style.width = Math.round(r.s * 100) + "%";
+        share = i < 4 ? (share * i + r.s) / (i + 1) : win ? Math.max(0.62, share) : Math.min(0.38, share);
+        const mine = Math.round(share * dots.length); dots.forEach((d, j) => d.classList.toggle("me", j < mine));
+        tug.style.width = Math.round(share * 100) + "%";
+        if (r.s >= 0.5) { won++; el.classList.add("w"); Sound.play("tick"); } else { lost++; el.classList.add("l"); Sound.play("nope"); }
+        $("#bt-me").textContent = won; $("#bt-them").textContent = lost;
+        await sleep(1000);
+      }
+      dots.forEach((d) => d.classList.toggle("me", win)); tug.style.width = win ? "100%" : "0%";
       const v = $("#verdict"); v.className = "verdict " + (win ? "win" : "lose"); v.textContent = win ? "VICTORY" : "REPELLED";
+      const best = [...R].sort((x, y) => (win ? y.s - x.s : x.s - y.s))[0];
+      $("#bt-why").innerHTML = win ? `<b>Why you won:</b> ${esc(best.say)} <span>Do it for real this week: play ${esc(city.name)} and post your best clip there.</span>`
+        : `<b>Why they held:</b> ${esc(best.say)} <span>Flip it: send a Scout or Booker to prepare ${esc(city.name)} (+30%), or build walls.</span>`;
       Sound.play(win ? "conquer" : "lost");
       if (win && o.p < 0.5) ach("giant");
       setTimeout(() => say(f, rivalLine(f, win ? "beaten" : "won", { city: city.name })), 1200);
-      if (!win) { event(`⚔ ${f.name} held ${city.name}. Prepare the city and try again.`, "bad"); ops(`<span class="rv">⚔ lost the battle for ${esc(city.name)}</span> · odds were ${Math.round(o.p * 100)}%`); }
-      else ops(`<span class="ok">⚔ won the battle for ${esc(city.name)}</span> · odds were ${Math.round(o.p * 100)}%`);
-      $("#brow").innerHTML = `<button class="go" id="bdone">${win ? "Claim it" : "Fall back"}</button>`;
+      if (!win) { event(`⚔ ${f.name} held ${city.name}. Prepare the city and try again.`, "bad"); ops(`<span class="rv">⚔ lost the battle for ${esc(city.name)}</span> · ${won}–${lost} in rounds · odds were ${Math.round(o.p * 100)}%`); }
+      else ops(`<span class="ok">⚔ won the battle for ${esc(city.name)}</span> · ${won}–${lost} in rounds · odds were ${Math.round(o.p * 100)}%`);
+      $("#brow").innerHTML = `<button class="go" id="bdone">${win ? "Claim " + esc(city.name) : "Fall back"}</button>`;
       $("#bdone").onclick = () => close(win ? "win" : "lose");
     };
   });
@@ -1860,7 +1901,7 @@ async function runTour() {
   if (enemy) {
     G.buzz = Math.max(G.buzz, 4);
     caption(9, N, `Battle ${enemy.name} for ${strikeCity(enemy).name}. Odds come from real numbers: your fans and hype vs their footprint and Wikipedia momentum.`);
-    strike(enemy.id); await until(() => !$("#battle").hidden, 5000); await sleep(2500); $("#charge")?.click(); await until(() => $("#bdone"), 6000); await sleep(1800); $("#bdone")?.click(); await sleep(1500);
+    strike(enemy.id); await until(() => !$("#battle").hidden, 5000); await sleep(2500); $("#charge")?.click(); await until(() => $("#bdone"), 9000); await sleep(1800); $("#bdone")?.click(); await sleep(1500);
   }
   if (!live()) return;
   // a parley
