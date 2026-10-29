@@ -1420,6 +1420,18 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 .pts li b{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e1bdff}
 .pts li span{color:#eef0f3}
 #parley-body .pitch.ai{border-color:rgba(61,255,154,.4)}
+/* stats behind one button */
+.statsw{position:relative}
+#stats-btn{border:1px solid var(--hair);border-radius:10px;padding:7px 12px;background:none;font-variant-numeric:tabular-nums}
+#stats-btn b{font-weight:600}
+#game .mini.statsp{position:fixed;z-index:90;display:grid;grid-template-columns:1fr;gap:0;min-width:210px;padding:6px;border-radius:12px;background:rgba(14,12,20,.98);border:1px solid rgba(225,189,255,.3);box-shadow:0 16px 40px rgba(0,0,0,.6)}
+#game .mini.statsp[hidden]{display:none}
+#game .mini.statsp span{display:grid;grid-template-columns:24px auto 1fr;align-items:center;gap:8px;padding:8px 10px;border:0!important;border-radius:8px}
+#game .mini.statsp span+span{border-top:1px solid var(--hair)!important}
+#game .mini.statsp span b{font-size:15px;font-weight:700}
+#game .mini.statsp span small{text-align:right;font-size:11px;color:var(--ash)}
+#game .mini.statsp span{display:grid!important}
+.goalbar em{display:block;font-style:normal;font-size:11px;color:var(--ash);margin-top:6px}
 </style>
 </head>
 <body>
@@ -1631,7 +1643,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
       <div class="orbw" id="ow-hype" title="Hype: how hard your material hits (1,000-fan panel rating). More hype, more buzz."><div class="orb hype" id="orb-hype"><b></b></div><span>Hype</span></div>
       <div class="orbw" id="ow-gold" title="Gold: ticket sales and sponsors. Pays for agents and walls."><div class="orb gold" id="orb-gold"><b></b></div><span>Gold<em id="rate-gold"></em></span></div>
     </div>
-    <div class="mini" id="mini"></div>
+    <div class="statsw"><button class="icobtn" id="stats-btn" title="Cities held, allies, agents and score">⭐ <b id="stats-score">0</b> <span class="lbl">Stats</span></button><div class="mini statsp" id="mini" hidden></div></div>
     <div class="hudr">
       <div class="hgrp">
       <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">Real moves</span> <b id="real-n"></b></button>
@@ -1649,7 +1661,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
   <div class="stage">
     <div class="mapwrap" id="mapwrap">
       <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
-      <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
+      <div class="clock" id="clock" title="One game week (about 90 seconds) stands for one real week of your career. Spend buzz on moves during the week; at Sunday midnight rivals attack and gold comes in."><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
       <div class="goalbar" id="goalbar"></div>
       <div class="events" id="events" aria-live="polite"></div>
       <aside class="council frame" id="council">
@@ -1693,6 +1705,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=210"></script>
+<script src="app.js?v=223"></script>
 </body>
 </html>

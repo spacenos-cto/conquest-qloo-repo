@@ -776,7 +776,8 @@ let saveT = 0;
 function goalBar(nx) {
   const el = $("#goalbar"); if (!el) return;
   const target = nx ?? AGES.at(-1), pct = Math.min(100, (G.conquest / target[0]) * 100);
-  el.innerHTML = `<b>Win your real fans, city by city</b><span>${held()} of ${ground()} cities · ${G.conquest}% of your fans won · next: ${esc(target[2])} at ${target[0]}%</span><i><u style="width:${pct}%"></u></i>`;
+  // the objective, in plain words: win enough of your fans' cities before the last week
+  el.innerHTML = `<b>Goal: win ${target[0]}% of your fans by week ${WEEKS}</b><span>You have ${G.conquest}% (${held()} of ${ground()} cities) · week ${G.week} of ${WEEKS}</span><i><u style="width:${pct}%"></u></i><em>Each week: spend ⚡ on moves → Sunday: rivals attack, gold comes in</em>`;
 }
 function hud(delta) {
   clearTimeout(saveT); saveT = setTimeout(saveGame, 800); renderAdvice();
@@ -789,7 +790,8 @@ function hud(delta) {
   orb("#orb-hype", (G.morale - 1) / 4, G.morale.toFixed(1));
   orb("#orb-gold", Math.min(1, G.gold / 800), `${G.gold}`); $("#rate-gold").textContent = `+${income()}/wk`;
   $("#mini").innerHTML = [["🏰", `${held()}/${ground()}`, "Cities held"], ["🤝", G.allies, "Allies"], ["🤖", [...G.crew.values()].filter((c) => c.recruited).length, "Agents"], ["⭐", score().toLocaleString(), "Score"]]
-    .map(([i, v, t]) => `<span title="${t}"><i>${i}</i>${v}</span>`).join("");
+    .map(([i, v, t]) => `<span title="${t}"><i>${i}</i><b>${v}</b><small>${t}</small></span>`).join("");
+  $("#stats-score").textContent = score().toLocaleString();
   $("#weeknote").textContent = `Sunday midnight: +⚡${regen()} buzz, +🪙${income()} gold, then the rivals strike.`;
   factions(); renderThreats(); renderRivalStrip(); hudReal();
 }
@@ -2561,9 +2563,18 @@ $("#cpause").addEventListener("click", () => Clock.toggle());
 $("#cfast").addEventListener("click", () => Clock.fast());
 $("#sound").addEventListener("click", () => { $("#sound").textContent = Sound.toggle() ? "🔊" : "🔇"; });
 $("#exit").addEventListener("click", toSite);
-function setView(full) { document.body.classList.toggle("simple", !full); $("#view-btn").textContent = full ? "Simple view" : "Full view"; try { localStorage.setItem("conquest-view", full ? "full" : "simple"); } catch {} if (G) { renderAgents(); MapView.relayer?.(); } }
-$("#view-btn").addEventListener("click", () => setView(document.body.classList.contains("simple")));
-{ let v = "simple"; try { v = localStorage.getItem("conquest-view") || "simple"; } catch {} setView(v === "full" || new URLSearchParams(location.search).has("tour")); }
+// stats live behind one button, so the top bar stays calm
+$("#stats-btn").addEventListener("click", (e) => {
+  e.stopPropagation(); const p = $("#mini"), r = e.currentTarget.getBoundingClientRect(); p.hidden = !p.hidden;
+  // the top bar blurs its backdrop, which traps fixed children: lift the popover into #game
+  if (p.parentElement !== $("#game")) $("#game").appendChild(p);
+  p.style.top = r.bottom + 8 + "px"; p.style.left = Math.max(8, Math.min(innerWidth - 226, r.left)) + "px";
+});
+addEventListener("click", (e) => { if (!e.target.closest(".statsw, #mini")) $("#mini").hidden = true; });
+function setView(full, remember) { document.body.classList.toggle("simple", !full); $("#view-btn").textContent = full ? "Simple view" : "Full view"; if (remember) try { localStorage.setItem("conquest-view2", full ? "full" : "simple"); } catch {} if (G) { renderAgents(); MapView.relayer?.(); } }
+$("#view-btn").addEventListener("click", () => setView(document.body.classList.contains("simple"), true));
+// full view first; the choice is remembered only once someone switches
+{ let v = "full"; try { v = localStorage.getItem("conquest-view2") || "full"; } catch {} setView(v === "full" || new URLSearchParams(location.search).has("tour")); }
 $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
 $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
 $("#share-btn").addEventListener("click", openShare);
