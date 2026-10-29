@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conquest</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter+Tight:wght@200;300;400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Two worlds. The site is a black void with a constellation brain (one violet
    action, amber labels, huge light type). The game is a war room: a dark
@@ -543,6 +543,266 @@ html,body{background:#0b1018}
   .drawer{top:56px}
   .coach{bottom:130px}
 }
+/* ===== midnight terminal theme: void, hairlines, one violet signal ===== */
+:root{--void:#090909;--bone:#f7f9fa;--mist:#c9ccd1;--ash:#828384;--steel:#828384;--hair:rgba(247,249,250,.12);--hair2:rgba(247,249,250,.22);
+  --iris:#af50ff;--iris-hi:#c27aff;--lav:#e1bdff;--you:#af50ff;--saffron:#e1bdff;--bronze:rgba(247,249,250,.22);--bronze-hi:#e1bdff;
+  --serif:"Instrument Serif",Georgia,serif;--game:"Instrument Serif",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+html,body{background:#090909}
+.label{font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.2em;color:var(--steel)}
+em{font-style:italic}
+.wrap2{max-width:1200px;margin:0 auto;padding:0 max(24px,4vw);position:relative}
+.center{text-align:center}
+/* nav: frosted bar */
+.nav2{position:fixed;top:0;left:0;right:0;z-index:30;background:rgba(32,30,44,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(247,249,250,.12)}
+.navin{display:flex;align-items:center;gap:24px;height:58px;padding:0 24px}
+.brand2{text-decoration:none;color:var(--bone);font-size:17px;letter-spacing:.02em;padding-right:24px;border-right:1px solid rgba(247,249,250,.14);height:58px;display:flex;align-items:center}
+.brand2 b{font-weight:700}.brand2 span{font-weight:300}
+.links2{display:flex;gap:28px;margin:0 auto}
+.links2 a{color:#d6d8dc;text-decoration:none;font-size:12px;letter-spacing:.07em;text-transform:uppercase}
+.links2 a:hover{color:#fff}
+.navcta{display:flex;gap:10px}
+.btn-dark{background:rgba(247,249,250,.1);border:0;border-radius:8px;color:var(--bone);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px}
+.btn-line{background:transparent;border:1px solid rgba(247,249,250,.8);border-radius:8px;color:var(--bone);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:9px 16px}
+.btn-line:hover,.btn-dark:hover{background:rgba(247,249,250,.16)}
+@media (max-width:900px){.links2{display:none}.brand2{border:0}.navcta{margin-left:auto}}
+/* hero: twilight sky */
+.sky{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden;padding:110px 0 100px}
+.skybg{position:absolute;inset:0;background:linear-gradient(180deg,#0b1240 0%,#232a86 26%,#4a3cae 48%,#8e5cc6 66%,#d68fc9 82%,#f4bccb 94%,#ffd6c9 100%)}
+.skybg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,9,9,0) 70%,#090909 100%)}
+#stars{position:absolute;inset:0;width:100%;height:60%}
+.cl{position:absolute;border-radius:50%;filter:blur(38px);animation:drift 38s ease-in-out infinite alternate}
+.cl.c1{left:-12%;bottom:-6%;width:62%;height:46%;background:radial-gradient(closest-side,rgba(250,205,230,.95),rgba(250,205,230,0))}
+.cl.c2{right:-10%;bottom:2%;width:58%;height:54%;background:radial-gradient(closest-side,rgba(214,150,232,.9),rgba(214,150,232,0));animation-duration:46s}
+.cl.c3{left:22%;bottom:12%;width:44%;height:26%;background:radial-gradient(closest-side,rgba(255,220,214,.8),rgba(255,220,214,0));animation-duration:52s}
+.cl.c4{right:6%;top:12%;width:36%;height:34%;background:radial-gradient(closest-side,rgba(150,110,255,.55),rgba(150,110,255,0))}
+.cl.c5{left:-4%;top:18%;width:34%;height:30%;background:radial-gradient(closest-side,rgba(110,90,230,.5),rgba(110,90,230,0));animation-duration:60s}
+@keyframes drift{to{transform:translate(4%,-3%) scale(1.06)}}
+.streak{position:absolute;left:-30%;top:58%;display:flex;align-items:center;animation:fly 11s linear infinite}
+.streak::before{content:"";width:280px;height:2px;margin-right:4px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.9));filter:blur(.5px)}
+.streak svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px #fff)}
+@keyframes fly{to{left:115%}}
+.skyin{position:relative;z-index:2;width:100%;max-width:1320px;margin:0 auto;padding:0 max(24px,4vw);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:48px;align-items:center}
+@media (max-width:980px){.skyin{grid-template-columns:1fr}}
+.mix{font-size:clamp(54px,7.2vw,108px);line-height:.9;letter-spacing:-.045em;font-weight:700;margin:0;text-shadow:0 2px 30px rgba(20,10,60,.25)}
+.mix .l{font-weight:300}
+.mix em,.mix2 em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.01em}
+.mix em{font-size:1.08em}
+.mix b{font-weight:700}
+.mix .ghosty{color:rgba(255,255,255,.5);font-size:.92em}
+.hsub{font-size:22px;font-weight:500;line-height:1.3;max-width:440px;margin:22px 0 0;letter-spacing:-.01em}
+.playbtn{display:inline-flex;align-items:center;gap:16px;margin-top:28px;background:none;border:0;color:var(--bone);font-size:24px;font-weight:400;letter-spacing:-.01em;padding:0}
+.playbtn i{width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.8);display:grid;place-items:center;background:rgba(255,255,255,.06);transition:transform .3s}
+.playbtn i svg{width:22px;height:22px;fill:#af50ff}
+.playbtn:hover i{transform:scale(1.08);background:rgba(175,80,255,.25)}
+.center-b{display:flex;margin:30px auto 0}
+.pass{position:relative;padding:26px 84px 26px 28px;border-radius:19px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-left-style:dashed}
+.ptop{display:flex;align-items:center;gap:8px;font-size:18px;opacity:.8}
+.ptop .ic{width:18px;height:18px}
+.route{display:flex;align-items:flex-end;gap:16px;margin-top:16px;opacity:.85}
+.route small,.pmid small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;opacity:.7}
+.route b{font-size:22px;font-weight:500;letter-spacing:.02em}
+.route span{font-size:20px;padding-bottom:2px}
+.pmid{display:flex;gap:22px;margin-top:14px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.3)}
+.pmid b{font-size:18px;font-weight:500}
+.pass h3{font-size:34px;font-weight:400;letter-spacing:-.02em;margin:26px 0 14px}
+.pill2{display:block;width:100%;margin-top:10px;padding:15px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.7);background:rgba(237,195,196,.06);color:#fff;font-size:15.5px;transition:background .2s}
+.pill2:hover{background:rgba(255,255,255,.16)}
+.lnk2{margin-top:12px;background:none;border:0;color:rgba(255,255,255,.8);font-size:13.5px;padding:4px 0}
+.barcode{position:absolute;right:20px;top:26px;bottom:26px;width:42px;opacity:.75;background:repeating-linear-gradient(180deg,#fff 0 3px,transparent 3px 5px,#fff 5px 6px,transparent 6px 10px,#fff 10px 14px,transparent 14px 16px)}
+/* story: three eras */
+.story{position:relative;background:#090909;padding:150px 0 0}
+.mix2{font-size:clamp(40px,5.6vw,80px);line-height:1;letter-spacing:-.045em;font-weight:700;margin:0}
+.tagged{position:relative;display:inline-block;border-bottom:3px dashed rgba(247,249,250,.55);line-height:.95}
+.tagged::before{content:attr(data-tag);position:absolute;left:0;top:-4px;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.15em;color:var(--steel)}
+.stamp-sm{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--steel);margin-top:80px}
+.flightline{position:sticky;top:50vh;height:0;z-index:3;pointer-events:none}
+.fl-line{position:absolute;left:0;top:0;height:1px;width:var(--p,30%);background:rgba(247,249,250,.85)}
+.fl-icon{position:absolute;top:-14px;left:var(--p,30%);transform:translateX(-4px)}
+.fl-icon svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.eras{position:fixed;right:28px;top:44vh;z-index:20;display:grid;gap:18px;font-size:13px;color:#4c4d50;letter-spacing:.04em;opacity:0;transition:opacity .4s}
+.eras.show{opacity:1}
+.eras span.on{color:var(--bone)}
+.era{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden;padding:80px 0}
+.era.now{background:radial-gradient(circle at 74% 52%,rgba(175,80,255,.32),rgba(175,80,255,0) 52%)}
+.ghostnum{position:absolute;left:-1vw;top:50%;transform:translateY(-50%);font-size:24vw;font-weight:700;letter-spacing:-.05em;color:rgba(247,249,250,.035);white-space:nowrap;pointer-events:none}
+.eg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:60px;align-items:center;width:100%}
+@media (max-width:900px){.eg{grid-template-columns:1fr}}
+.eh{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.eh b{font-size:24px;font-weight:400}
+.tagbox{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;padding:7px 12px;border-radius:8px;background:rgba(247,249,250,.08)}
+.era h3.mix2{font-size:clamp(36px,4.6vw,66px)}
+.era p{font-size:20px;font-weight:300;line-height:1.5;color:#d9dce0;max-width:470px;margin-top:40px}
+.ring{position:relative;width:min(380px,80vw);aspect-ratio:1;margin:0 auto;border-radius:50%;border:1px solid rgba(247,249,250,.55);animation:spin 40s linear infinite}
+.ring span{position:absolute;left:50%;top:0;height:50%;transform-origin:0 100%;font-family:var(--sans);font-size:15px;letter-spacing:.08em;color:#e6e7ea;padding-top:16px}
+.ring.sm{position:absolute;inset:-34px;width:auto;margin:0;border-color:rgba(225,189,255,.5);animation-duration:30s}
+.ring.sm span{font-size:12px;padding-top:10px;color:var(--lav)}
+.globe{position:relative;width:min(380px,74vw);aspect-ratio:1;margin:0 auto}
+#globe{width:100%;height:100%;display:block}
+/* product frame */
+.product{position:relative;padding:150px 0 120px;background:#090909}
+.pframe{position:relative;z-index:2;margin:54px auto 0;max-width:1080px;border-radius:14px;overflow:hidden;border:1px solid var(--hair);background:#0c0b11}
+.pchrome{height:34px;display:flex;align-items:center;gap:7px;padding:0 14px;background:linear-gradient(90deg,#2a1150,#6a2fd1 50%,#2a1150)}
+.pchrome i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35)}
+.pchrome span{margin:0 auto;font-family:var(--mono);font-size:11px;padding:3px 40px;border-radius:6px;background:rgba(0,0,0,.25);color:rgba(255,255,255,.8)}
+.pbody{display:grid;grid-template-columns:minmax(0,1fr) 290px;height:470px}
+@media (max-width:860px){.pbody{grid-template-columns:1fr;height:auto}.pmap{height:320px}.pact{display:none}}
+.pmap{position:relative;background:radial-gradient(ellipse at 50% 45%,#17102a,#0a0910 75%)}
+#heromap{position:absolute;inset:0;width:100%;height:100%}
+.plegend{position:absolute;left:14px;bottom:12px;display:flex;gap:12px;font-size:11px;color:var(--mist)}
+.plegend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.pact{border-left:1px solid var(--hair);padding:14px 14px 0;overflow:hidden}
+.pact > b{font-size:18px;font-weight:500}
+#pfeed{display:grid;gap:12px;margin-top:12px}
+#pfeed div{font-size:12.5px;line-height:1.45;animation:evin .4s ease both;border-bottom:1px solid var(--hair);padding-bottom:10px}
+#pfeed small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--steel)}
+#pfeed .tg{display:inline-block;font-size:9.5px;font-family:var(--mono);letter-spacing:.06em;padding:1px 6px;border-radius:4px;background:rgba(175,80,255,.25);color:var(--lav);margin-left:6px}
+.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;border-top:1px solid var(--hair);padding:18px 22px}
+@media (max-width:860px){.pstats{grid-template-columns:1fr 1fr}}
+.pstats small{display:block;font-size:12.5px;color:#d9dce0}
+.pstats b{display:block;font-size:clamp(22px,2.6vw,34px);font-weight:700;letter-spacing:-.03em;margin:2px 0}
+.pstats span{font-size:11.5px;color:var(--steel)}
+.floatcard{position:absolute;z-index:3;display:grid;gap:2px;padding:12px 14px;border-radius:12px;background:rgba(20,19,26,.88);border:1px solid var(--hair2);backdrop-filter:blur(8px);font-size:12.5px;animation:chipf 7s ease-in-out infinite;min-width:200px}
+.floatcard b{font-size:14px;font-weight:600}.floatcard span{color:#d9dce0}.floatcard em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--lav);letter-spacing:.1em}
+.floatcard.f1{left:-2%;top:44%}.floatcard.f2{right:-3%;top:30%;animation-delay:-2s}.floatcard.f3{left:4%;bottom:6%;animation-delay:-4s}
+@media (max-width:1180px){.floatcard{display:none}}
+/* army: stamped heading + rows */
+.army2,.pricing2{padding:120px 0;background:#090909}
+.stamp{font-family:var(--mono);font-size:clamp(30px,6vw,74px);letter-spacing:.2em;line-height:.9;color:#f0f0f0;white-space:nowrap;overflow:hidden}
+.rows{margin-top:56px;border-top:1px solid var(--hair)}
+.arow{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:40px;padding:26px 0;border-bottom:1px solid var(--hair);align-items:start}
+@media (max-width:760px){.arow{grid-template-columns:1fr;gap:10px}}
+.arow h3{display:flex;align-items:center;gap:14px;font-size:28px;font-weight:500;letter-spacing:-.02em;margin:0}
+.arow h3 .ic{width:28px;height:28px;color:var(--lav)}
+.arow p{margin:0;font-size:18px;font-weight:300;color:#d9dce0;line-height:1.5}
+.arow .src{display:block;margin-top:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--steel)}
+.arow .go2{display:inline-flex;align-items:center;gap:10px;margin-top:10px;font-size:15px;color:var(--bone);background:none;border:0;padding:0}
+.arow .go2 i{width:30px;height:30px;border-radius:50%;border:1px solid rgba(175,80,255,.8);display:grid;place-items:center;font-style:normal}
+/* brain + rivals */
+.brainsec,.rivals2{padding:140px 0;background:transparent}
+.lead2{font-size:20px;font-weight:300;line-height:1.5;color:#d9dce0;max-width:500px;margin-top:28px}
+.radarbox{max-width:440px}
+/* why */
+.why2{padding:140px 0 60px;background:#090909;overflow:hidden}
+.bigword{margin-top:30px;text-align:center;font-size:min(22vw,300px);font-weight:700;letter-spacing:-.06em;line-height:.85;background:linear-gradient(180deg,#e1bdff,#af50ff 55%,rgba(175,80,255,0));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 40px rgba(175,80,255,.35))}
+/* compare */
+.compare{padding:120px 0;background:#090909}
+.arrowr{font-weight:300;color:var(--steel)}
+.route4{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:60px}
+@media (max-width:980px){.route4{grid-template-columns:1fr 1fr}}
+.route4::before{content:"";position:absolute;left:0;right:0;top:-20px;height:1px;background:var(--hair2)}
+.cc{position:relative;min-height:300px;padding:32px 26px;border-radius:19px;overflow:hidden;background:radial-gradient(circle at 30% 0%,rgba(80,90,120,.45),rgba(20,20,26,.9) 70%)}
+.cc::before{content:"";position:absolute;left:50%;top:-25px;width:10px;height:10px;border-radius:50%;border:1px solid var(--bone);background:#090909}
+.cc:nth-child(2){background:radial-gradient(circle at 70% 0%,rgba(70,110,220,.45),rgba(20,20,26,.9) 70%)}
+.cc:nth-child(3){background:radial-gradient(circle at 30% 100%,rgba(200,90,140,.35),rgba(20,20,26,.9) 70%)}
+.cc.bloom{background:radial-gradient(circle at 50% 30%,#c27aff,#af50ff 45%,#5a1fa8)}
+.cc .num{position:absolute;right:16px;bottom:-14px;font-size:120px;font-weight:700;letter-spacing:-.06em;color:rgba(255,255,255,.08)}
+.cc small{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:#e6e7ea}
+.cc p{font-size:19px;line-height:1.35;margin:18px 0 26px;font-weight:400}
+.cc a{font-size:14px;color:#fff;cursor:pointer}
+/* pricing */
+.plans2{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:56px}
+@media (max-width:860px){.plans2{grid-template-columns:1fr}}
+.plan2{padding:32px;border-radius:19px;border:1px solid var(--hair)}
+.plan2.bloom{border:0;background:radial-gradient(circle at 50% 0%,#c27aff,#af50ff 40%,#4c1a91)}
+.plan2 small{font-family:var(--mono);letter-spacing:.2em;font-size:11px}
+.price2{font-size:56px;font-weight:700;letter-spacing:-.05em;margin:12px 0}
+.price2 span{font-size:16px;font-weight:300;letter-spacing:0;color:var(--mist)}
+.plan2 ul{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:15px;color:#e6e7ea}
+.plan2 li::before{content:"+ ";color:var(--lav)}
+.endcta{min-height:80vh;padding:120px 0 140px}
+.live2{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 22px;margin-top:60px;font-size:12.5px;color:var(--steel)}
+.live2 span{display:flex;align-items:center;gap:7px}
+.live2 i{width:7px;height:7px;border-radius:50%;background:#7dffb5;box-shadow:0 0 8px #7dffb5;animation:blink 2s infinite}
+.live2 i.stub{background:#4c4d50;box-shadow:none;animation:none}
+/* coordinate footer + live toast */
+.coord{position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;align-items:center;gap:30px;padding:14px 28px;font-size:13.5px;color:#a9abaf;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.coord .plus{font-size:22px;font-weight:200}
+.coords{margin-left:auto;font-family:var(--mono);letter-spacing:.02em}
+.heart{color:#fff;font-size:16px}
+@media (max-width:760px){.coord span:not(.coords):not(.heart){display:none}}
+.livetoast{position:fixed;right:24px;bottom:60px;z-index:26;display:flex;gap:14px;align-items:center;max-width:420px;padding:12px 14px 12px 18px;border-radius:999px;background:rgba(9,9,9,.92);border:1px solid var(--hair2);font-size:13.5px;line-height:1.4;animation:achin .5s var(--ease) both;cursor:pointer}
+.livetoast button{background:none;border:0;color:var(--steel);font-size:18px}
+/* ===== war room re-skin ===== */
+#game{background:#090909}
+.hud{background:rgba(22,20,30,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--hair)}
+.hud .brand{font-family:var(--sans);font-weight:700;letter-spacing:.02em}
+.panel{background:#0e0d12;border:1px solid var(--hair);border-radius:16px;box-shadow:none}
+.panel::before{display:none}
+.ptitle{font-family:var(--mono);font-weight:400;font-size:10.5px;letter-spacing:.2em;color:var(--steel)}
+.xpt b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:21px;letter-spacing:0;color:var(--bone)}
+.xpbar{border:1px solid var(--hair);background:#141218}
+.xpbar i{background:linear-gradient(90deg,#7b2cff,#af50ff,#e1bdff);box-shadow:0 0 14px rgba(175,80,255,.7)}
+.lvl img,.lvl .ph{border-color:#af50ff;box-shadow:0 0 18px rgba(175,80,255,.55);color:#af50ff}
+.lvl b{background:radial-gradient(circle at 40% 35%,#f3e2ff,#c27aff);color:#1a0a2e;font-family:var(--mono);border-color:#090909}
+.orb{border:1px solid var(--hair2)}
+.orb.buzz{--c1:#e9d3ff;--c2:#7b2cff;--glow:rgba(175,80,255,.5)}
+.orb.hype{--c1:#ffc7d3;--c2:#e0365a;--glow:rgba(255,92,122,.4)}
+.orb.gold{--c1:#fff0c2;--c2:#c98a14;--glow:rgba(245,181,68,.4)}
+.orbw span{font-family:var(--mono);letter-spacing:.16em}
+.mini span,.icobtn,.r{background:transparent;border:1px solid var(--hair)}
+.icobtn:hover{border-color:var(--lav)}
+.go{background:#af50ff;border:0;border-radius:8px;font-family:var(--sans);font-weight:600;font-size:14px;letter-spacing:.01em;box-shadow:none}
+.go:hover{background:#c27aff}
+.go:disabled{background:#2a2433}
+.ghostbtn{border:1px solid var(--hair2);border-radius:8px}
+.ghostbtn:hover{border-color:var(--lav)}
+.order,.agent,.threat,.fac,.quest,.potion,.move,.offer{border:1px solid var(--hair);background:rgba(247,249,250,.02);border-radius:10px}
+.order:hover,.order.sel,.offer:hover:not(:disabled){border-color:rgba(225,189,255,.6);background:rgba(175,80,255,.06)}
+.threat.hi{border-color:rgba(255,92,122,.55);background:rgba(255,92,122,.06)}
+.quest{border-color:rgba(125,255,181,.3)}
+.cost{color:var(--lav);border-color:rgba(225,189,255,.4)}
+.seg{background:transparent;border:1px solid var(--hair)}
+.seg button{font-family:var(--mono);letter-spacing:.14em;font-weight:400}
+.seg button.on{background:rgba(175,80,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(175,80,255,.6)}
+.chip{color:var(--lav);background:rgba(175,80,255,.1);border-color:rgba(175,80,255,.4)}
+.agent button,.go2{background:transparent;border:1px solid rgba(225,189,255,.5);color:#fff}
+.agent button:hover:not(:disabled){background:rgba(175,80,255,.2)}
+.agent .ai,.order .oi{background:transparent;border:1px solid var(--hair);color:var(--lav)}
+.clock{background:rgba(9,9,9,.78);border:1px solid var(--hair)}
+.clock small{font-family:var(--mono);letter-spacing:.2em;color:var(--steel)}
+.cdial{border:1px solid var(--hair2);background:conic-gradient(#af50ff var(--k,0%),transparent 0)}
+.mapwrap{border:1px solid var(--hair)}
+.legend{background:rgba(9,9,9,.75);border:1px solid var(--hair)}
+.cityp h4{font-family:var(--serif);font-style:italic;font-weight:400;font-size:26px;letter-spacing:0}
+.cityp .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em}
+.banner .rib,.banner.good .rib{clip-path:none;background:none;border:0;box-shadow:none;padding:0 20px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(34px,4.6vw,64px);letter-spacing:-.01em;color:#fff;text-shadow:0 0 30px rgba(175,80,255,.8),0 2px 16px rgba(0,0,0,.8);text-transform:none}
+.banner:not(.good) .rib{text-shadow:0 0 30px rgba(255,92,122,.8),0 2px 16px rgba(0,0,0,.8)}
+.banner small{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#e6e7ea}
+.pcard h3{font-family:var(--serif);font-style:italic;font-weight:400;font-size:28px;letter-spacing:0;line-height:1.05}
+.pcard .pk{font-family:var(--mono);letter-spacing:.16em}
+.fc b,.dgroup{font-family:var(--mono);font-weight:400;letter-spacing:.2em;color:var(--steel)}
+.fc li span{color:var(--lav)}
+.advisor .face b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:19px;letter-spacing:0}
+.drawer{background:#0b0a0f;border-left:1px solid var(--hair);box-shadow:none}
+.dhead b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:24px;letter-spacing:0;color:#fff}
+.coach{background:#111016;border:1px solid rgba(225,189,255,.55);box-shadow:0 0 40px rgba(175,80,255,.25)}
+.coach p{font-size:16px}
+.spot{box-shadow:0 0 0 2px #af50ff,0 0 44px rgba(175,80,255,.45)!important}
+@keyframes spotp{50%{box-shadow:0 0 0 4px #af50ff,0 0 64px rgba(175,80,255,.6)}}
+.gm .sheet,.vbox{background:#0e0d12;border:1px solid var(--hair)}
+.gm h2{font-family:var(--serif);font-style:italic;font-weight:400;font-size:36px;letter-spacing:0}
+.vsx{font-family:var(--serif);font-style:italic;font-weight:400;font-size:40px;color:#ff5c7a}
+.verdict{font-family:var(--serif);font-style:italic;font-weight:400;font-size:40px;letter-spacing:0}
+.verdict.win{color:#e1bdff;text-shadow:0 0 20px rgba(175,80,255,.7)}
+.tug i{background:linear-gradient(90deg,#7b2cff,#c27aff)}
+.side img,.side .ph{box-shadow:0 0 24px var(--c)}
+.vbox .stats dd{color:var(--lav)}
+.achv{background:#111016;border:1px solid rgba(225,189,255,.5);box-shadow:0 0 30px rgba(175,80,255,.25)}
+.achv b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:17px;color:#fff;letter-spacing:0}
+.opsl .t,.opslog .t{color:#5c5d61}
+.opslog .api{color:var(--lav)}
+.opslog .ic{color:var(--lav)}
+.mbar{background:#111016;border:1px solid var(--hair2)}
+.tabbar{background:#0b0a0f;border-top:1px solid var(--hair)}
+.tabbar button.on{color:var(--lav)}
+.coachdim{background:rgba(9,9,9,.55)}
+.toast{background:rgba(9,9,9,.94);border:1px solid var(--hair2)}
+/* who / scan / modal in the same world */
+.sheet{background:#0e0d12;border:1px solid var(--hair)}
+.pill{background:#af50ff}
+.pill:hover{background:#c27aff}
+.scanbox h2{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(34px,4vw,56px);letter-spacing:0}
+.conquest-btn{background:#af50ff;font-family:var(--sans);font-weight:700;letter-spacing:.14em}
 </style>
 </head>
 <body>
@@ -550,80 +810,112 @@ html,body{background:#0b1018}
 
 <!-- ======================= SITE ======================= -->
 <div id="site">
-  <header class="nav"><div class="wrap">
-    <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 28 V5" stroke="#ffb829" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#8052ff"/></svg>CONQUEST</a>
-    <nav class="links"><a href="#army">Product</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><button class="ghost" id="signin">Sign in</button><button class="pill" data-play>Play Conquest</button></nav>
+  <header class="nav2"><div class="navin">
+    <a class="brand2" href="#top"><b>CONQUEST</b><span>.AGENT</span></a>
+    <nav class="links2"><a href="#story">Why</a><a href="#product">Product</a><a href="#army">Agents</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a></nav>
+    <div class="navcta"><button class="btn-dark" id="signin">Sign in</button><button class="btn-line" data-play>Play now</button></div>
   </div></header>
 
-  <section class="hero2" id="top"><div class="wrap hgrid">
-    <div class="hcopy">
-      <div class="label">The growth agent for comedians, creators and performers</div>
-      <h1>Turn your audience into an empire.</h1>
-      <p class="lead">Conquest is a strategy game where every move is a real growth move. An army of AI agents maps your fans with Qloo, battle-tests your material on 1,000 of them, spies on your rivals and books your next city.</p>
-      <button class="conquest-btn" data-play><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L14 10 M10 6 L18 14 M14 4 L20 10 L18 12 L12 6 Z M4 20 l2 0 0 -2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>CONQUEST</button>
-      <div class="sub">30 seconds to your battle map. No sign-up for the demo.</div>
-      <div class="try">Play as <button data-as="Jason Calacanis">Jason Calacanis</button><button data-as="Cedric the Entertainer">Cedric the Entertainer</button><button data-as="Los Angeles Dodgers">the LA Dodgers</button></div>
+  <!-- hero: twilight sky, campaign pass -->
+  <section class="sky" id="top">
+    <div class="skybg" aria-hidden="true"><canvas id="stars"></canvas><i class="cl c1"></i><i class="cl c2"></i><i class="cl c3"></i><i class="cl c4"></i><i class="cl c5"></i><span class="streak"><svg viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg></span></div>
+    <div class="skyin">
+      <div class="hleft">
+        <h1 class="mix"><span class="l">Your</span> <em>next</em><br><b>audience is</b><br><b>a map.</b><br><em class="ghosty">go conquer it</em></h1>
+        <p class="hsub">The growth agent for comedians, creators and performers. Played like a strategy game.</p>
+        <button class="playbtn" data-play><span>See it in 90s</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
+      </div>
+      <div class="pass" aria-label="Campaign pass">
+        <div class="ptop"><svg class="ic" viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg> Campaign Pass</div>
+        <div class="route"><div><small>ORIGIN</small><b>OPEN MIC</b></div><span>→</span><div><small>DESTINATION</small><b>LEGEND</b></div></div>
+        <div class="pmid"><div><small>AGENTS</small><b>12</b></div><div><small>FANS SIMULATED</small><b>1,000</b></div><div><small>WEEKS</small><b>8</b></div></div>
+        <h3>Free instant campaign</h3>
+        <button class="pill2" data-as="Jason Calacanis">Play as Jason Calacanis</button>
+        <button class="pill2" data-as="Cedric the Entertainer">Play as Cedric the Entertainer</button>
+        <button class="lnk2" data-play>or type your own name →</button>
+        <i class="barcode" aria-hidden="true"></i>
+      </div>
     </div>
-    <div class="hstage" aria-hidden="true">
-      <canvas id="heromap"></canvas>
-      <div class="hchip c1"><b>+13%</b> Memphis conquered</div>
-      <div class="hchip c2"><i></i> Rival marching on Atlanta · Sun</div>
-      <div class="hchip c3">🎟️ Booker: <b>Classic Hitz</b> · 89% crowd fit</div>
-    </div>
-  </div>
-  <div class="wrap"><div class="live">
-    <span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain model (stub)</span><span><i class="stub"></i>X · TikTok · Reddit: connect</span>
-  </div></div></section>
+  </section>
 
-  <section id="army"><div class="wrap">
-    <div class="label">Your army</div>
-    <h2 class="big">An army of agents. Each one does a real job.</h2>
-    <p class="lead" style="max-width:640px">Recruit them with gold, send them to a city, and watch them march across the map, make the call and come back with something you can act on tonight.</p>
-    <div class="army" id="armygrid"></div>
+  <!-- story: three eras of growth -->
+  <section class="story" id="story">
+    <div class="wrap2"><h2 class="mix2">There's a problem with <span class="tagged" data-tag="[GROWTH_TODAY]">growth</span> today.</h2>
+    <div class="stamp-sm">IN_THE_BEGINNING<br>&gt;&gt;</div></div>
+    <div class="flightline" aria-hidden="true"><i class="fl-line"></i><span class="fl-icon"><svg viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg></span></div>
+    <nav class="eras" aria-hidden="true"><span data-era="1">ERA 1</span><span data-era="2">ERA 2</span><span data-era="3">ERA 3</span></nav>
+    <div class="era" data-era="1"><div class="ghostnum">ERA 1</div><div class="wrap2 eg"><div><div class="eh"><b>Era 1</b><span class="tagbox">20 YEARS AGO</span></div><h3 class="mix2">A <em>booker</em> picked your next city.</h3><p>Gut feel, a phone tree and a promoter who owed you a favour. It only worked if you already knew someone in the room.</p></div><div class="ring" data-text="GUESSING THE ROOM · CALLING VENUES · HOPING THEY COME · "></div></div></div>
+    <div class="era" data-era="2"><div class="ghostnum">ERA 2</div><div class="wrap2 eg"><div><div class="eh"><b>Era 2</b><span class="tagbox">10 YEARS AGO</span></div><h3 class="mix2">Growth was <em>re-routed</em> through the algorithm.</h3><p>Post, pray, refresh. Dashboards full of vanity numbers that tell you what happened, never where to go next.</p></div><div class="ring" data-text="POST · PRAY · REFRESH · POST · PRAY · REFRESH · "></div></div></div>
+    <div class="era now" data-era="3"><div class="ghostnum">ERA 3</div><div class="wrap2 eg"><div><div class="eh"><b>Era 3</b><span class="tagbox">CONQUEST</span></div><h3 class="mix2">The strategist is <em>on your side.</em></h3><p><b>No guessing.</b> Agents read your real fans on Qloo's taste graph, test your material on 1,000 of them, watch your rivals, and hand you the next city to take. <em>Every move</em> is a real growth move.</p></div><div class="globe"><canvas id="globe" aria-hidden="true"></canvas></div></div></div>
+  </section>
+
+  <!-- product: experience the campaign -->
+  <section class="product" id="product"><div class="wrap2">
+    <h2 class="center mix2">Experience the <em>campaign</em></h2>
+    <div class="pframe">
+      <div class="pchrome"><i></i><i></i><i></i><span>conquest.agent / war-room</span></div>
+      <div class="pbody">
+        <div class="pmap"><canvas id="heromap"></canvas><div class="plegend"><span><i style="background:#af50ff"></i>You</span><span><i style="background:#ff5c7a"></i>Nemesis</span><span><i style="background:#f5b544"></i>Rival</span><span><i style="background:#e1bdff"></i>Allied</span></div></div>
+        <aside class="pact"><b>Live calls</b><div id="pfeed"></div></aside>
+      </div>
+      <div class="pstats"><div><small>Conquest</small><b id="ps-c">36%</b><span>of your ground held</span></div><div><small>Next city</small><b>Memphis</b><span>rated 4.7/5 by its fans</span></div><div><small>Nemesis</small><b>Anderson</b><span>marching on Atlanta · Sun</span></div><div><small>Live calls</small><b id="ps-n">62</b><span>Qloo · Trends · Wikipedia</span></div></div>
+    </div>
+    <div class="floatcard f1"><b>Booker</b><span>Classic Hitz · 89% crowd fit</span><em>Qloo</em></div>
+    <div class="floatcard f2"><b>Spy</b><span>Rival fame ▲24% this month</span><em>Wikipedia</em></div>
+    <div class="floatcard f3"><b>Weather oracle</b><span>Play Friday · 0% rain</span><em>Open-Meteo</em></div>
   </div></section>
 
-  <section id="rivals"><div class="wrap two">
-    <div><div class="label">Rivals on the radar</div><h2 class="big">See them coming. Fight, fortify or team up.</h2>
-      <p class="lead">The performers your fans also follow are on the map, with their real fame momentum. When one marches on your city, the radar shows it days ahead. Fortify the city, strike first in a battle with real odds, or open a parley and turn them into a co-headliner.</p>
-      <ul class="ticks"><li>Battles weigh your fans and hype against their footprint and momentum</li><li>Parleys show the smallest offer that likely works, and write the pitch</li><li>Timed opportunities from live trends and brands: claim them or lose them</li></ul></div>
+  <!-- army: stamped heading + feature rows -->
+  <section class="army2" id="army"><div class="wrap2">
+    <div class="stamp">Y O U R &nbsp; A R M Y</div>
+    <div class="rows" id="armygrid"></div>
+  </div></section>
+
+  <!-- battle-test with the brain -->
+  <section id="brain" class="brainsec" data-brain="right"><div class="wrap2 eg"><div>
+    <div class="stamp-sm">[BATTLE_TEST]</div>
+    <h2 class="mix2">Know what lands <em>before</em> you post.</h2>
+    <p class="lead2">Play a bit, a caption or a script to 1,000 simulated fans built from real taste data. See the score in every city, and the moment attention drops in the brain. Sharpen it, and the brain lights up.</p>
+  </div><div></div></div></section>
+
+  <!-- rivals radar -->
+  <section class="rivals2" id="rivals"><div class="wrap2 eg">
+    <div><div class="stamp-sm">[RIVALS]</div><h2 class="mix2">See them <em>coming.</em></h2>
+      <p class="lead2">The performers your fans also follow are on the map, with their real fame momentum. When one marches on your city, the radar shows it days ahead. Fortify, strike first, or open a parley and turn them into a co-headliner.</p></div>
     <div class="radarbox"><canvas id="heroradar" aria-hidden="true"></canvas></div>
   </div></section>
 
-  <section id="brain" data-brain="right"><div class="wrap two"><div>
-    <div class="label">Battle-test</div><h2 class="big">Know what lands before you post.</h2>
-    <p class="lead">Play a bit, a caption or a script to 1,000 simulated fans built from real taste data. See the score in every city, and the moment attention drops in the brain. Sharpen it, and the brain lights up.</p>
-  </div><div></div></div></section>
+  <!-- why guess -->
+  <section class="why2"><div class="wrap2"><h2 class="center mix2">Why would you <em>guess</em><br>when you could…</h2>
+    <div class="bigword">CONQUER</div></div></section>
 
-  <section id="how"><div class="wrap">
-    <div class="label">How a week plays</div><h2 class="big">Every turn is a growth move.</h2>
-    <div class="steps4">
-      <div><b>I</b><h3>Scout</h3><p>Agents map your fans, your rivals and the trends in your next city.</p></div>
-      <div><b>II</b><h3>Execute</h3><p>Spend buzz on orders: take a city, sharpen a bit, win a battle, sign an ally.</p></div>
-      <div><b>III</b><h3>Defend</h3><p>Sunday midnight the rivals strike. Walls up, or win it back.</p></div>
-      <div><b>IV</b><h3>Level up</h3><p>Open Mic to Legend. Then copy your battle plan and do it for real.</p></div>
+  <!-- compare: route-connected cards -->
+  <section class="compare" id="compare"><div class="wrap2">
+    <h2 class="mix2">How we compare <span class="arrowr">⟶</span></h2>
+    <div class="route4">
+      <div class="cc"><span class="num">01</span><small>SPREADSHEETS + GUT FEEL</small><p>Where are my fans? Nobody knows.</p><a>vs. a notebook →</a></div>
+      <div class="cc"><span class="num">02</span><small>SOCIAL DASHBOARDS</small><p>What happened, never what to do next.</p><a>vs. analytics →</a></div>
+      <div class="cc"><span class="num">03</span><small>GENERIC AI CHAT</small><p>Confident answers with no data behind them.</p><a>vs. a chatbot →</a></div>
+      <div class="cc bloom"><span class="num">04</span><small>CONQUEST</small><p>Live taste data, a 1,000-fan panel, rivals on radar and agents that act. Every move cites its source.</p><a data-play>Play it →</a></div>
     </div>
   </div></section>
 
-  <section id="why"><div class="wrap">
-    <div class="label">Why it matters</div><h2 class="big">Growth tools are spreadsheets. This one you'll open every day.</h2>
-    <div class="why3">
-      <div><b>50M+</b><p>people earn from an audience. Few know which city to play next, who to collab with, or what to post.</p></div>
-      <div><b>Real data</b><p>Every move cites its source: Qloo's taste graph, a 1,000-fan panel, live trends, fame and weather.</p></div>
-      <div><b>A habit</b><p>A weekly game loop with rivals, opportunities and streaks brings creators back, and every turn ends in a real action.</p></div>
+  <section id="pricing" class="pricing2"><div class="wrap2">
+    <div class="stamp">P R I C I N G</div>
+    <div class="plans2">
+      <div class="plan2"><small>CREATOR</small><div class="price2">$19<span>/mo</span></div><ul><li>Your battle map and radar</li><li>5 agents, 10 battle-tests a month</li><li>Weekly campaign and battle plan</li></ul></div>
+      <div class="plan2 bloom"><small>HEADLINER</small><div class="price2">$49<span>/mo</span></div><ul><li>All 12 agents, unlimited tests</li><li>Rival tracking and alerts</li><li>Sponsor and venue picks per city</li></ul></div>
+      <div class="plan2"><small>MANAGER</small><div class="price2">$149<span>/mo</span></div><ul><li>Up to 10 performers</li><li>Tour planning across a roster</li><li>Your agents as MCP tools</li></ul></div>
     </div>
   </div></section>
 
-  <section id="pricing"><div class="wrap">
-    <div class="label">Pricing</div><h2 class="big">Free while it's a demo.</h2>
-    <div class="plans">
-      <div class="plan"><h3>Creator</h3><div class="price">$19<small>/mo</small></div><ul><li>Your battle map and radar</li><li>5 agents, 10 battle-tests a month</li><li>Weekly campaign and battle plan</li></ul></div>
-      <div class="plan"><h3>Headliner</h3><div class="price">$49<small>/mo</small></div><ul><li>All 11 agents, unlimited tests</li><li>Rival tracking and alerts</li><li>Sponsor and venue picks per city</li></ul></div>
-      <div class="plan"><h3>Manager</h3><div class="price">$149<small>/mo</small></div><ul><li>Up to 10 performers</li><li>Tour planning across a roster</li><li>Your agents as MCP tools</li></ul></div>
-    </div>
-  </div></section>
+  <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your audience is a map.<br><em>Go conquer it.</em></h2><button class="playbtn center-b" data-play><span>Start your campaign</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
+    <div class="live2"><span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain (stub)</span><span><i class="stub"></i>X · TikTok · Reddit: connect</span></div></div></section>
 
-  <section class="endcta" data-brain="center"><div class="wrap"><h2>Your audience is a map.<br>Go conquer it.</h2><button class="conquest-btn" data-play><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L14 10 M10 6 L18 14 M14 4 L20 10 L18 12 L12 6 Z" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>CONQUEST</button></div></section>
+  <footer class="coord" aria-hidden="true"><span class="plus">+</span><span>Play Direct</span><span>Growth Agent</span><span class="coords" id="coords">33.7490° N, 84.3880° W</span><span class="heart">♥</span></footer>
+  <div class="livetoast" id="livetoast" hidden><span id="lt-text"></span><button id="lt-x" aria-label="Close">×</button></div>
 </div>
+
 
 <!-- ======================= WHO ARE YOU ======================= -->
 <div class="modal" id="who" hidden role="dialog" aria-modal="true" aria-labelledby="who-h">
@@ -722,6 +1014,6 @@ html,body{background:#0b1018}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=54"></script>
+<script src="app.js?v=60"></script>
 </body>
 </html>

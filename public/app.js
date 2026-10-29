@@ -65,9 +65,9 @@ const Field = (() => {
   const main = $("#field"); let cv = main, ctx = cv.getContext("2d");
   const small = innerWidth < 760;
   const rnd = mulberry(19);
-  const PAL = [["#ffffff", 0.2], ["#b394ff", 0.15], ["#8052ff", 0.13], ["#ffb829", 0.13], ["#2fd3a5", 0.13], ["#ff5ec4", 0.1], ["#5b8cff", 0.16]];
+  const PAL = [["#f7f9fa", 0.34], ["#e1bdff", 0.24], ["#af50ff", 0.2], ["#7b2cff", 0.12], ["#ff8fb0", 0.1]];
   const pick = () => { const r = rnd(); let a = 0; for (const [c, w] of PAL) { a += w; if (r < a) return c; } return "#ffffff"; };
-  const RIM = "#ffc93c";
+  const RIM = "#e1bdff";
   const surf = (cx, cy, cz, rx, ry, rz, fold) => {
     const u = rnd() * 2 - 1, th = rnd() * 6.2832, s = Math.sqrt(1 - u * u);
     const dx = s * Math.cos(th), dy = u, dz = s * Math.sin(th);
@@ -129,7 +129,7 @@ const Field = (() => {
     const bsc = mode === "panel" ? Math.min(W * 0.3, H * 0.4) : mobile ? W * 0.4 : Math.min(W * 0.33, H * 0.47);
     const ssc = Math.max(W, H) * 0.32;
     const cx = W / 2 + (bcx - W / 2) * formed, cy = H / 2 + (bcy - H / 2) * formed, sc = ssc + (bsc - ssc) * formed;
-    const F = 3.3, k = 1 - formed, alpha = mobile ? 0.38 : 1;
+    const F = 3.3, k = 1 - formed, alpha = (mobile ? 0.38 : 1) * (mode === "site" ? Math.min(1, formed * 1.6) : 1);
     const lit = Neuro.series ? { visual: Neuro.I("visual", now), auditory: Neuro.I("auditory", now), language: Neuro.I("language", now), attention: Neuro.I("attention", now) } : null;
 
     const paths = new Map();
@@ -225,8 +225,8 @@ function portrait(url) {
 }
 
 // ---------------------------------------------------------------- rules
-const COL = { you: "#ffb829", allied: "#2fd3a5", open: "#5d6b80", fog: "#323a46" };
-const RIVAL_COLS = ["#ff4d6d", "#9b6bff", "#38d8ff"];
+const COL = { you: "#af50ff", allied: "#e1bdff", open: "#4a4e58", fog: "#1d1f25" };
+const RIVAL_COLS = ["#ff5c7a", "#f5b544", "#38d8ff"];
 const AGES = [[0, "I", "Open Mic"], [20, "II", "Club Circuit"], [40, "III", "Theater Tour"], [60, "IV", "Arena Headliner"], [80, "V", "Legend"]];
 const ageOf = (c) => { let a = AGES[0]; for (const x of AGES) if (c >= x[0]) a = x; return a; };
 const ICON = { edit: "✍️", ally: "🤝", take: "🚩", hold: "🛡️", alliance: "🕊️", rivalry: "⚔️", defend: "🛡️" };
@@ -370,17 +370,17 @@ const MapView = (() => {
   // ocean, landmass, relief and the coastline glow: drawn once per size
   function drawBase(W, H) {
     const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
-    const bg = x.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H / 2, Math.max(W, H) * 0.75); bg.addColorStop(0, "#0b1730"); bg.addColorStop(1, "#02040a");
+    const bg = x.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H / 2, Math.max(W, H) * 0.75); bg.addColorStop(0, "#130c22"); bg.addColorStop(1, "#060508");
     x.fillStyle = bg; x.fillRect(0, 0, W, H);
     const rnd = mulberry(7);
     x.fillStyle = "rgba(91,140,255,0.05)"; for (let i = 0; i < 900; i++) x.fillRect(rnd() * W, rnd() * H, d, d); // sea haze
     x.save(); x.setTransform(T.s, 0, 0, T.s, T.ox, T.oy);
     const P = d3.geoPath(null, x);
-    x.beginPath(); P(Atlas.nation); x.shadowColor = "#2d6bff"; x.shadowBlur = 30 * d; x.fillStyle = "#0d1627"; x.fill(); x.shadowBlur = 0;
+    x.beginPath(); P(Atlas.nation); x.shadowColor = "rgba(175,80,255,.6)"; x.shadowBlur = 30 * d; x.fillStyle = "#121117"; x.fill(); x.shadowBlur = 0;
     x.clip();
     // relief: the Rockies, the Sierra, the Appalachians, the plains
     for (const [cx, cy, r, a] of [[290, 260, 190, 0.11], [150, 230, 120, 0.07], [800, 300, 110, 0.06], [520, 330, 260, 0.03]]) {
-      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, `rgba(150,170,210,${a})`); g.addColorStop(1, "rgba(150,170,210,0)"); x.fillStyle = g; x.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, `rgba(200,180,255,${a * 0.8})`); g.addColorStop(1, "rgba(200,180,255,0)"); x.fillStyle = g; x.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     }
     x.fillStyle = "rgba(200,215,255,0.05)"; for (let i = 0; i < 5000; i++) x.fillRect(rnd() * MW, rnd() * MH, 1.2 / T.s * d, 1.2 / T.s * d); // terrain grain
     x.restore();
@@ -397,7 +397,7 @@ const MapView = (() => {
       x.beginPath(); P(s.f); x.globalAlpha = (A[key] ?? 0.56) * g.k; x.fillStyle = colOf(key); x.fill();
     }
     x.globalAlpha = 1; x.lineJoin = "round";
-    x.beginPath(); P(Atlas.inner); x.strokeStyle = "rgba(190,210,255,0.16)"; x.lineWidth = (0.7 * d) / T.s; x.stroke();
+    x.beginPath(); P(Atlas.inner); x.strokeStyle = "rgba(247,249,250,0.11)"; x.lineWidth = (0.7 * d) / T.s; x.stroke();
     // a glowing frontier around each faction's realm
     const geoms = Atlas.topo.objects.states.geometries;
     for (const key of new Set(keyOf.values())) {
@@ -430,7 +430,7 @@ const MapView = (() => {
     return true;
   }
   function iconText(text, X, Y, col, px, font = "700") {
-    const { icon, text: t } = deEmoji(text); ctx.font = `${font} ${px}px "Cinzel", serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const { icon, text: t } = deEmoji(text); ctx.font = font === "800" ? `italic 400 ${px * 1.3}px "Instrument Serif", serif` : `500 ${px * 0.85}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     const w = ctx.measureText(t).width, iw = icon ? px * 1.15 : 0, x0 = X - (w + iw) / 2;
     if (icon) drawIcon(ctx, icon, x0 + px * 0.5, Y, px, col, 2.4);
     ctx.fillStyle = col; ctx.fillText(t, x0 + iw, Y); ctx.textAlign = "center";
@@ -441,7 +441,7 @@ const MapView = (() => {
     const sel = G.orders[G.sel], isTarget = sel && !sel.done && sel.city === ct.name;
     const siege = G.sieges.find((s) => s.city === ct.name);
     // city lights after dark
-    const lit = night(ct.p[0]); if (lit > 0.3 && key !== "fog") { const g = ctx.createRadialGradient(X, Y, 0, X, Y, r * 3.2); g.addColorStop(0, `rgba(255,214,140,${0.45 * lit})`); g.addColorStop(1, "rgba(255,214,140,0)"); ctx.fillStyle = g; ctx.fillRect(X - r * 3.2, Y - r * 3.2, r * 6.4, r * 6.4); }
+    const lit = night(ct.p[0]); if (lit > 0.3 && key !== "fog") { const g = ctx.createRadialGradient(X, Y, 0, X, Y, r * 3.2); g.addColorStop(0, `rgba(235,215,255,${0.45 * lit})`); g.addColorStop(1, "rgba(235,215,255,0)"); ctx.fillStyle = g; ctx.fillRect(X - r * 3.2, Y - r * 3.2, r * 6.4, r * 6.4); }
     if (ct.state === "beachhead") { ctx.strokeStyle = "#3dff9a"; ctx.globalAlpha = 0.45 + 0.4 * Math.sin(t * 3); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, r + 6 * d + 3 * d * Math.sin(t * 3), 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
     if (siege) { ctx.strokeStyle = "#ff4d6d"; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 6); ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, r + 9 * d, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
     if (isTarget) { const k = (t % 1.4) / 1.4; ctx.strokeStyle = "#fff"; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, r + k * 26 * d, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
@@ -458,8 +458,8 @@ const MapView = (() => {
     }
     const rr = drew ? (cap ? 20 * d : Math.max(r + 4 * d, 15 * d)) : r;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = `700 ${11 * d}px "Cinzel", serif`; ctx.fillStyle = key === "fog" ? "#6b7480" : "#e9eef7"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4 * d;
-    ctx.fillText(ct.name.toUpperCase(), X, Y + rr + 10 * d); ctx.shadowBlur = 0;
+    ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; if ("letterSpacing" in ctx) ctx.letterSpacing = `${1.4 * d}px`; ctx.fillStyle = key === "fog" ? "#55575d" : "#d9dce0"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4 * d;
+    ctx.fillText(ct.name.toUpperCase(), X, Y + rr + 10 * d); ctx.shadowBlur = 0; if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
     if (cap) drawIcon(ctx, "crown", X, Y - rr - 10 * d, 18 * d, "#ffcf5a", 2.2);
     else if (ct.state === "frontline") badge(X + rr * 0.8, Y - rr * 0.8, "!", "#ff9f43");
     if (G.prep.has(ct.name)) badge(X + rr * 0.85, Y + rr * 0.75, "✓", "#7fd8ff");
@@ -471,7 +471,7 @@ const MapView = (() => {
       const k = (now - pv.t0) / 2600; if (k >= 0 && k < 1) {
         ctx.save(); ctx.globalAlpha = Math.sin(k * Math.PI); ctx.setLineDash([5 * d, 4 * d]); ctx.strokeStyle = pv.col; ctx.lineWidth = 3 * d;
         ctx.beginPath(); ctx.arc(X, Y, rr + 14 * d + 6 * d * Math.sin(t * 5), 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = pv.col; ctx.font = `700 ${16 * d}px "Cinzel", serif`; ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; ctx.fillText(pv.label, X, Y - rr - 22 * d - k * 26 * d); ctx.restore();
+        ctx.fillStyle = pv.col; ctx.font = `italic 400 ${24 * d}px "Instrument Serif", serif`; ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; ctx.fillText(pv.label, X, Y - rr - 22 * d - k * 26 * d); ctx.restore();
       }
     }
   }
@@ -501,7 +501,7 @@ const MapView = (() => {
     // sieges in rival colour, your selected order in gold, rival moves this week
     for (const sg of G.sieges) { const to = G.cities.find((c) => c.name === sg.city), f = G.fac.get(sg.fid); const from = f && nearest(G.cities.filter((c) => c.owner === f.id && c.state === "rival"), to); if (to && from) arrow(from.p, to.p, f.col, now, 2.8); }
     const o = G.orders[G.sel];
-    if (o && !o.done && o.city) { const to = G.cities.find((c) => c.name === o.city); if (to) arrow(fromFor(to).p, to.p, o.kind === "alliance" ? COL.allied : o.kind === "defend" ? "#fff" : "#ffd27a", now, 3.4); }
+    if (o && !o.done && o.city) { const to = G.cities.find((c) => c.name === o.city); if (to) arrow(fromFor(to).p, to.p, o.kind === "alliance" ? COL.allied : o.kind === "defend" ? "#fff" : "#e1bdff", now, 3.4); }
     G.temp = G.temp.filter((tr) => now - tr.t0 <= 3500);
     for (const tr of G.temp) arrow(tr.from, tr.to, tr.col, now, 2.4);
     // radar sweep from your capital: rival cities ping as the beam passes
@@ -510,9 +510,9 @@ const MapView = (() => {
       const [CX, CY] = toS(cap.p), R = 420 * s, beam = -(now / 1000) * 1.1;
       if (ctx.createConicGradient) {
         const g = ctx.createConicGradient(beam, CX, CY);
-        g.addColorStop(0, "rgba(61,255,154,0.22)"); g.addColorStop(0.07, "rgba(61,255,154,0.04)"); g.addColorStop(0.1, "rgba(61,255,154,0)"); g.addColorStop(1, "rgba(61,255,154,0)");
+        g.addColorStop(0, "rgba(225,189,255,0.22)"); g.addColorStop(0.07, "rgba(225,189,255,0.04)"); g.addColorStop(0.1, "rgba(225,189,255,0)"); g.addColorStop(1, "rgba(225,189,255,0)");
         ctx.save(); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, R, 0, 6.283); ctx.fill();
-        ctx.strokeStyle = "rgba(61,255,154,0.12)"; ctx.lineWidth = 1 * d; for (const k of [0.33, 0.66, 1]) { ctx.beginPath(); ctx.arc(CX, CY, R * k, 0, 6.283); ctx.stroke(); }
+        ctx.strokeStyle = "rgba(225,189,255,0.12)"; ctx.lineWidth = 1 * d; for (const k of [0.33, 0.66, 1]) { ctx.beginPath(); ctx.arc(CX, CY, R * k, 0, 6.283); ctx.stroke(); }
         ctx.restore();
       }
       for (const ct of G.cities) {
@@ -539,7 +539,7 @@ const MapView = (() => {
     G.floats = G.floats.filter((f) => now - f.t0 < 1900);
     for (const f of G.floats) {
       const k = (now - f.t0) / 1900, [X, Y] = toS(f.p);
-      ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `800 ${17 * d}px "Cinzel", serif`; ctx.textAlign = "center";
+      ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `italic 400 ${22 * d}px "Instrument Serif", serif`; ctx.textAlign = "center";
       ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; iconText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d, f.col, 17 * d, "800"); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
     // your agents in the field
@@ -607,7 +607,7 @@ function ops(html) {
   if (G) { G.opsN = (G.opsN ?? 0) + 1; $("#ops-count").textContent = `· ${G.opsN}`; $("#ops-last").textContent = el.textContent; }
   while (box.children.length > 60) box.lastChild.remove();
 }
-function float(p, text, col = "#ffcf5a", dx = 0) { if (p) G.floats.push({ p, text, col, dx, t0: performance.now() }); }
+function float(p, text, col = "#e1bdff", dx = 0) { if (p) G.floats.push({ p, text, col, dx, t0: performance.now() }); }
 const capP = () => G.cities.find((c) => c.name === G.capital)?.p;
 let briefTok = 0;
 function typeInto(el, text, receipt) {
@@ -774,17 +774,17 @@ const Radar = (() => {
     const cap = G.cities.find((c) => c.name === G.capital) ?? G.cities[0]; if (!cap) return;
     const RANGE = 620, pos = (p) => { const dx = p[0] - cap.p[0], dy = p[1] - cap.p[1], dd = Math.hypot(dx, dy), k = Math.min(1, dd / RANGE); return [cx + (dx / (dd || 1)) * k * R, cy + (dy / (dd || 1)) * k * R]; };
     ctx.clearRect(0, 0, W, H);
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R); bg.addColorStop(0, "#06261c"); bg.addColorStop(1, "#020b08");
+    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R); bg.addColorStop(0, "#1b0f2e"); bg.addColorStop(1, "#08060c");
     ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
-    ctx.strokeStyle = "rgba(61,255,154,.22)"; ctx.lineWidth = 1 * d;
+    ctx.strokeStyle = "rgba(225,189,255,.22)"; ctx.lineWidth = 1 * d;
     for (const k of [0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.arc(cx, cy, R * k, 0, 6.283); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
     const beam = REDUCED ? 0 : -(now / 1000) * 1.6;
     if (ctx.createConicGradient) {
-      const g = ctx.createConicGradient(beam, cx, cy); g.addColorStop(0, "rgba(61,255,154,.55)"); g.addColorStop(0.12, "rgba(61,255,154,.05)"); g.addColorStop(0.2, "rgba(61,255,154,0)"); g.addColorStop(1, "rgba(61,255,154,0)");
+      const g = ctx.createConicGradient(beam, cx, cy); g.addColorStop(0, "rgba(225,189,255,.55)"); g.addColorStop(0.12, "rgba(225,189,255,.05)"); g.addColorStop(0.2, "rgba(225,189,255,0)"); g.addColorStop(1, "rgba(225,189,255,0)");
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
     }
-    ctx.strokeStyle = "rgba(160,255,210,.9)"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(beam) * R, cy + Math.sin(beam) * R); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,225,255,.9)"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(beam) * R, cy + Math.sin(beam) * R); ctx.stroke();
     const lit = (X, Y) => { const ang = Math.atan2(Y - cy, X - cx), lag = (((ang - beam) % 6.283) + 6.283) % 6.283; return Math.max(0.25, 1 - lag / 3.2); };
     // your cities
     for (const c of G.cities) { if (sideOf(c) !== "you") continue; const [X, Y] = pos(c.p); ctx.fillStyle = COL.you; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(X, Y, 2.6 * d, 0, 6.283); ctx.fill(); }
@@ -805,7 +805,7 @@ const Radar = (() => {
     }
     ctx.globalAlpha = 1;
     ctx.fillStyle = COL.you; ctx.beginPath(); ctx.arc(cx, cy, 5 * d, 0, 6.283); ctx.fill();
-    ctx.fillStyle = "rgba(61,255,154,.7)"; ctx.font = `600 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.fillText(`HQ · ${G.capital?.toUpperCase() ?? ""}`, 8 * d, H - 8 * d);
+    ctx.fillStyle = "rgba(225,189,255,.7)"; ctx.font = `600 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.fillText(`HQ · ${G.capital?.toUpperCase() ?? ""}`, 8 * d, H - 8 * d);
     ctx.textAlign = "right"; ctx.fillText(`ETA SUN 00:00 · ${Math.max(0, Math.ceil((168 - G.hour) / 24))}D`, W - 8 * d, H - 8 * d);
   }
   return { frame };
@@ -913,7 +913,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
     const best = offers.filter((x) => x.p >= 0.7).sort((x, y) => x.buzz * 40 + x.gold - (y.buzz * 40 + y.gold))[0];
     const pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.toLowerCase() : "a co-bill"}${city ? ` in ${city}` : ""}. Same taste, different rooms: we both grow.`;
     box.innerHTML = `<div class="ptitle">Parley</div><h2>Parley with ${esc(name)}</h2><p class="sub2">Barter score ${b}/100 · ${Math.round(netnew * 100)}% of their crowd is new to you · ${Math.round(convert * 100)}% would cross over</p>
-      <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>You</b></div><div class="vsx" style="color:var(--good);text-shadow:0 0 18px rgba(61,255,154,.6)">🤝</div><div class="side" style="--c:${col}">${avatar(img, name)}<b>${esc(name)}</b></div></div>
+      <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>You</b></div><div class="vsx" style="color:var(--good);text-shadow:0 0 18px rgba(225,189,255,.6)">🤝</div><div class="side" style="--c:${col}">${avatar(img, name)}<b>${esc(name)}</b></div></div>
       <div class="offers">${offers.map((x, i) => `<button class="offer${x === best ? " best" : ""}" data-of="${i}" ${(G.buzz >= x.buzz && G.gold >= x.gold) ? "" : "disabled"}><b>${esc(x.name)}${x === best ? " · smallest that likely works" : ""}</b><small>${esc(x.text)}</small><span class="pr"><em>${Math.round(x.p * 100)}%</em>${x.buzz ? `⚡${x.buzz}` : `🪙${x.gold}`}</span></button>`).join("")}</div>
       <div class="pitch">${esc(pitch)}</div>
       <div class="verdict" id="pverdict"></div>
@@ -1573,14 +1573,119 @@ addEventListener("keydown", (e) => {
 function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site").hidden = false; Field.setMode("site"); Neuro.reset(); if (G) G.over = true; }
 
 
+
 // ---------------------------------------------------------------- the landing page
-// The hero is the game itself in miniature: real state borders, your colour
-// spreading city by city, rivals pushing back, agents on the march.
-$("#armygrid").innerHTML = AGENTS.slice(0, 6).map((a) => `<div class="unit"><span class="ui">${a.icon}</span><h3>${a.name}</h3><p>${a.role}</p><div class="src${a.locked ? " no" : ""}">${a.src}${a.locked ? "" : " · live"}</div></div>`).join("") + `<div class="unit more-unit"><span class="ui">🤖</span><h3>+${AGENTS.length - 6} more</h3><p>${AGENTS.slice(6).map((a) => a.name).join(", ")}. Waiting in the war room.</p></div>`;
+// Midnight-terminal story: a twilight sky with a campaign pass, three eras of
+// growth on a flight line, the product in a frame, the army as stamped rows.
+const AGENT_LONG = {
+  scout: "Reads Qloo for the brands, shows and artists your fans in a city also love, so you can talk to that room.",
+  booker: "Finds the stage in that city whose crowd fits yours best, with a backup, straight from Qloo's places.",
+  diplomat: "Picks the performer whose crowd is new to you but already likes you, then writes the pitch and runs the parley.",
+  sponsor: "Finds brands your fans over-index on and turns them into sponsors who pay you every week.",
+  herald: "Finds the podcasts your fans already listen to, so your next guest spot lands with the right ears.",
+  reader: "Shows how real simulated fans in a city react to your material, one by one, with the brain response.",
+};
+$("#armygrid").innerHTML = AGENTS.slice(0, 6).map((a) => `<div class="arow"><div><h3>${a.icon} ${a.name}</h3><button class="go2" data-play><i>→</i> Deploy in the war room</button></div><div><p>${AGENT_LONG[a.id] ?? a.role}</p><span class="src">${a.src.toUpperCase()} · LIVE</span></div></div>`).join("")
+  + `<div class="arow"><div><h3>🤖 +${AGENTS.length - 6} more</h3></div><div><p>${AGENTS.slice(6).map((a) => a.name).join(", ")}. Waiting for orders.</p></div></div>`;
+$$("#armygrid [data-play]").forEach((b) => b.addEventListener("click", () => openWho()));
+
+// twinkling stars in the upper sky
+const Stars = (() => {
+  const cv = $("#stars"), ctx = cv.getContext("2d"), rnd = mulberry(3);
+  const pts = Array.from({ length: 140 }, () => ({ x: rnd(), y: rnd(), r: 0.4 + rnd() * 1.1, p: rnd() * 6.28 }));
+  function frame(now) {
+    if ($("#site").hidden || cv.getBoundingClientRect().bottom < 0) return;
+    fit(cv, 2); const W = cv.width, H = cv.height, d = cv._dpr || 1; ctx.clearRect(0, 0, W, H);
+    for (const s of pts) { ctx.globalAlpha = (0.35 + 0.65 * Math.abs(Math.sin(now / 1400 + s.p))) * (1 - s.y * 0.8); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r * d, 0, 6.283); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  return { frame };
+})();
+
+// text set around a slowly turning circle
+function ringText(el) {
+  const t = el.dataset.text, n = t.length;
+  el.innerHTML = [...t].map((ch, i) => `<span style="transform:rotate(${(i / n) * 360}deg)">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("");
+}
+$$(".ring").forEach(ringText);
+{ const g = $(".globe"); const r = document.createElement("div"); r.className = "ring sm"; r.dataset.text = "SCOUTING FANS · TESTING MATERIAL · TAKING CITIES · "; g.appendChild(r); ringText(r); }
+
+// wireframe globe for Era 3
+const Globe = (() => {
+  const cv = $("#globe"), ctx = cv.getContext("2d");
+  function frame(now) {
+    const rc = cv.getBoundingClientRect(); if ($("#site").hidden || rc.bottom < 0 || rc.top > innerHeight) return;
+    fit(cv, 2); const W = cv.width, H = cv.height, d = cv._dpr || 1, R = Math.min(W, H) * 0.36, cx = W / 2, cy = H / 2, rot = now / 6000, tilt = 0.35;
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, 0, cx, cy, R); g.addColorStop(0, "rgba(255,255,255,.22)"); g.addColorStop(1, "rgba(175,80,255,.06)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
+    const P = (lat, lon) => { const x = Math.cos(lat) * Math.sin(lon + rot), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon + rot); const y2 = y * Math.cos(tilt) - z * Math.sin(tilt), z2 = y * Math.sin(tilt) + z * Math.cos(tilt); return [cx + x * R, cy - y2 * R, z2]; };
+    ctx.lineWidth = 1.1 * d;
+    const line = (pts) => { for (let i = 1; i < pts.length; i++) { const [x0, y0, z0] = pts[i - 1], [x1, y1, z1] = pts[i]; ctx.strokeStyle = `rgba(247,249,250,${z0 > 0 && z1 > 0 ? 0.85 : 0.14})`; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); } };
+    for (let la = -75; la <= 75; la += 15) line(Array.from({ length: 73 }, (_, i) => P((la * Math.PI) / 180, (i * 5 * Math.PI) / 180)));
+    for (let lo = 0; lo < 360; lo += 20) line(Array.from({ length: 37 }, (_, i) => P(((i * 5 - 90) * Math.PI) / 180, (lo * Math.PI) / 180)));
+    // a few cities lighting up violet
+    for (const [la, lo] of [[33.7, -84.4], [41.9, -87.6], [40.7, -74], [34.1, -118.2], [35.1, -90]]) { const [x, y, z] = P((la * Math.PI) / 180, (lo * Math.PI) / 180); if (z <= 0) continue; ctx.fillStyle = "#c27aff"; ctx.shadowColor = "#af50ff"; ctx.shadowBlur = 14 * d; ctx.beginPath(); ctx.arc(x, y, 4 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0; }
+  }
+  return { frame };
+})();
+
+// the flight line advances as you scroll the story; the era markers follow
+const Story = (() => {
+  const story = $("#story"), eras = $$(".era"), nav = $(".eras"), marks = $$(".eras span");
+  function frame() {
+    if ($("#site").hidden) return;
+    const r = story.getBoundingClientRect(), H = innerHeight, p = clamp01((H * 0.5 - r.top) / Math.max(1, r.height - H * 0.5));
+    story.style.setProperty("--p", `${8 + p * 82}%`);
+    nav.classList.toggle("show", r.top < H * 0.4 && r.bottom > H * 0.6);
+    let cur = "1"; for (const e of eras) { const b = e.getBoundingClientRect(); if (b.top < H * 0.55) cur = e.dataset.era; }
+    marks.forEach((m) => m.classList.toggle("on", m.dataset.era === cur));
+  }
+  return { frame };
+})();
+
+// the product frame's live-calls feed (sample lines in the shape the real feed takes)
+const Feed = (() => {
+  const LINES = [
+    ["🎟️ Booker @ Memphis", "Classic Hitz · 89% crowd fit", "QLOO"], ["🕵️ Spy", "Regina King fame ▲18% this month", "WIKIPEDIA"], ["📈 Trend hunter @ TN", "3 rising searches → new potions", "TRENDS"],
+    ["🌦️ Weather oracle @ Memphis", "Play Friday · 0% rain", "OPEN-METEO"], ["⚔ Anthony Anderson", "marching on Atlanta · Sun", "RADAR"], ["💼 Sponsor scout", "Cadillac signs on · +58 gold/wk", "QLOO"],
+    ["🎭 Room reader @ Chicago", "F 45–54, into Faith Evans → ★★★★★", "PANEL"], ["🕊️ Diplomat", "Larenz Tate · barter 46/100 · pitch drafted", "QLOO"],
+  ];
+  let i = 0, t = 0, n = 62;
+  function frame(now) {
+    if ($("#site").hidden || now - t < 1800) return; t = now;
+    const box = $("#pfeed"); if (!box || box.getBoundingClientRect().top > innerHeight) return;
+    const [who, what, tag] = LINES[i++ % LINES.length], el = document.createElement("div");
+    el.innerHTML = `<small>${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</small>${esc(who)}<span class="tg">${tag}</span><br><span style="color:#d9dce0">${esc(what)}</span>`;
+    box.prepend(el); while (box.children.length > 6) box.lastChild.remove();
+    $("#ps-n").textContent = ++n;
+  }
+  return { frame };
+})();
+
+// a real live trend in the corner, and live-looking coordinates in the footer
+setTimeout(async () => {
+  const r = await api("/api/trends?geo=US").catch(() => null), it = r?.items?.[0];
+  if (!it || $("#site").hidden) return;
+  $("#lt-text").textContent = `Live now: “${it.title}” is trending on Google in the US. Your Trend hunter turns that into buzz →`;
+  $("#livetoast").hidden = false;
+}, 2500);
+$("#lt-x").addEventListener("click", (e) => { e.stopPropagation(); $("#livetoast").hidden = true; });
+$("#livetoast").addEventListener("click", () => { $("#livetoast").hidden = true; openWho(); });
+{
+  const cities = Object.entries(METROS); let k = 0, base = cities[0][1], j = [0, 0];
+  setInterval(() => {
+    if ($("#site").hidden) return;
+    if (Math.random() < 0.06) base = cities[(k = (k + 1) % cities.length)][1];
+    j = [j[0] + (Math.random() - 0.5) * 0.004, j[1] + (Math.random() - 0.5) * 0.004];
+    const lat = base[1] + j[1], lon = base[0] + j[0];
+    $("#coords").textContent = `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? "N" : "S"}, ${lon.toFixed(4)}° ${lon < 0 ? "W" : "E"}`;
+  }, 120);
+}
 
 const HeroMap = (() => {
   const cv = $("#heromap"), ctx = cv.getContext("2d");
-  const FAC = { you: "#ffb829", r1: "#ff4d6d", r2: "#9b6bff", r3: "#38d8ff" };
+  const FAC = { you: "#af50ff", r1: "#ff5c7a", r2: "#f5b544", r3: "#38d8ff" };
   const SEEDS = [["you", "Atlanta"], ["r1", "New York"], ["r2", "Los Angeles"], ["r3", "Minneapolis"], ["you", "Chicago"]];
   let st = null, own = new Map(), fx = [], units = [], nextT = 0, flips = 0, T = { s: 1, ox: 0, oy: 0 }, d = 1;
   const toS = ([x, y]) => [T.ox + x * T.s, T.oy + y * T.s];
@@ -1600,46 +1705,42 @@ const HeroMap = (() => {
     const pickS = cand[Math.floor(Math.random() * Math.min(3, cand.length))].s, from = mine.sort((a, b) => Math.hypot(a.c[0] - pickS.c[0], a.c[1] - pickS.c[1]) - Math.hypot(b.c[0] - pickS.c[0], b.c[1] - pickS.c[1]))[0];
     const wasRival = own.get(pickS.id);
     units.push({ from: from.c, to: pickS.c, t0: now, ik: ["ticket", "scout", "dove", "trend", "case"][flips % 5] });
-    setTimeout(() => { own.set(pickS.id, "you"); fx.push({ p: pickS.c, t0: performance.now(), text: wasRival ? "⚔ TAKEN" : `+${3 + Math.floor(Math.random() * 9)}%` }); }, 1400);
+    setTimeout(() => { own.set(pickS.id, "you"); fx.push({ p: pickS.c, t0: performance.now(), text: wasRival ? "taken" : `+${3 + Math.floor(Math.random() * 9)}%` }); const c = $("#ps-c"); if (c) c.textContent = `${Math.min(99, 36 + flips * 3)}%`; }, 1400);
     flips++;
   }
   function frame(now) {
     if (!Atlas.topo || $("#site").hidden) return;
     const r = cv.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;
     if (!st) { st = Atlas.states; reset(); }
-    fit(cv, 2); d = cv._dpr || 1; const W = cv.width, H = cv.height, s = Math.min(W / MW, H / MH) * 1.02; T = { s, ox: (W - MW * s) / 2, oy: (H - MH * s) / 2 };
+    fit(cv, 2); d = cv._dpr || 1; const W = cv.width, H = cv.height, s = Math.min(W / MW, H / MH) * 0.98; T = { s, ox: (W - MW * s) / 2, oy: (H - MH * s) / 2 };
     if (now > nextT) { nextT = now + 1900; flip(now); }
     ctx.clearRect(0, 0, W, H);
     ctx.save(); ctx.setTransform(s, 0, 0, s, T.ox, T.oy); const P = d3.geoPath(null, ctx);
-    ctx.beginPath(); P(Atlas.nation); ctx.shadowColor = "#2d6bff"; ctx.shadowBlur = 26 * d; ctx.fillStyle = "#0d1627"; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.beginPath(); P(Atlas.nation); ctx.shadowColor = "rgba(175,80,255,.55)"; ctx.shadowBlur = 24 * d; ctx.fillStyle = "#121117"; ctx.fill(); ctx.shadowBlur = 0;
     for (const x of st) {
       const f = own.get(x.id); if (!f) continue;
-      ctx.beginPath(); P(x.f); ctx.globalAlpha = f === "you" ? 0.62 : 0.42; ctx.fillStyle = FAC[f]; ctx.fill();
-      ctx.globalAlpha = 0.9; ctx.strokeStyle = FAC[f]; ctx.lineWidth = (1.2 * d) / s; ctx.stroke();
+      ctx.beginPath(); P(x.f); ctx.globalAlpha = f === "you" ? 0.62 : 0.32; ctx.fillStyle = FAC[f]; ctx.fill();
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = FAC[f]; ctx.lineWidth = (1.1 * d) / s; ctx.stroke();
     }
-    ctx.globalAlpha = 1; ctx.beginPath(); P(Atlas.inner); ctx.strokeStyle = "rgba(190,210,255,.12)"; ctx.lineWidth = (0.6 * d) / s; ctx.stroke();
+    ctx.globalAlpha = 1; ctx.beginPath(); P(Atlas.inner); ctx.strokeStyle = "rgba(247,249,250,.1)"; ctx.lineWidth = (0.6 * d) / s; ctx.stroke();
     ctx.restore();
-    // radar sweep from the capital
     const [CX, CY] = toS(ALB(METROS.Atlanta)), beam = -(now / 1000) * 1.2;
-    if (ctx.createConicGradient && !REDUCED) { const g = ctx.createConicGradient(beam, CX, CY); g.addColorStop(0, "rgba(61,255,154,.25)"); g.addColorStop(0.08, "rgba(61,255,154,.03)"); g.addColorStop(0.12, "rgba(61,255,154,0)"); g.addColorStop(1, "rgba(61,255,154,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, 360 * s, 0, 6.283); ctx.fill(); }
-    // a rival pushing in
-    const ny = toS(ALB(METROS["New York"])), atl = [CX, CY], k = (now % 5000) / 5000;
-    ctx.save(); ctx.strokeStyle = "#ff4d6d"; ctx.lineWidth = 2.4 * d; ctx.setLineDash([9 * d, 7 * d]); ctx.lineDashOffset = -now / 25; ctx.shadowColor = "#ff4d6d"; ctx.shadowBlur = 10 * d;
-    ctx.beginPath(); ctx.moveTo(ny[0], ny[1]); ctx.quadraticCurveTo((ny[0] + atl[0]) / 2 + 60 * d, (ny[1] + atl[1]) / 2, atl[0], atl[1]); ctx.stroke(); ctx.restore();
-    const ex = (1 - k) * (1 - k) * ny[0] + 2 * (1 - k) * k * ((ny[0] + atl[0]) / 2 + 60 * d) + k * k * atl[0], ey = (1 - k) * (1 - k) * ny[1] + 2 * (1 - k) * k * ((ny[1] + atl[1]) / 2) + k * k * atl[1];
-    ctx.fillStyle = "#ff4d6d"; ctx.beginPath(); ctx.arc(ex, ey, 6 * d, 0, 6.283); ctx.fill();
-    // cities
+    if (ctx.createConicGradient && !REDUCED) { const g = ctx.createConicGradient(beam, CX, CY); g.addColorStop(0, "rgba(225,189,255,.28)"); g.addColorStop(0.08, "rgba(225,189,255,.03)"); g.addColorStop(0.12, "rgba(225,189,255,0)"); g.addColorStop(1, "rgba(225,189,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, 360 * s, 0, 6.283); ctx.fill(); }
+    const ny = toS(ALB(METROS["New York"])), atl = [CX, CY], k = (now % 5000) / 5000, mx = (ny[0] + atl[0]) / 2 + 60 * d, my = (ny[1] + atl[1]) / 2;
+    ctx.save(); ctx.strokeStyle = "#ff5c7a"; ctx.lineWidth = 2 * d; ctx.setLineDash([8 * d, 7 * d]); ctx.lineDashOffset = -now / 25;
+    ctx.beginPath(); ctx.moveTo(ny[0], ny[1]); ctx.quadraticCurveTo(mx, my, atl[0], atl[1]); ctx.stroke(); ctx.restore();
+    const ex = (1 - k) * (1 - k) * ny[0] + 2 * (1 - k) * k * mx + k * k * atl[0], ey = (1 - k) * (1 - k) * ny[1] + 2 * (1 - k) * k * my + k * k * atl[1];
+    ctx.fillStyle = "#ff5c7a"; ctx.beginPath(); ctx.arc(ex, ey, 5 * d, 0, 6.283); ctx.fill();
     for (const [name, f] of [["Atlanta", "you"], ["Chicago", "you"], ["New York", "r1"], ["Los Angeles", "r2"], ["Minneapolis", "r3"], ["Memphis", null], ["Dallas", null], ["Miami", null], ["Denver", null], ["Seattle", null]]) {
-      const [X, Y] = toS(ALB(METROS[name])), col = f ? FAC[f] : "#7d8796";
-      ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = col; ctx.lineWidth = 2.2 * d; ctx.shadowColor = col; ctx.shadowBlur = 12 * d; ctx.beginPath(); ctx.arc(X, Y, (name === "Atlanta" ? 10 : 6) * d, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-      ctx.fillStyle = "#e9eef7"; ctx.font = `700 ${10 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(name.toUpperCase(), X, Y + 20 * d);
-      if (name === "Atlanta") drawIcon(ctx, "crown", X, Y - 18 * d, 16 * d, "#ffcf5a", 2.2);
+      const [X, Y] = toS(ALB(METROS[name])), col = f ? FAC[f] : "#6b6d72";
+      ctx.fillStyle = "#0b0a10"; ctx.strokeStyle = col; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, (name === "Atlanta" ? 9 : 5.5) * d, 0, 6.283); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#c9ccd1"; ctx.font = `500 ${8.5 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; if ("letterSpacing" in ctx) ctx.letterSpacing = `${1.2 * d}px`; ctx.fillText(name.toUpperCase(), X, Y + 18 * d); if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+      if (name === "Atlanta") drawIcon(ctx, "crown", X, Y - 17 * d, 15 * d, "#e1bdff", 2.2);
     }
-    // agents marching, conquests landing
     units = units.filter((u) => now - u.t0 < 1500);
-    for (const u of units) { const q = ease(clamp01((now - u.t0) / 1400)), a = toS(u.from), b = toS(u.to), X = a[0] + (b[0] - a[0]) * q, Y = a[1] + (b[1] - a[1]) * q - Math.sin(q * Math.PI) * 30 * d; ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke(); drawIcon(ctx, u.ik, X, Y, 14 * d, "#7fd8ff", 2.2); }
+    for (const u of units) { const q = ease(clamp01((now - u.t0) / 1400)), a = toS(u.from), b = toS(u.to), X = a[0] + (b[0] - a[0]) * q, Y = a[1] + (b[1] - a[1]) * q - Math.sin(q * Math.PI) * 30 * d; ctx.fillStyle = "#0b0a10"; ctx.strokeStyle = "#e1bdff"; ctx.lineWidth = 1.5 * d; ctx.beginPath(); ctx.arc(X, Y, 11 * d, 0, 6.283); ctx.fill(); ctx.stroke(); drawIcon(ctx, u.ik, X, Y, 13 * d, "#e1bdff", 2.2); }
     fx = fx.filter((f) => now - f.t0 < 1800);
-    for (const f of fx) { const q = (now - f.t0) / 1800, [X, Y] = toS(f.p); ctx.strokeStyle = "#ffcf5a"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#ffcf5a"; ctx.font = `800 ${16 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 16 * d - q * 30 * d); ctx.globalAlpha = 1; }
+    for (const f of fx) { const q = clamp01((now - f.t0) / 1800), [X, Y] = toS(f.p); ctx.strokeStyle = "#e1bdff"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.font = `italic 400 ${20 * d}px "Instrument Serif", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 14 * d - q * 30 * d); ctx.globalAlpha = 1; }
   }
   return { frame };
 })();
@@ -1647,27 +1748,27 @@ const HeroMap = (() => {
 // the landing radar: a demo of rivals closing in
 const HeroRadar = (() => {
   const cv = $("#heroradar"), ctx = cv.getContext("2d");
-  const BLIPS = [{ n: "NEMESIS", a: -0.6, col: "#ff4d6d", sp: 1 }, { n: "RIVAL", a: 2.3, col: "#9b6bff", sp: 0.6 }, { n: "ALLY?", a: 4.0, col: "#38d8ff", sp: 0.3 }];
+  const BLIPS = [{ n: "NEMESIS", a: -0.6, col: "#ff5c7a", sp: 1 }, { n: "RIVAL", a: 2.3, col: "#f5b544", sp: 0.6 }, { n: "ALLY?", a: 4.0, col: "#e1bdff", sp: 0.3 }];
   function frame(now) {
     const r = cv.getBoundingClientRect(); if ($("#site").hidden || r.bottom < 0 || r.top > innerHeight) return;
     fit(cv, 2); const W = cv.width, H = cv.height, d = cv._dpr || 1, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 4 * d;
     ctx.clearRect(0, 0, W, H);
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R); bg.addColorStop(0, "#06261c"); bg.addColorStop(1, "#010806");
+    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R); bg.addColorStop(0, "#1b0f2e"); bg.addColorStop(1, "#08060c");
     ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
-    ctx.strokeStyle = "rgba(61,255,154,.25)"; ctx.lineWidth = 1 * d; for (const k of [0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.arc(cx, cy, R * k, 0, 6.283); ctx.stroke(); }
+    ctx.strokeStyle = "rgba(225,189,255,.22)"; ctx.lineWidth = 1 * d; for (const k of [0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.arc(cx, cy, R * k, 0, 6.283); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
     const beam = REDUCED ? 0 : -(now / 1000) * 1.4;
-    if (ctx.createConicGradient) { const g = ctx.createConicGradient(beam, cx, cy); g.addColorStop(0, "rgba(61,255,154,.6)"); g.addColorStop(0.12, "rgba(61,255,154,.05)"); g.addColorStop(0.2, "rgba(61,255,154,0)"); g.addColorStop(1, "rgba(61,255,154,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill(); }
-    ctx.font = `700 ${11 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center";
+    if (ctx.createConicGradient) { const g = ctx.createConicGradient(beam, cx, cy); g.addColorStop(0, "rgba(175,80,255,.6)"); g.addColorStop(0.12, "rgba(175,80,255,.06)"); g.addColorStop(0.2, "rgba(175,80,255,0)"); g.addColorStop(1, "rgba(175,80,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill(); }
+    ctx.font = `500 ${10.5 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center";
     for (const b of BLIPS) {
       const k = 0.92 - (((now / 1000) * 0.05 * b.sp) % 0.7), X = cx + Math.cos(b.a) * R * k, Y = cy + Math.sin(b.a) * R * k;
       const lag = (((b.a - beam) % 6.283) + 6.283) % 6.283, a = Math.max(0.3, 1 - lag / 3);
-      ctx.globalAlpha = a; ctx.fillStyle = b.col; ctx.shadowColor = b.col; ctx.shadowBlur = 16 * d * a; ctx.beginPath(); ctx.arc(X, Y, 7 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
-      ctx.strokeStyle = b.col; ctx.lineWidth = 1.5 * d; ctx.beginPath(); ctx.arc(X, Y, (10 + ((now / 100) % 12)) * d, 0, 6.283); ctx.stroke();
-      ctx.fillStyle = "#e9eef7"; ctx.fillText(b.n, X, Y - 16 * d); ctx.globalAlpha = 1;
+      ctx.globalAlpha = a; ctx.fillStyle = b.col; ctx.shadowColor = b.col; ctx.shadowBlur = 16 * d * a; ctx.beginPath(); ctx.arc(X, Y, 6 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.strokeStyle = b.col; ctx.lineWidth = 1.2 * d; ctx.beginPath(); ctx.arc(X, Y, (10 + ((now / 100) % 12)) * d, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = "#f7f9fa"; ctx.fillText(b.n, X, Y - 16 * d); ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = "#ffb829"; ctx.beginPath(); ctx.arc(cx, cy, 7 * d, 0, 6.283); ctx.fill();
-    ctx.fillStyle = "rgba(160,255,210,.85)"; ctx.fillText("YOUR HQ", cx, cy + 22 * d);
+    ctx.fillStyle = "#af50ff"; ctx.shadowColor = "#af50ff"; ctx.shadowBlur = 14 * d; ctx.beginPath(); ctx.arc(cx, cy, 6 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "#e1bdff"; ctx.fillText("YOUR HQ", cx, cy + 22 * d);
   }
   return { frame };
 })();
@@ -1789,7 +1890,7 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
   requestAnimationFrame(loop);
   safe("brain", Field.frame, now);
   if (G && !$("#game").hidden) { safe("map", MapView.frame, now); safe("radar", Radar.frame, now); safe("regions", brainTick, now); }
-  else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); }
+  else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); safe("stars", Stars.frame, now); safe("globe", Globe.frame, now); safe("story", Story.frame, now); safe("feed", Feed.frame, now); }
 })(performance.now());
 // a shareable link: ?play=Name opens the game as that person
 const autoplay = new URLSearchParams(location.search).get("play");
