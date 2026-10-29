@@ -1007,7 +1007,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
 // fans love, partners who are around. Claim before the world clock runs out.
 function questTick() {
   if (G.hour < G.nextQuest) return;
-  G.nextQuest = G.hour + 20 + G.rng() * 10;
+  G.nextQuest = G.hour + 34 + G.rng() * 14;
   G.quests = G.quests.filter((q) => q.until > G.hour);
   if (G.quests.length >= 2) return;
   const pool = [];
@@ -1020,14 +1020,19 @@ function questTick() {
   const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally" && !G.quests.some((q) => q.ref === f.name));
   if (pal) pool.push({ ref: pal.name, icon: "🕊️", title: `${pal.name} is booking an opener`, text: `${pal.plan.city ? `Show in ${pal.plan.city}. ` : ""}Shared taste, new crowd. Parley now.`, reward: "alliance chance", claim: () => parley({ name: pal.name, f: pal, barter: pal.plan.barter + 15, netnew: pal.plan.netnew, convert: pal.plan.convert, city: pal.plan.city }) });
   if (!pool.length) return;
-  const q = pool[Math.floor(G.rng() * pool.length)]; q.id = "q" + Math.round(G.hour * 10); q.until = G.hour + 30;
+  const q = pool[Math.floor(G.rng() * pool.length)]; q.id = "q" + Math.round(G.hour * 10) + "w" + G.week; q.until = G.hour + 72;
   G.quests.push(q); Sound.play("tick"); event(`${q.icon} Opportunity: ${q.title}`, "good"); renderQuests();
+}
+// a calm countdown: days while there's time, hours near the end
+function questLeft(q) {
+  const h = Math.max(0, q.until - G.hour), at = q.until >= 168 ? "next week" : Clock.fmt(q.until);
+  return h >= 24 ? `${Math.floor(h / 24)}d ${Math.round(h % 24)}h left · until ${at}` : `${Math.max(1, Math.round(h))}h left · until ${at}`;
 }
 function renderQuests() {
   if (!G) return;
   const before = G.quests.length; G.quests = G.quests.filter((q) => q.until > G.hour);
   if (G.quests.length < before) event("⌛ An opportunity expired.", "info");
-  $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl">⏱ ${Math.max(0, Math.round(q.until - G.hour))}h left · until ${Clock.fmt(Math.min(167.9, q.until))}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
+  $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl">⏱ ${questLeft(q)}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
   $$("[data-q]").forEach((b) => b.addEventListener("click", () => { const q = G.quests.find((x) => x.id === b.dataset.q); if (!q) return; G.quests = G.quests.filter((x) => x !== q); q.claim(); ach("seize"); Sound.play("potion"); ops(`<span class="ok">${q.icon} claimed</span> ${esc(q.title)} · ${esc(q.reward)}`); hud(); renderQuests(); renderOrders(); }));
 }
 
@@ -1780,16 +1785,45 @@ function brainSpark(points, dead) {
   const P = points.map((v, i) => `${(i / n) * W},${H - 3 - ((v - min) / Math.max(1, max - min)) * (H - 8)}`).join(" ");
   return `<svg viewBox="0 0 ${W} ${H}" class="spark" aria-label="Predicted brain response across the video">${(dead ?? []).map((z) => `<rect x="${(z.start / n) * W}" y="0" width="${Math.max(3, ((z.end - z.start) / n) * W)}" height="${H}" fill="rgba(255,92,122,.18)"/>`).join("")}<polyline points="${P}" fill="none" stroke="#e1bdff" stroke-width="1.6"/></svg>`;
 }
-// a side-view brain: each region lights up as strongly as the model predicts
-const BRAIN_AREAS = { attention: "M22 46c-2-16 10-30 28-32 6 0 10 4 10 10l-2 22-20 8z", language: "M40 54l18-8 14 2 6 12-10 8-22-2z", auditory: "M44 66l24 2 14-6 6 10c-6 8-20 10-34 6z", visual: "M78 26c14 2 26 12 26 28 0 8-6 14-14 14l-10-8-4-14z" };
+// A left-side view of the brain (front on the left). Each lobe lights up as
+// strongly as the model predicts for its region: frontal = attention,
+// temporal = auditory, occipital = visual, and Broca's + Wernicke's areas =
+// language. Parietal, cerebellum and brainstem stay neutral.
+const BRAIN = {
+  out: "M34 92C24 66 36 36 66 24 92 13 126 12 150 22 174 32 188 54 186 78 185 92 178 102 166 106 160 112 148 114 138 112 124 118 104 120 90 116 74 122 52 118 42 108 36 102 34 92Z",
+  lobes: {
+    frontal: "M0 0H116L111 36 106 62 102 76 70 86 60 124H0Z",
+    parietal: "M116 0H162L156 34 154 62 150 76 128 74 102 76 106 62 111 36Z",
+    occipital: "M162 0H210V160H170L166 106 150 76 154 62 156 34Z",
+    temporal: "M60 124 70 86 102 76 128 74 150 76 166 106 170 160H60Z",
+  },
+  broca: "M64 84c4-8 16-10 22-4 4 5 0 11-8 12-7 1-15-2-14-8z",
+  wernicke: "M132 80c6-5 17-4 20 2 3 6-3 12-11 12-8 0-12-8-9-14z",
+  cereb: "M132 112c10-8 34-9 42 2 6 9-2 22-18 22-13 0-24-6-26-14 0-4 0-7 2-10z",
+  stem: "M110 116c3 8 6 18 6 32h-12c0-12-3-22-8-30z",
+  folds: "M116 14c-6 16-2 30-8 46-2 6-4 12-6 16 M70 87c20-8 42-12 66-12 10 0 20 1 28 4 M156 26c-4 14-3 30-2 50 M52 52c10-4 20-2 28 6 M64 34c10 2 16 10 18 20 M86 26c4 10 2 22-4 30 M128 26c6 8 6 20 2 30 M140 44c8 2 12 10 10 20 M174 56c-6 4-8 14-4 22 M86 100c10 4 24 4 36-2 M60 104c8 2 16 0 22-6",
+  cfold: "M138 118c10 3 22 3 32-2 M136 124c10 3 22 3 32-1",
+};
+const LOBE_OF = { frontal: "attention", temporal: "auditory", occipital: "visual" };
+let brainN = 0;
 function brainFig(rg) {
-  const out = "M18 52C12 30 32 10 56 12c26-6 52 8 52 34 0 16-12 24-22 24-6 10-22 14-34 8-18 4-30-8-34-26z";
-  return `<svg viewBox="0 0 120 86" class="bfig" aria-label="Predicted brain response by region"><defs><clipPath id="bclip"><path d="${out}"/></clipPath></defs><path d="${out}" fill="#15121d" stroke="rgba(225,189,255,.35)" stroke-width="1.4"/><g clip-path="url(#bclip)">${Object.entries(BRAIN_AREAS).map(([k, d]) => `<path d="${d}" fill="${REGIONS[k].col}" opacity="${(0.12 + 0.88 * (rg?.[k]?.avg ?? 0) / 100).toFixed(2)}"/>`).join("")}</g><path d="M40 30c8 4 10 12 6 20M62 20c4 8 2 16-4 22M84 30c-2 8 2 14 8 18" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.6"/><path d="M84 70c6 6 16 6 20-2" fill="#15121d" stroke="rgba(225,189,255,.3)" stroke-width="1.2"/></svg>`;
+  const id = "bc" + ++brainN, k = (r) => (0.14 + 0.86 * (rg?.[r]?.avg ?? 0) / 100).toFixed(2);
+  const lobe = (name, d) => LOBE_OF[name] ? `<path d="${d}" fill="${REGIONS[LOBE_OF[name]].col}" opacity="${k(LOBE_OF[name])}"/>` : `<path d="${d}" fill="#3a3448" opacity=".55"/>`;
+  return `<svg viewBox="22 6 172 146" class="bfig" role="img" aria-label="Predicted brain response by region"><defs><clipPath id="${id}"><path d="${BRAIN.out}"/></clipPath><radialGradient id="${id}g" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>
+    <path d="${BRAIN.stem}" fill="#2a2535" stroke="rgba(225,189,255,.3)" stroke-width="1.2"/>
+    <path d="${BRAIN.cereb}" fill="#2f2a3c" stroke="rgba(225,189,255,.35)" stroke-width="1.2"/><path d="${BRAIN.cfold}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>
+    <path d="${BRAIN.out}" fill="#15121d"/>
+    <g clip-path="url(#${id})">${Object.entries(BRAIN.lobes).map(([n, d]) => lobe(n, d)).join("")}
+      <path d="${BRAIN.broca}" fill="${REGIONS.language.col}" opacity="${k("language")}"/><path d="${BRAIN.wernicke}" fill="${REGIONS.language.col}" opacity="${k("language")}"/>
+      <path d="${BRAIN.out}" fill="url(#${id}g)"/>
+      <path d="${BRAIN.folds}" fill="none" stroke="rgba(8,6,12,.55)" stroke-width="1.6" stroke-linecap="round"/></g>
+    <path d="${BRAIN.out}" fill="none" stroke="rgba(225,189,255,.55)" stroke-width="1.6"/></svg>`;
 }
 function reactionHtml(v) {
   if (!v.regions) return "";
   const strongest = Object.entries(v.regions).sort((a, b) => b[1].avg - a[1].avg)[0];
-  const bars = Object.entries(REGIONS).map(([k, r]) => { const x = v.regions[k]?.avg ?? 0; return `<div class="rg" style="--c:${r.col}"><span>${r.name}</span><i><u style="width:${x}%"></u></i><b>${x}%</b></div>`; }).join("");
+  const WHERE = { visual: "back", auditory: "side", language: "2 spots", attention: "front" };
+  const bars = Object.entries(REGIONS).map(([k, r]) => { const x = v.regions[k]?.avg ?? 0; return `<div class="rg" style="--c:${r.col}"><span>${r.name}<small>${WHERE[k]}</small></span><i><u style="width:${x}%"></u></i><b>${x}%</b></div>`; }).join("");
   const LBL = ["Hate", "Meh", "OK", "Like", "Love"], top = Math.max(1, ...(v.hist ?? [1]));
   const hist = (v.hist ?? []).map((p, i) => `<div class="hb"><i style="height:${Math.max(4, (p / top) * 100)}%;background:${["#ff5c7a", "#ff9f43", "#8a8d96", "#b27dff", "#2fd3a5"][i]}"></i><b>${p}%</b><span>${LBL[i]}</span></div>`).join("");
   return `<div class="react">
@@ -2210,6 +2244,8 @@ async function endWeek() {
   G.gold += gold; G.buzz = Math.min(BUZZ_MAX, G.buzz + gain); float(capP(), `+🪙${gold}`, "#ffcf5a", -30); float(capP(), `+⚡${gain}`, "#7fd8ff", 40);
   ops(`<span class="ok">income</span> +🪙${gold} (${G.cities.filter((c) => sideOf(c) === "you").length} cities × 15${G.sponsors.length ? ` + ${G.sponsors.length} sponsor${G.sponsors.length > 1 ? "s" : ""}` : ""}) · +⚡${gain}`);
   G.week++; G.hour = 9; G.forts.clear();
+  // the clock restarts at Monday 09:00: open opportunities keep their remaining time
+  for (const q of G.quests) q.until -= 159; G.nextQuest = Math.max(12, G.nextQuest - 159);
   G.busy = false;
   if (G.week > WEEKS) { G.week = WEEKS; hud(); renderOrders(); setTimeout(victory, 600); return; }
   planIntents();
