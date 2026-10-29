@@ -2212,7 +2212,7 @@ function renderAdvice() {
 }
 
 // ---------------------------------------------------------------- the landing hook
-// A lighter opener: you and your next 1,000 fans, both too shy to make the
+// A lighter opener: you and the fans who would love you, both too shy to make the
 // first move 👉👈. Then the fingertips touch, and Conquest makes it.
 function playHook() {
   const el = $("#hook"); if (!el) return;
@@ -2225,7 +2225,7 @@ function playHook() {
   function run() {
     t.forEach(clearTimeout); t = []; touched = false; el.classList.remove("you", "fans", "touch");
     const art = el.querySelector(".hk-art"); if (art) { art.style.animation = "none"; void art.offsetWidth; art.style.animation = ""; }
-    for (const [ms, text] of [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
+    for (const [ms, text] of [[300, "POV: you and the fans who would love you"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]]) t.push(setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
     t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400), setTimeout(() => el.classList.add("touch"), 4300), setTimeout(end, 6400));
     const cue = (k, at) => t.push(setTimeout(() => { if (k === "rimshot") touched = true; if (Sound.live) Sound.play(k); }, at));
     cue("tadum", 300); cue("swell", 1200); cue("rimshot", 4300);
