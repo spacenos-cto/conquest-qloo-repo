@@ -762,6 +762,8 @@ function brainNote() {
 let regT = 0;
 function brainTick(now) {
   if (now - regT < 200 || !Neuro.series) return; regT = now;
+  const host = $("#brainsvg"); if (host && !host.firstChild) host.innerHTML = brainFig(null, "bfig live");
+  if (host) for (const p of host.querySelectorAll("[data-r]")) p.setAttribute("opacity", brainOp(Neuro.I(p.dataset.r, now) * 100));
   $("#regions").innerHTML = Object.entries(REGIONS).map(([k, r]) => { const v = Math.round(Neuro.I(k, now) * 100); return `<div style="--c:${r.col}"><span>${r.name}</span><b style="font-family:var(--mono);font-weight:500">${v}%</b><i><u style="width:${v}%"></u></i></div>`; }).join("");
 }
 function sharpenBrain() {
@@ -1785,45 +1787,68 @@ function brainSpark(points, dead) {
   const P = points.map((v, i) => `${(i / n) * W},${H - 3 - ((v - min) / Math.max(1, max - min)) * (H - 8)}`).join(" ");
   return `<svg viewBox="0 0 ${W} ${H}" class="spark" aria-label="Predicted brain response across the video">${(dead ?? []).map((z) => `<rect x="${(z.start / n) * W}" y="0" width="${Math.max(3, ((z.end - z.start) / n) * W)}" height="${H}" fill="rgba(255,92,122,.18)"/>`).join("")}<polyline points="${P}" fill="none" stroke="#e1bdff" stroke-width="1.6"/></svg>`;
 }
-// A left-side view of the brain (front on the left). Each lobe lights up as
-// strongly as the model predicts for its region: frontal = attention,
-// temporal = auditory, occipital = visual, and Broca's + Wernicke's areas =
-// language. Parietal, cerebellum and brainstem stay neutral.
-const BRAIN = {
-  out: "M34 92C24 66 36 36 66 24 92 13 126 12 150 22 174 32 188 54 186 78 185 92 178 102 166 106 160 112 148 114 138 112 124 118 104 120 90 116 74 122 52 118 42 108 36 102 34 92Z",
-  lobes: {
-    frontal: "M0 0H116L111 36 106 62 102 76 70 86 60 124H0Z",
-    parietal: "M116 0H162L156 34 154 62 150 76 128 74 102 76 106 62 111 36Z",
-    occipital: "M162 0H210V160H170L166 106 150 76 154 62 156 34Z",
-    temporal: "M60 124 70 86 102 76 128 74 150 76 166 106 170 160H60Z",
-  },
-  broca: "M64 84c4-8 16-10 22-4 4 5 0 11-8 12-7 1-15-2-14-8z",
-  wernicke: "M132 80c6-5 17-4 20 2 3 6-3 12-11 12-8 0-12-8-9-14z",
-  cereb: "M132 112c10-8 34-9 42 2 6 9-2 22-18 22-13 0-24-6-26-14 0-4 0-7 2-10z",
-  stem: "M110 116c3 8 6 18 6 32h-12c0-12-3-22-8-30z",
-  folds: "M116 14c-6 16-2 30-8 46-2 6-4 12-6 16 M70 87c20-8 42-12 66-12 10 0 20 1 28 4 M156 26c-4 14-3 30-2 50 M52 52c10-4 20-2 28 6 M64 34c10 2 16 10 18 20 M86 26c4 10 2 22-4 30 M128 26c6 8 6 20 2 30 M140 44c8 2 12 10 10 20 M174 56c-6 4-8 14-4 22 M86 100c10 4 24 4 36-2 M60 104c8 2 16 0 22-6",
-  cfold: "M138 118c10 3 22 3 32-2 M136 124c10 3 22 3 32-1",
-};
+// A left-side view of the brain (front on the left), drawn like an anatomy
+// plate: real lobe boundaries (central, Sylvian and parieto-occipital
+// fissures), the named primary sulci, a field of secondary folds, cerebellum
+// with folia, and the brainstem. Each lobe lights up as strongly as the model
+// predicts for its region: frontal = attention, temporal = auditory,
+// occipital = visual, Broca's + Wernicke's areas = language.
+const BRAIN = (() => {
+  const L = (pts) => pts.map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join("");
+  const smooth = (pts) => { let d = `M${pts[0][0]} ${pts[0][1]}`; for (let i = 1; i < pts.length - 1; i++) { const [x, y] = pts[i], [nx, ny] = pts[i + 1]; d += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`; } const e = pts[pts.length - 1]; return d + `L${e[0]} ${e[1]}`; };
+  const central = [[121, 0], [118, 16], [117, 32], [112, 48], [106, 62], [101, 82]];
+  const sylvian = [[57, 95], [78, 88], [101, 82], [124, 79], [140, 77], [152, 70], [158, 62]];
+  const parocc = [[178, 0], [172, 24], [169, 42], [170, 58]];
+  const preocc = [[158, 62], [166, 76], [172, 92], [178, 108], [184, 160]];
+  const rev = (p) => [...p].reverse();
+  const lobes = {
+    frontal: L([[0, 0], ...central, ...rev(sylvian.slice(0, 3)), [50, 160], [0, 160]]) + "Z",
+    parietal: L([[121, 0], [178, 0], ...parocc.slice(1), [158, 62], ...rev(sylvian).slice(1), ...rev(central).slice(1)]) + "Z",
+    occipital: L([[178, 0], [220, 0], [220, 160], [184, 160], ...rev(preocc).slice(1), [170, 58], ...rev(parocc).slice(1)]) + "Z",
+    temporal: L([...sylvian, ...preocc.slice(1), [50, 160]]) + "Z",
+  };
+  const out = "M24 78C20 52 40 26 72 18C100 10 136 10 162 22C186 34 200 56 198 80C197 94 190 104 178 108C168 112 156 112 148 110C136 116 120 122 104 120C88 124 70 122 60 112C54 106 52 98 58 94C50 96 38 96 30 90C26 86 24 82 24 78Z";
+  const fissures = [central, sylvian, parocc, preocc.slice(0, 4)].map(smooth).join("");
+  const primary = ["M38 50C58 40 80 35 104 33", "M34 70C54 63 76 59 103 54", "M107 17C103 31 101 44 95 61", "M134 15C130 31 128 46 122 66", "M132 46C146 40 158 42 168 49", "M66 104C90 98 118 92 150 86", "M76 116C102 110 128 104 160 98", "M186 48C181 64 183 80 189 92", "M150 30C154 38 152 48 146 56"];
+  // secondary folds: short meanders scattered over the cortex (seeded, so every brain matches)
+  const rnd = mulberry(1907), sec = [];
+  for (let i = 0; i < 120; i++) {
+    let x = 30 + rnd() * 165, y = 16 + rnd() * 100, ang = rnd() * 6.283; const pts = [[x, y]];
+    for (let j = 0, n = 5 + Math.floor(rnd() * 4); j < n; j++) { ang += (rnd() - 0.5) * 2.6; x += Math.cos(ang) * (2.6 + rnd() * 2.4); y += Math.sin(ang) * (2.6 + rnd() * 2.4); pts.push([+x.toFixed(1), +y.toFixed(1)]); }
+    sec.push(smooth(pts.map((p) => [+(+p[0]).toFixed(1), +(+p[1]).toFixed(1)])));
+  }
+  const cereb = "M146 112C160 104 186 104 196 116C202 128 190 142 170 142C154 142 142 134 142 124C142 118 143 115 146 112Z";
+  const folia = Array.from({ length: 7 }, (_, i) => `M${140 + i} ${113 + i * 4.2}C${158} ${108 + i * 4.2} ${182} ${108 + i * 4.2} ${200 - i * 1.5} ${115 + i * 4.4}`).join("");
+  const stem = "M108 112C122 114 132 118 130 128C128 136 126 142 126 150L110 150C110 142 108 134 104 126C100 120 102 114 108 112Z";
+  return { out, lobes, fissures, primary: primary.join(""), sec: sec.join(""), cereb, folia, stem, broca: "M68 80c3-7 16-9 23-4 5 4 2 10-6 12-8 2-18-1-17-8z", wernicke: "M128 88c5-6 19-7 25-1 4 5-1 11-10 12-9 1-17-5-15-11z" };
+})();
 const LOBE_OF = { frontal: "attention", temporal: "auditory", occipital: "visual" };
+const brainOp = (v) => (0.16 + 0.84 * clamp01(v / 100)).toFixed(2);
 let brainN = 0;
-function brainFig(rg) {
-  const id = "bc" + ++brainN, k = (r) => (0.14 + 0.86 * (rg?.[r]?.avg ?? 0) / 100).toFixed(2);
-  const lobe = (name, d) => LOBE_OF[name] ? `<path d="${d}" fill="${REGIONS[LOBE_OF[name]].col}" opacity="${k(LOBE_OF[name])}"/>` : `<path d="${d}" fill="#3a3448" opacity=".55"/>`;
-  return `<svg viewBox="22 6 172 146" class="bfig" role="img" aria-label="Predicted brain response by region"><defs><clipPath id="${id}"><path d="${BRAIN.out}"/></clipPath><radialGradient id="${id}g" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>
-    <path d="${BRAIN.stem}" fill="#2a2535" stroke="rgba(225,189,255,.3)" stroke-width="1.2"/>
-    <path d="${BRAIN.cereb}" fill="#2f2a3c" stroke="rgba(225,189,255,.35)" stroke-width="1.2"/><path d="${BRAIN.cfold}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>
-    <path d="${BRAIN.out}" fill="#15121d"/>
+function brainFig(rg, cls = "bfig") {
+  const id = "bc" + ++brainN, op = (r) => brainOp(rg?.[r]?.avg ?? 0);
+  const lobe = (n, d) => LOBE_OF[n] ? `<path data-r="${LOBE_OF[n]}" d="${d}" fill="${REGIONS[LOBE_OF[n]].col}" opacity="${op(LOBE_OF[n])}"/>` : `<path d="${d}" fill="#4a4058" opacity=".5"/>`;
+  return `<svg viewBox="16 6 192 156" class="${cls}" role="img" aria-label="Predicted brain response by region"><defs>
+    <clipPath id="${id}"><path d="${BRAIN.out}"/></clipPath><clipPath id="${id}c"><path d="${BRAIN.cereb}"/></clipPath>
+    <radialGradient id="${id}g" cx="38%" cy="28%" r="78%"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>
+    <linearGradient id="${id}s" x1="0" x2="1"><stop offset="0" stop-color="#2a2333"/><stop offset=".5" stop-color="#4a3f57"/><stop offset="1" stop-color="#231d2b"/></linearGradient></defs>
+    <path d="${BRAIN.stem}" fill="url(#${id}s)" stroke="rgba(0,0,0,.5)" stroke-width="1"/>
+    <path d="${BRAIN.cereb}" fill="#3b3247"/><g clip-path="url(#${id}c)"><path d="${BRAIN.folia}" fill="none" stroke="rgba(8,5,12,.6)" stroke-width="1.3"/><path d="${BRAIN.cereb}" fill="url(#${id}g)"/></g><path d="${BRAIN.cereb}" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="1.2"/>
+    <path d="${BRAIN.out}" fill="#3a3045"/>
     <g clip-path="url(#${id})">${Object.entries(BRAIN.lobes).map(([n, d]) => lobe(n, d)).join("")}
-      <path d="${BRAIN.broca}" fill="${REGIONS.language.col}" opacity="${k("language")}"/><path d="${BRAIN.wernicke}" fill="${REGIONS.language.col}" opacity="${k("language")}"/>
-      <path d="${BRAIN.out}" fill="url(#${id}g)"/>
-      <path d="${BRAIN.folds}" fill="none" stroke="rgba(8,6,12,.55)" stroke-width="1.6" stroke-linecap="round"/></g>
-    <path d="${BRAIN.out}" fill="none" stroke="rgba(225,189,255,.55)" stroke-width="1.6"/></svg>`;
+      <path data-r="language" d="${BRAIN.broca}" fill="${REGIONS.language.col}" opacity="${op("language")}"/><path data-r="language" d="${BRAIN.wernicke}" fill="${REGIONS.language.col}" opacity="${op("language")}"/>
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${BRAIN.sec}" stroke="rgba(255,255,255,.12)" stroke-width=".9" transform="translate(-.7 -.7)"/><path d="${BRAIN.sec}" stroke="rgba(10,6,16,.5)" stroke-width="1.2"/>
+        <path d="${BRAIN.primary}" stroke="rgba(255,255,255,.14)" stroke-width="1.3" transform="translate(-.9 -.9)"/><path d="${BRAIN.primary}" stroke="rgba(8,5,12,.7)" stroke-width="2"/>
+        <path d="${BRAIN.fissures}" stroke="rgba(255,255,255,.12)" stroke-width="1.6" transform="translate(-1 -1)"/><path d="${BRAIN.fissures}" stroke="rgba(6,4,10,.85)" stroke-width="3"/></g>
+      <path d="${BRAIN.out}" fill="url(#${id}g)"/><path d="${BRAIN.out}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="7"/></g>
+    <path d="${BRAIN.out}" fill="none" stroke="rgba(225,189,255,.45)" stroke-width="1.3"/></svg>`;
 }
 function reactionHtml(v) {
   if (!v.regions) return "";
   const strongest = Object.entries(v.regions).sort((a, b) => b[1].avg - a[1].avg)[0];
   const WHERE = { visual: "back", auditory: "side", language: "2 spots", attention: "front" };
-  const bars = Object.entries(REGIONS).map(([k, r]) => { const x = v.regions[k]?.avg ?? 0; return `<div class="rg" style="--c:${r.col}"><span>${r.name}<small>${WHERE[k]}</small></span><i><u style="width:${x}%"></u></i><b>${x}%</b></div>`; }).join("");
+  const bars = Object.entries(REGIONS).map(([k, r]) => { const x = v.regions[k]?.avg ?? 0; return `<div class="rg" style="--c:${r.col}"><span>${r.name} <small>${WHERE[k]}</small></span><i><u style="width:${x}%"></u></i><b>${x}%</b></div>`; }).join("");
   const LBL = ["Hate", "Meh", "OK", "Like", "Love"], top = Math.max(1, ...(v.hist ?? [1]));
   const hist = (v.hist ?? []).map((p, i) => `<div class="hb"><i style="height:${Math.max(4, (p / top) * 100)}%;background:${["#ff5c7a", "#ff9f43", "#8a8d96", "#b27dff", "#2fd3a5"][i]}"></i><b>${p}%</b><span>${LBL[i]}</span></div>`).join("");
   return `<div class="react">
@@ -2107,7 +2132,7 @@ async function startGame(c, player) {
   for (const f of fac.values()) portrait(f.img); portrait(player.image);
 
   $("#site").hidden = true; $("#scan").hidden = true; $("#game").hidden = false; scrollTo(0, 0);
-  Field.setMode("panel", $("#brainp")); Neuro.play(c.tribe); brainNote();
+  Field.setMode("off"); Neuro.play(c.tribe); brainNote();
   $("#legend").innerHTML = [["You", COL.you], ...[...fac.values()].map((f) => [f.name, f.col]), ["Allied", COL.allied], ["Open ground", COL.open], ["Uncharted", COL.fog]].map(([n, col]) => `<span><i style="background:${col}"></i>${esc(n)}</span>`).join("") + `<span style="color:#3dff9a">◯ ripe to take</span>`;
   $("#ops").innerHTML = ""; $("#quests").innerHTML = ""; $("#ops-count").textContent = ""; Clock.reset(); Drawer.close(); tab("agents");
   $("#legend").classList.remove("hide"); setTimeout(() => $("#legend").classList.add("hide"), 4000);
