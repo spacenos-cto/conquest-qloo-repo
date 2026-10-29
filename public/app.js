@@ -1295,7 +1295,12 @@ function drawArmy(ctx, toS, bez, at, d, s, now) {
     ctx.beginPath(); ctx.arc(X, Y + bob, r, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
     { const [g1, g2] = AG_COL[u.id] ?? ["#af50ff", "#4c1a91"], gr = ctx.createRadialGradient(X - r * 0.3, Y + bob - r * 0.4, 0, X, Y + bob, r); gr.addColorStop(0, g1); gr.addColorStop(1, g2); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y + bob, r - 1.5 * d, 0, 6.283); ctx.fill(); ctx.font = `${15 * d}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(a.icon, X, Y + bob + 1 * d); ctx.textBaseline = "alphabetic"; }
     if (u.state === "working") { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.4 * d; ctx.beginPath(); ctx.arc(X, Y, r + 4 * d, now / 200, now / 200 + 1.8); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText("WORKING", X, Y - r - 8 * d); }
-    if (isSel || u === G.hoverUnit) { ctx.fillStyle = "#fff"; ctx.font = `italic 400 ${15 * d}px "Instrument Serif", serif`; ctx.textAlign = "center"; ctx.fillText(a.name, X, Y + r + 14 * d); }
+    if (isSel || u === G.hoverUnit) {
+      // a dark pill under the name so it stays readable over the city label
+      ctx.font = `italic 400 ${15 * d}px "Instrument Serif", serif`; ctx.textAlign = "center"; const w = ctx.measureText(a.name).width + 12 * d, ty = Y + r + 14 * d;
+      ctx.fillStyle = "rgba(8,7,11,.88)"; ctx.beginPath(); ctx.roundRect(X - w / 2, ty - 13 * d, w, 18 * d, 5 * d); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.fillText(a.name, X, ty);
+    }
   }
   // what a send would look like: from the selected unit to the hovered city (or the drag point)
   const tgt = G.drag ? G.drag.pt : sel && G.hoverCity ? toS(G.hoverCity.p) : null;
@@ -1600,7 +1605,7 @@ let TOUR_T0 = 0, tourSpot = null;
 function spot(sel) { tourSpot?.classList.remove("spot"); tourSpot = sel ? $(sel) : null; tourSpot?.classList.add("spot"); }
 function stopTour() { TOURING = false; spot(null); const b = $("#tourbar"); if (b) b.hidden = true; if (G) { G.tour = false; Clock.reset(); } }
 async function runTour() {
-  if (TOURING) return; TOURING = true; TOUR_T0 = Date.now(); const N = 11, live = () => TOURING;
+  if (TOURING) return; TOURING = true; TOUR_T0 = Date.now(); const N = 12, live = () => TOURING;
   try { localStorage.setItem("conquest-coached", "1"); } catch {}
   caption(1, N, "Conquest is the growth agent you play like a strategy game. Watch a full week in two minutes.");
   await sleep(4000); if (!live()) return;
@@ -1655,11 +1660,20 @@ async function runTour() {
     await until(() => !$("#parley").hidden, 5000); await sleep(3000); ($(".offer.best:not(:disabled)") ?? $(".offer:not(:disabled)"))?.click(); await until(() => $("#pdone"), 6000); await sleep(1800); $("#pdone")?.click(); await sleep(1200);
   }
   if (!live()) return;
+  // the content x-ray: the brain and the fan panel on their real videos
+  caption(11, N, "And it reads your real content: your latest YouTube videos, played to your 1,000 fans and the brain model.");
+  Clock.toggle(); Drawer.open("xray");
+  await until(() => (G.xray && !G.xrayBusy) || !live(), 45000); if (!live()) return;
+  if (G.xray?.status === "ok") {
+    const top = [...G.xray.videos].sort((a, b) => b.mean - a.mean)[0];
+    caption(11, N, `${G.xray.channel}: best taste fit is “${top.title.slice(0, 48)}${top.title.length > 48 ? "…" : ""}” (${top.mean}/5). It even tells you when views follow news hooks, not taste.`);
+  }
+  await sleep(7000); Drawer.close(); Clock.toggle(); if (!live()) return;
   // the week ends
-  caption(11, N, "Sunday: income lands, rivals strike, and next week's real missions are waiting. Then share it.");
+  caption(12, N, "Sunday: income lands, rivals strike, and next week's real missions are waiting. Then share it.");
   Clock.finishWeek(); await until(() => G.week >= 2 && !G.busy, 25000); await sleep(1200);
   await openShare(); spot(null);
-  caption(11, N, "That's Conquest: a game whose every move is a real growth move. Your turn.");
+  caption(12, N, "That's Conquest: a game whose every move is a real growth move. Your turn.");
   $("#tb-x").textContent = "Play it yourself";
   G.tour = false; TOURING = false;
 }

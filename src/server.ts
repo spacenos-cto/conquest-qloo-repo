@@ -285,6 +285,8 @@ async function prewarm() {
     try {
       const c: any = await campaignReport(n);
       console.log(`  warmed ${n}: ${c.status} in ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+      // the jury tour X-rays Jason's All-In channel: have it ready
+      if (n === "Jason Calacanis") { const x: any = await xray(n, {}, "@allin"); console.log(`  warmed X-ray @allin: ${x.status}`); }
     } catch (e: any) {
       console.log(`  warm ${n} failed: ${e?.message ?? e}`);
     }

@@ -1011,6 +1011,10 @@ em{font-style:italic}
 .unit2 .face{position:relative;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:22px;line-height:1;background:radial-gradient(circle at 35% 25%,var(--g1),var(--g2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -6px 12px rgba(0,0,0,.25),0 4px 10px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);overflow:hidden}
 .unit2 .face::after{content:"";position:absolute;left:10%;top:4%;width:80%;height:38%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0));pointer-events:none}
 .unit2 .nm2{font-size:10px;line-height:1.1;color:#e6e7ea;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* wide desktops: bigger faces, and the selected-unit card stops stretching */
+@media (min-width:1800px){.s-next .nm{max-width:640px}}
+/* two-word names wrap instead of truncating when the army slot is narrow */
+@media (max-width:1700px){.units{gap:1px 4px}.unit2{padding:3px 1px 1px}.unit2 .face{width:36px;height:36px;font-size:20px}.unit2 .nm2{white-space:normal;text-align:center;font-size:9px;letter-spacing:-.02em;line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}}
 .unit2 .pr{position:static;background:none;padding:0;font-size:9px;line-height:1.1;color:#ffe9b0}
 .unit2 .hk{left:2px;top:0;z-index:2;font-size:8.5px;color:#7d7f86}
 .unit2.hire .face{filter:saturate(.45) brightness(.75)}
@@ -1428,6 +1432,6 @@ body.hooked{overflow:hidden}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=122"></script>
+<script src="app.js?v=133"></script>
 </body>
 </html>
