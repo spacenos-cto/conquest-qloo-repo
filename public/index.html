@@ -1325,6 +1325,32 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 @keyframes hkzoomp2{from{transform:translate(-43%,-50%) scale(1)}to{transform:translate(-43%,-50%) scale(1.04)}}
 .hk-snd{position:absolute;right:20px;bottom:20px;z-index:3;border:1px solid rgba(28,21,48,.25);background:rgba(255,250,240,.8);color:#1c1530;border-radius:999px;padding:8px 14px;font:600 13px var(--sans);cursor:pointer;box-shadow:0 6px 16px rgba(60,30,120,.18)}
 .hk-snd:hover{background:#fff}
+
+/* ===== live calls in the right column; rivals talk, RPG style ===== */
+.mapside{grid-template-columns:minmax(0,1fr)}
+#mapside .ops,#mapside .opshead,#mapside .opshead .note{min-width:0}
+#mapside .ops{overflow:hidden}
+#mapside .ops{position:relative;left:auto;bottom:auto;width:auto;background:rgba(12,10,18,.9);border:1px solid rgba(225,189,255,.22);border-radius:10px}
+#mapside .ops .opshead{padding:8px 10px;gap:8px}
+#mapside .ops .opshead .stitle{font-size:9.5px}
+#mapside .ops #ops-last{font-size:11px;min-width:0;flex:1}
+#mapside .ops .opslog{height:150px;font-size:11px;line-height:1.5;padding:4px 10px 8px}
+#mapwrap:has(#p-ops:not(.collapsed)) .scoreboard{opacity:0;pointer-events:none}
+@media (max-height:860px){#mapside .ops .opslog{height:110px}}
+.say{position:absolute;right:320px;top:14px;z-index:7;width:min(380px,calc(100% - 360px));display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;padding:12px 14px 12px 12px;border-radius:12px;background:linear-gradient(180deg,rgba(26,20,38,.97),rgba(12,10,18,.97));border:2px solid var(--c,#af50ff);box-shadow:0 18px 40px rgba(0,0,0,.6),0 0 24px color-mix(in srgb,var(--c,#af50ff) 45%,transparent);cursor:pointer;animation:sayin .35s cubic-bezier(.2,1.4,.4,1) both}
+.say[hidden]{display:none}
+.say::after{content:"";position:absolute;right:-11px;top:var(--ty,26px);border:9px solid transparent;border-left-color:var(--c,#af50ff)}
+@keyframes sayin{from{opacity:0;transform:translateX(16px) scale(.96)}to{opacity:1;transform:none}}
+.say .sp{width:76px;height:76px;border-radius:10px;border:2px solid var(--c,#af50ff);overflow:hidden;background:#0b0a10;align-self:start}
+.say .sp img,.say .sp .ph{width:100%;height:100%;object-fit:cover;display:grid;place-items:center;font-size:26px}
+.say .sn{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.say .sn b{font-family:var(--serif);font-style:italic;font-weight:400;font-size:20px;line-height:1.1}
+.say .sn small{font-family:var(--sans);font-weight:600;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--c,#af50ff) 22%,transparent);color:#fff}
+.say .st{margin:6px 0 0;font-size:14px;line-height:1.45;color:#eef0f3;min-height:2.9em}
+.say .st::after{content:"▼";display:inline-block;margin-left:6px;font-size:9px;color:var(--c,#af50ff);animation:blinkv 1s steps(2) infinite}
+.say.typing .st::after{content:"▍";animation:none}
+@keyframes blinkv{50%{opacity:0}}
+@media (max-width:1180px){.say{right:80px;top:auto;bottom:70px;width:min(380px,calc(100% - 100px))}.say::after{display:none}}
 </style>
 </head>
 <body>
@@ -1561,13 +1587,14 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
         <div class="quests" id="quests"></div>
         <button class="ghostbtn" id="simulate">▶ Simulate my whole plan</button>
       </aside>
-      <section class="ops frame collapsed" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="false"><span class="stitle" style="position:static">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
       <div class="cityp frame" id="cityp" hidden></div>
       <div class="unitpop" id="unitpop" hidden></div>
       <div class="mapside" id="mapside">
         <section class="slot s-radar" id="slot-radar"><div class="stitle">Radar ›</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas></section>
         <section class="slot s-brain" id="slot-brain" title="Click to X-ray your real content"><div class="stitle">Crowd brain ›</div><div class="bwrap"><div id="brainsvg"></div><div class="regions" id="regions"></div></div><div class="bnote" id="brain-note"></div></section>
+        <section class="ops frame collapsed" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="false"><span class="stitle" style="position:static">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
       </div>
+      <div class="say" id="say" hidden></div>
       <div class="rivalstrip" id="rivalstrip"></div>
       <div class="scoreboard" id="scoreboard"></div>
       <div class="legend" id="legend"></div>
@@ -1594,6 +1621,6 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=161"></script>
+<script src="app.js?v=171"></script>
 </body>
 </html>

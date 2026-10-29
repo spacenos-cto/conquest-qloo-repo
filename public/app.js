@@ -980,6 +980,7 @@ function battle({ city, f, cost, title }) {
       const v = $("#verdict"); v.className = "verdict " + (win ? "win" : "lose"); v.textContent = win ? "VICTORY" : "REPELLED";
       Sound.play(win ? "conquer" : "lost");
       if (win && o.p < 0.5) ach("giant");
+      setTimeout(() => say(f, rivalLine(f, win ? "beaten" : "won", { city: city.name })), 1200);
       if (!win) { event(`⚔ ${f.name} held ${city.name}. Prepare the city and try again.`, "bad"); ops(`<span class="rv">⚔ lost the battle for ${esc(city.name)}</span> · odds were ${Math.round(o.p * 100)}%`); }
       else ops(`<span class="ok">⚔ won the battle for ${esc(city.name)}</span> · odds were ${Math.round(o.p * 100)}%`);
       $("#brow").innerHTML = `<button class="go" id="bdone">${win ? "Claim it" : "Fall back"}</button>`;
@@ -1468,7 +1469,7 @@ function rivalPanel(f) {
 function renderRivalStrip() {
   if (!G) return;
   $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" || lv === "SIEGE" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: threat ${lv}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${lv}</span></button>`; }).join("");
-  $$("[data-rv]").forEach((b) => b.addEventListener("click", () => select({ type: "rival", id: b.dataset.rv })));
+  $$("[data-rv]").forEach((b) => b.addEventListener("click", () => { select({ type: "rival", id: b.dataset.rv }); const f = G.fac.get(b.dataset.rv); if (f && !sayOn) say(f, rivalLine(f, "ambient")); }));
   const rows = [{ name: G.player.name, col: COL.you, age: ageOf(G.conquest)[1], pct: G.conquest, sc: score() }]
     .concat([...G.fac.values()].map((f) => { const n = G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, pct = Math.round((n / Math.max(1, ground())) * 100), fm = G.fame.get(f.name); return { name: f.name, col: f.allied ? COL.allied : f.col, age: ageOf(pct)[1], pct, sc: Math.round(pct * 100 + (fm?.views ?? 0) / 20) }; }))
     .sort((a, b) => b.sc - a.sc);
@@ -1554,11 +1555,59 @@ function preyOf(f) {
   return mine.filter((c) => c.contested === f.name || rel(c) > 0.5).sort((a, b) => rel(b) - rel(a))[0];
 }
 // at the start of each week, rivals decide who they'll attack, and the radar shows it
+// ---------------------------------------------------------------- rivals talk
+// RPG-style dialog: a rival's portrait, name plate and a typed-out line, next
+// to their face on the rival strip. Lines come from what they're really doing
+// this week (intents, sieges, battles, fame momentum from Wikipedia).
+const anyOf = (a) => a[Math.floor(Math.random() * a.length)];
+function rivalLine(f, kind, x = {}) {
+  const me = G.player.name.split(" ")[0], mo = G.fame.get(f.name)?.momentum, city = x.city ?? "";
+  const it = G.intents.find((i) => i.fid === f.id), sg = G.sieges.find((i) => i.fid === f.id);
+  const L = {
+    intent: [`Your ${city} crowd? They're mine by Sunday.`, `See you in ${city}, ${me}. Bring better material.`, `${city} laughs at my stuff now. Sunday it's official.`],
+    siege: [`${city} is falling. ${x.left ?? 2} weeks and it's mine.`, `Hear that? That's ${city} switching sides.`],
+    bounced: [`Walls in ${city}? Cute. I'll be back.`, `Fine, ${city} held. This time.`],
+    beaten: [`Okay, ${city} is yours. For now.`, `Lucky crowd. Rematch soon, ${me}.`],
+    won: [`${city} chose me. Better luck next set.`, `Told you. ${city} is my room.`],
+    ally: [`Same taste, different stage. Co-bill${f.plan?.city ? ` in ${f.plan.city}` : ""}?`, `Your fans would love my crowd, ${me}. Let's talk.`],
+    allied: [`Partner! I'll warm up ${f.plan?.city ?? "the room"} for you.`, `Together we own this map.`],
+    hot: [`My Wikipedia's up ${Math.abs(mo ?? 0)}% this month. Keep up.`, `Everyone's searching my name this month. Just saying.`],
+    cold: [`Slow month for me. Don't get comfortable.`, `Quiet week. I'm writing.`],
+    calm: [`Nice map, ${me}. Shame if someone took it.`, `Watching your ground. Always watching.`],
+  };
+  let k = kind;
+  if (k === "ambient") k = f.allied ? "allied" : sg ? "siege" : it ? "intent" : f.strategy === "ally" ? "ally" : mo > 10 ? "hot" : mo < 0 ? "cold" : "calm";
+  if (k === "siege" && !x.city && sg) { x.city = sg.city; x.left = sg.left; return rivalLine(f, "siege", x); }
+  if (k === "intent" && !x.city && it) return rivalLine(f, "intent", { city: it.city });
+  return anyOf(L[k] ?? L.calm);
+}
+const ROLE = (f) => f.allied ? "Ally" : f.strategy === "compete" ? "Nemesis" : f.strategy === "ally" ? "Could be an ally" : "Rival";
+let sayQ = [], sayOn = false, sayT = 0, sayLast = 0;
+function say(f, text) { if (!G || !f || !text) return; if (sayQ.length > 2) sayQ.shift(); sayQ.push({ f, text }); if (!sayOn) sayNext(); }
+function sayNext() {
+  const box = $("#say"); const n = sayQ.shift(); if (!n || !box) { sayOn = false; if (box) box.hidden = true; return; }
+  sayOn = true; sayLast = performance.now();
+  const { f, text } = n, col = f.allied ? COL.allied : f.col;
+  box.style.setProperty("--c", col);
+  box.innerHTML = `<div class="sp">${avatar(f.img, f.name)}</div><div><div class="sn"><b>${esc(f.name)}</b><small>${ROLE(f)}</small></div><p class="st"></p></div>`;
+  const btn = $(`[data-rv="${f.id}"]`), mw = $("#mapwrap");
+  if (btn && mw) { const r = btn.getBoundingClientRect(), m = mw.getBoundingClientRect(); box.style.top = Math.max(14, r.top - m.top - 8) + "px"; box.style.setProperty("--ty", "26px"); }
+  box.hidden = false; box.classList.add("typing"); Sound.play("select");
+  const st = box.querySelector(".st"); let i = 0; clearInterval(sayT);
+  sayT = setInterval(() => { i += 2; st.textContent = text.slice(0, i); if (i % 12 === 0) Sound.play("tick"); if (i >= text.length) { clearInterval(sayT); box.classList.remove("typing"); sayT = setTimeout(sayNext, 2600 + text.length * 35); } }, 28);
+}
+$("#say")?.addEventListener("click", () => { clearInterval(sayT); clearTimeout(sayT); sayNext(); });
+// now and then, someone pipes up on their own
+function sayTick(now) {
+  if (!G || G.over || G.modal || sayOn || now - sayLast < 38000 || !G.fac.size) return;
+  const f = anyOf([...G.fac.values()]); say(f, rivalLine(f, "ambient"));
+}
 function planIntents() {
   planIntentsRaw();
   G.intents.sort((a, b) => (G.fac.get(a.fid)?.strategy === "compete" ? 0 : 1) - (G.fac.get(b.fid)?.strategy === "compete" ? 0 : 1));
   G.intents = G.intents.slice(0, 2);
   for (const it of G.intents) ops(`<span class="rv">📡 radar: ${esc(G.fac.get(it.fid)?.name)}</span> is massing toward <b>${esc(it.city)}</b> · arrives Sunday`);
+  const loud = G.intents[0] && G.fac.get(G.intents[0].fid); if (loud && G.week > 1) setTimeout(() => say(loud, rivalLine(loud, "intent", { city: G.intents[0].city })), 1800);
 }
 function planIntentsRaw() {
   G.intents = [];
@@ -2292,13 +2341,14 @@ async function endWeek() {
     const f = G.fac.get(it.fid), prey = G.cities.find((c) => c.name === it.city);
     if (!f || !prey) continue;
     if (f.allied) continue;
-    if (G.forts.has(prey.name)) { f.last = `Bounced off ${prey.name}`; event(`🛡 ${f.name}'s attack on ${prey.name} bounced off your walls.`, "good"); ops(`<span class="ok">🛡 ${esc(prey.name)} held</span> against ${esc(f.name)}`); float(prey.p, "🛡 HELD", "#3dff9a"); G.saved++; ach("wall"); await sleep(700); continue; }
+    if (G.forts.has(prey.name)) { setTimeout(() => say(f, rivalLine(f, "bounced", { city: prey.name })), 900); f.last = `Bounced off ${prey.name}`; event(`🛡 ${f.name}'s attack on ${prey.name} bounced off your walls.`, "good"); ops(`<span class="ok">🛡 ${esc(prey.name)} held</span> against ${esc(f.name)}`); float(prey.p, "🛡 HELD", "#3dff9a"); G.saved++; ach("wall"); await sleep(700); continue; }
     if (sideOf(prey) !== "you" || G.sieges.some((s) => s.city === prey.name)) continue;
     G.sieges.push({ city: prey.name, fid: f.id, left: 2 });
     G.orders.push({ id: `defend-${prey.name}-${G.week}`, kind: "defend", city: prey.name, title: `Defend ${prey.name}`, detail: `${f.name} is pulling your ${prey.name} fans their way. Win a battle there within 2 weeks, or lose ${pts(prey)}% conquest.`, receipt: `Qloo footprints: ${f.name} vs you in ${prey.name}`, gain: 0, done: false });
     f.last = `Besieging ${prey.name}`; G.temp.push({ from: it.from, to: prey.p, col: f.col, t0: performance.now() });
     banner(`${prey.name.toUpperCase()} UNDER SIEGE`, `${f.name} attacks · 2 weeks to break it`, false);
     event(`⚔ ${f.name} lays siege to ${prey.name}! 2 weeks to break it.`, "bad"); Sound.play("threat");
+    setTimeout(() => say(f, rivalLine(f, "siege", { city: prey.name, left: 2 })), 900);
     ops(`<span class="rv">⚔ ${esc(f.name)}</span> besieges <b>${esc(prey.name)}</b>`); hud(); await sleep(1500);
   }
   for (const f of G.fac.values()) {
@@ -2765,6 +2815,7 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
 (function loop(now) {
   requestAnimationFrame(loop);
   safe("brain", Field.frame, now);
+  safe("say", sayTick, now);
   if (G && !$("#game").hidden) { safe("map", MapView.frame, now); safe("radar", Radar.frame, now); safe("regions", brainTick, now); }
   else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); safe("stars", Stars.frame, now); safe("globe", Globe.frame, now); safe("story", Story.frame, now); safe("feed", Feed.frame, now); }
 })(performance.now());
