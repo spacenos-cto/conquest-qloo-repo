@@ -39,7 +39,8 @@ export async function findPartners(
 
   const rec = await g.call(
     "recommend",
-    { entity: fp.audience.id, target_type: target, take: 12, ...(location ? { location } : {}) },
+    // venues: only rooms that host shows (Qloo place tags), not every restaurant
+    { entity: fp.audience.id, target_type: target, take: 12, ...(location ? { location } : {}), ...(kind === "venues" ? { tags: "urn:tag:genre:place:comedy_club,urn:tag:genre:place:live_music_venue,urn:tag:genre:place:theater" } : {}) },
     runId,
   );
   const cands = (rec.results ?? []).filter((c: any) => c.name).slice(0, 10);

@@ -57,7 +57,7 @@ export function renderMail(o: { firstName: string; snap: any; changes: string[];
   const next = o.tour?.stops?.find((s: any) => s.night && s.night >= new Date().toISOString().slice(0, 10));
   const tourLine = o.tour && next ? `Your tour: ${o.tour.totals.nights} nights, next stop ${next.city} on ${nice(next.night)} → ${o.base}/tour/${o.tour.id}` : "";
   const quiet = !o.changes.length && !o.moves.length;
-  const subject = quiet ? `${o.firstName}, quiet week · tap to end week ${o.snap.week}` : `${o.firstName}, 3 moves for this week · ${held} cities held`;
+  const subject = quiet ? `${o.firstName}, quiet week · tap to end week ${o.snap.week}` : `${o.firstName}, 3 moves for this week · ${held} cit${held === 1 ? "y" : "ies"} held`;
   const lines = quiet
     ? [`Hi ${o.firstName},`, "", `Quiet week: nothing changed and no moves are waiting. Tap to end week ${o.snap.week} and see what your rivals do.`, "", `Open your map → ${link}`]
     : [`Hi ${o.firstName},`, "", `Week ${o.snap.week} of your Conquest. Here's what changed and what to do.`, "",

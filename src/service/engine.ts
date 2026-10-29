@@ -18,6 +18,7 @@ import { loadResult } from "../proof/youtube/run.js";
 import { METHOD as YT_METHOD } from "../proof/youtube/backtest.js";
 import { loadTrendsChecks } from "../proof/trends.js";
 import type { Fingerprint } from "../qloo/types.js";
+import { METROS } from "../conquest/geo.js";
 
 /**
  * The service facade the HTTP API and the MCP server call. One gateway/ledger
@@ -418,7 +419,13 @@ export async function venuesIn(name: string, who: Who, city: string) {
   const res: any = await fingerprintFor(name, who);
   if (res.candidates || res.empty) return { status: "unavailable", venues: [], receipts: [] };
   const runId = `venues_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  const env = await gateway.call("recommend", { entity: res.fp.audience.id, target_type: "place", take: 12, location: city }, runId);
+  // real stages first: Qloo's comedy clubs, then music venues and theaters; any place only as a fallback
+  const where = qlooPlace(city);
+  const call = (tags?: string) => gateway.call("recommend", { entity: res.fp.audience.id, target_type: "place", take: tags ? 6 : 12, location: where, ...(tags ? { tags } : {}) }, runId);
+  const [comedy, music] = await Promise.all([call(VENUE_TAGS.comedy), call(VENUE_TAGS.music)]);
+  const tagged = [...(comedy.results ?? []).map((v: any) => ({ ...v, tags: ["Comedy club", ...(v.tags ?? [])] })), ...(music.results ?? []).map((v: any) => ({ ...v, tags: ["Music venue", ...(v.tags ?? [])] }))]
+    .filter((v: any, i: number, all: any[]) => all.findIndex((x) => x.id === v.id) === i);
+  const env = tagged.length ? { ...comedy, results: tagged } : await call();
   const venues = (env.results ?? []).filter((v: any) => v?.name && !String(v.id ?? "").startsWith("mock:"))
     .map((v: any) => ({ name: v.name, id: v.id, fit: Math.round(Math.max(0, Math.min(1, v.affinity ?? 0)) * 100), address: v.address ?? null, phone: v.phone ?? null, website: v.website ?? null, tags: v.tags ?? [] }))
     .filter((v: any) => !ADULT.test(v.name + " " + v.tags.join(" ")))
@@ -426,19 +433,26 @@ export async function venuesIn(name: string, who: Who, city: string) {
   return { status: env.status, venues, receipts: receiptsFor(runId) };
 }
 
+// Qloo reads "Washington" as the state: name the city and state
+const qlooPlace = (city: string) => (city === "Washington" ? "Washington, DC" : METROS[city] ? `${city}, ${METROS[city]!.state}` : city);
+// Qloo place-type tags for rooms that host shows
+const VENUE_TAGS = { comedy: "urn:tag:genre:place:comedy_club", music: "urn:tag:genre:place:live_music_venue,urn:tag:genre:place:theater" };
 // Qloo's places include restaurants, hotels and the odd adult club: never suggest the last,
 // and rank rooms where a show can happen above places that only serve food.
 const ADULT = /adult entertainment|strip club|gentlemen'?s club|topless|exotic danc|cabaret club|\b(club onyx|covergirls|fantasy island|pink slip|scores|spearmint rhino|d[eé]j[aà] vu|rick'?s cabaret|sapphire|penthouse club|hustler club|tootsie'?s|king of diamonds|magic city|platinum plus|pink pony|follies|cheetah|the gold club)\b/i;
 const STAGE = /comedy|improv|club|lounge|\bbar\b|bar area|live music|music venue|theat(er|re)|hall|ballroom|event|nightclub|jazz|brewery|pub|tavern|stage/i;
-const NOT_STAGE = /coffee|ice cream|bakery|salon|\bspa\b|nail|dental|hotel|motel|\binn\b|suites|pharmacy|grocery|market|gas station|car wash|school|church/i;
-const stageScore = (v: any) => { const t = v.name + " " + (v.tags ?? []).join(" "); return v.fit + (STAGE.test(t) ? 8 : 0) - (NOT_STAGE.test(t) ? 40 : 0); };
+const NOT_STAGE = /coffee|ice cream|bakery|salon|\bspa\b|nail|dental|hotel|motel|\binn\b|suites|pharmacy|grocery|market|gas station|car wash|school|church|admirals club|sky club|centurion|airport|terminal/i;
+const FOOD = /cuisine|restaurant|grill\b|diner|deli\b|food|pizza|burger|sushi|taqueria|kitchen|bistro|cafe|café|peri-peri/i;
+const stageScore = (v: any) => { const t = v.name + " " + (v.tags ?? []).join(" "); return v.fit + (/^Comedy club/.test((v.tags ?? [])[0] ?? "") ? 15 : 0) + (STAGE.test(t) ? 8 : 0) - (NOT_STAGE.test(t) ? 40 : 0) - (FOOD.test(v.name) && !STAGE.test(v.name) ? 12 : 0); };
+/** can a show plausibly happen here? (Qloo lists every kind of place) */
+export const isStage = (v: { name: string; tags?: string[] }) => { const t = v.name + " " + (v.tags ?? []).join(" "); return STAGE.test(t) && !NOT_STAGE.test(t); };
 
 /** Brands / people / podcasts etc. your fans in a city love (one Qloo call), for the City Brief. */
 export async function lovedIn(name: string, who: Who, city: string, target: string, take = 4) {
   const res: any = await fingerprintFor(name, who);
   if (res.candidates || res.empty) return { status: "unavailable", items: [], receipts: [] };
   const runId = `loved_${target}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-  const env = await gateway.call("recommend", { entity: res.fp.audience.id, target_type: target, take, location: city }, runId);
+  const env = await gateway.call("recommend", { entity: res.fp.audience.id, target_type: target, take, location: qlooPlace(city) }, runId);
   const items = (env.results ?? []).filter((v: any) => v?.name && !String(v.id ?? "").startsWith("mock:")).map((v: any) => ({ name: v.name, affinity: Math.round((v.affinity ?? 0) * 100) }));
   return { status: env.status, items, receipts: receiptsFor(runId) };
 }

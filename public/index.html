@@ -1481,6 +1481,25 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 .up-rep{border:1px solid rgba(61,255,154,.3);background:rgba(61,255,154,.05);border-radius:8px;padding:7px 9px;margin-bottom:10px;font-size:12.5px;line-height:1.4}
 .up-rep small{color:#9dffcb}
 .up-st{font-size:13px;margin:0 0 10px;color:#eef0f3}.up-st.done{color:#9dffcb}
+
+/* ===== Tour Planner, City Brief button, Monday war report ===== */
+.tform{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-bottom:12px}
+.tform label{display:grid;gap:3px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--ash)}
+.tform label:first-child{grid-column:1/-1}
+.tform input,.tform select{background:#0f0d16;border:1px solid var(--hair);border-radius:8px;color:#eef0f3;padding:7px 9px;font:13px var(--sans)}
+.tform .chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#eef0f3;align-self:end}
+.tform .go{grid-column:1/-1;margin:2px 0 0}
+.tsum{display:grid;gap:2px;padding:10px 12px;border:1px solid rgba(255,207,90,.35);background:rgba(255,207,90,.06);border-radius:10px;margin-bottom:10px}.tsum b{font-size:15px}.tsum span{font-size:12px;color:var(--mist)}
+.tacts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.tacts a,.tacts button{width:auto;margin:0;padding:7px 10px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center}
+.tstops{display:grid;gap:8px}.tstop{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;padding:9px 10px;border:1px solid var(--hair);border-radius:10px}
+.tstop .tn{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#ffcf5a;color:#1a1208;font-size:12px}
+.tstop .tl{font-size:13.5px}.tstop .tv{font-size:12.5px;color:#e6e7ea;margin-top:2px}.tstop .tw{font-size:12px;color:var(--mist);margin-top:3px}.tstop .tc{font-size:10.5px;color:var(--ash);margin-top:3px}
+.cityp .cbrief{display:inline-block;margin:8px 12px 0;padding:6px 10px;font-size:12px;text-decoration:none;width:auto}
+.mr-h{font-family:var(--serif);font-style:italic;font-weight:400;font-size:28px;margin:10px 0 6px}.mr-p{color:var(--mist);margin:0 0 12px}
+.mr-f{display:grid;grid-template-columns:1fr 1.4fr auto;gap:8px}.mr-f input{background:#0f0d16;border:1px solid var(--hair);border-radius:8px;color:#eef0f3;padding:9px 10px;font:14px var(--sans)}.mr-f .go{margin:0;width:auto}
+@media (max-width:640px){.mr-f{grid-template-columns:1fr}}
+.tcard{border-color:rgba(255,207,90,.35)!important}
+.conf{display:block;font-size:11px;color:var(--ash);margin-top:4px}
 </style>
 </head>
 <body>
@@ -1493,7 +1512,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <div id="site">
   <header class="nav2"><div class="navin">
     <a class="brand2" href="#top"><b>CONQUEST</b><span>.AGENT</span></a>
-    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#contact">Contact us</a></nav>
+    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#tour-card">Tour Planner</a><a href="#contact">Contact us</a></nav>
     <div class="navcta"><a class="btn-dark" href="mailto:venky@spacenos.com?subject=Conquest%20Enterprise&body=Hi%20Venky%2C%0A%0AWe'd%20like%20the%20Enterprise%20version%20of%20Conquest%20for%20our%20roster.%0A%0ACompany%3A%0ANumber%20of%20performers%3A%0A" title="Mail venky@spacenos.com for the Enterprise version">Get Enterprise</a><button class="btn-line" data-play>Start your Conquest</button></div>
   </div></header>
 
@@ -1593,6 +1612,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
     <h2 class="mix2 sechead">What you <em>get.</em></h2>
     <p class="lead2">Every Monday, a battle plan built from live data. Every Sunday, what you actually did.</p>
     <div class="val6">
+      <div id="tour-card" class="tcard"><span class="emo">🗺️</span><b>A tour, planned for you</b><span>where to play, in what order and in which rooms, with the calendar, a CSV and a one-page brief per city</span></div>
       <div><span class="emo">🎟️</span><b>The next city to play</b><span>and the room whose crowd fits yours</span></div>
       <div><span class="emo">💼</span><b>Sponsors your fans already love</b><span>with the pitch to send</span></div>
       <div><span class="emo">🕊️</span><b>A collab partner</b><span>whose crowd is new to you, and the DM</span></div>
@@ -1696,6 +1716,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
     <div class="hudr">
       <div class="hgrp">
       <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">Real moves</span> <b id="real-n"></b></button>
+      <button class="icobtn" id="tour-btn" title="Plan a real tour from your map: cities, nights, rooms, calendar">🗺 <span class="lbl">Tour</span></button>
       <button class="icobtn" id="xray-btn" title="X-ray your real YouTube content with the brain + 1,000 fans">🎬 <span class="lbl">X-ray</span></button>
       <button class="icobtn" id="share-btn" title="Share your campaign card">⭐ <span class="lbl">Share</span></button>
       </div>
@@ -1755,6 +1776,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=250"></script>
+<script src="app.js?v=260"></script>
 </body>
 </html>

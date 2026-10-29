@@ -618,6 +618,7 @@ function cityPanel(ct) {
   $("#cityp").innerHTML = `<div class="ptitle">City report</div><h4>${esc(ct.name)}</h4><div class="who" style="color:${colOf(key)}">${esc(owner)}</div>
     <dl><dt>Your fan signal</dt><dd>${ct.you.toLocaleString()}</dd><dt>Material rating</dt><dd>${ct.mean != null ? ct.mean + "/5" : "—"}</dd><dt>Simulated fans here</dt><dd>${ct.n}</dd>${top && top.count ? `<dt>${esc(top.name)}</dt><dd>${top.count.toLocaleString()}</dd>` : ""}<dt>Worth</dt><dd>${pts(ct)}% conquest</dd><dt>Local time</dt><dd>${Clock.localLabel(ct)}</dd></dl>
     <p>${esc(text)}</p>${G.intel.get(ct.name) ? `<p style="color:#7fd8ff">${esc(G.intel.get(ct.name))}</p>` : ""}${sg ? `<p style="color:#ff8fa5">⚔ Under siege by ${esc(G.fac.get(sg.fid)?.name)}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""} unless you defend.</p>` : ct.contested && key === "you" ? `<p style="color:#ff8fa5">⚔ ${esc(ct.contested)} is close behind you here.</p>` : ""}`;
+  if (G.cid && METROS[ct.name]) $("#cityp").insertAdjacentHTML("beforeend", `<a class="ghostbtn cbrief" href="/brief/${encodeURIComponent(G.cid)}/${encodeURIComponent(ct.name)}" target="_blank" rel="noopener">📄 City Brief ↗</a>`);
   $("#cityp").hidden = false;
 }
 
@@ -904,6 +905,60 @@ const Radar = (() => {
 })();
 // every rival: what they hold, what they're doing this week, and what happens if you do nothing
 const LV_LABEL = { SIEGE: "Under siege", HIGH: "Attacking", MED: "Attacking", LOW: "Calm", ALLY: "Ally" };
+// ---------------------------------------------------------------- Tour Planner
+// Five fields in, a routed tour out: cities scored on Qloo fans, venue fit,
+// trends, weather and rivals; nights on Thu-Sat; rooms from Qloo places.
+const isoDay = (d) => d.toISOString().slice(0, 10);
+function tourDefaults() {
+  const t = new Date(); t.setDate(t.getDate() + ((4 - t.getDay() + 7) % 7 || 7)); const e = new Date(t); e.setDate(e.getDate() + 27);
+  return { home: METROS[G.capital] ? G.capital : "Chicago", start: isoDay(t), end: isoDay(e), maxCities: 6, maxDriveHours: 5, flyingOk: false, roomSize: "" };
+}
+function tourHtml() {
+  const f = G.tourForm ?? tourDefaults(), p = G.tourPlan;
+  const homes = [...new Set([...Object.keys(METROS), ...(G.tourHomes ?? [])])].sort();
+  const form = `<form class="tform" id="tour-form">
+    <label>Home city<select id="tf-home">${homes.map((n) => `<option${n === f.home ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+    <label>From<input type="date" id="tf-start" value="${f.start}"></label><label>To<input type="date" id="tf-end" value="${f.end}"></label>
+    <label>Max cities<input type="number" id="tf-max" min="1" max="12" value="${f.maxCities}"></label>
+    <label>Max drive per leg (h)<input type="number" id="tf-drive" min="1" max="16" value="${f.maxDriveHours}"></label>
+    <label class="chk"><input type="checkbox" id="tf-fly" ${f.flyingOk ? "checked" : ""}> Flying is fine</label>
+    <label>Room size<select id="tf-size"><option value="">Any</option><option value="small"${f.roomSize === "small" ? " selected" : ""}>50–150</option><option value="mid"${f.roomSize === "mid" ? " selected" : ""}>150–400</option><option value="large"${f.roomSize === "large" ? " selected" : ""}>400+</option></select></label>
+    <button class="go" type="submit" id="tf-go">${G.tourBusy ? "Planning…" : p ? "Re-plan" : "Plan my tour"}</button></form>`;
+  if (!p) return form + `<p class="note">Scores every city on your map: 40% fans (Qloo), 20% venue crowd fit (Qloo), 15% trends (Google), 15% dry evenings (Open-Meteo), 10% rivals. Then routes it and books Thu–Sat nights.</p>`;
+  return form + `<div class="tsum"><b>${p.totals.nights} nights · ${p.totals.fansReachable.toLocaleString()} fans reachable</b><span>${p.totals.miles.toLocaleString()} miles · ${p.totals.driveHours} h driving${p.totals.flights ? ` · ${p.totals.flights} flight${p.totals.flights > 1 ? "s" : ""}` : ""}${p.ai ? ` · order by ${esc(p.ai.model)}` : ""}</span></div>
+    <div class="tacts"><a class="go" href="${p.links.ics}">📅 Add to calendar</a><a class="ghostbtn" href="${p.links.csv}">CSV</a><button class="ghostbtn" id="t-copy">Copy as text</button><button class="ghostbtn" id="t-briefs">📄 Make City Briefs</button><button class="ghostbtn" id="t-share">⭐ Share</button><a class="ghostbtn" href="${p.links.page}" target="_blank" rel="noopener">Open plan page ↗</a></div>
+    <div class="tstops">${p.stops.map((st) => `<div class="tstop"><b class="tn">${st.n}</b><div><div class="tl"><b>${esc(st.city)}</b> · ${st.night ? new Date(st.night + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "<i>doesn't fit</i>"} · ${st.drive.mode === "fly" ? "✈ fly" : `🚗 ${st.drive.hours} h`}</div>
+      <div class="tv">${esc(st.venue?.name ?? "send a Booker")}${st.backup ? ` <small>(backup: ${esc(st.backup.name)})</small>` : ""} · <b>${st.fit ?? "?"}% fit</b> · ${st.fans.toLocaleString()} fans</div>
+      <div class="tw">${esc(st.why)}</div><div class="tc">confidence: ${st.confidence.level} · ${esc(st.confidence.reason)}</div></div></div>`).join("")}</div>
+    <p class="note">${esc(p.method)}</p>`;
+}
+function bindTour() {
+  const f = $("#tour-form"); if (!f) return;
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault(); if (G.tourBusy) return;
+    G.tourForm = { home: $("#tf-home").value, start: $("#tf-start").value, end: $("#tf-end").value, maxCities: +$("#tf-max").value || 6, maxDriveHours: +$("#tf-drive").value || 5, flyingOk: $("#tf-fly").checked, roomSize: $("#tf-size").value };
+    G.tourBusy = true; Drawer.render(); ops(`<span class="ag">🗺 Tour Planner</span> scoring cities: Qloo fans + venues, Google Trends, Open-Meteo…`);
+    const r = await post("/api/tour/plan", { campaignId: G.cid, name: G.player.name, ids: G.player.q?.ids, ...G.tourForm, roomSize: G.tourForm.roomSize || undefined }, 90000);
+    G.tourBusy = false;
+    if (r?.status !== "ok") { toast(r?.error ?? "Couldn't plan the tour. Try again."); Drawer.render(); return; }
+    G.tourPlan = r; tourMissions(r);
+    ops(`<span class="api">Qloo places · Trends · Open-Meteo</span> tour planned: ${r.totals.nights} nights, ${r.totals.fansReachable.toLocaleString()} fans reachable · ${r.stops.reduce((a, x) => a + x.receipts.length, 0)} receipts`);
+    Drawer.render(); saveGame();
+  });
+  $("#t-copy")?.addEventListener("click", async () => { try { await navigator.clipboard.writeText(await (await fetch(G.tourPlan.links.txt)).text()); toast("Tour copied."); } catch { toast("Couldn't reach the clipboard."); } });
+  $("#t-share")?.addEventListener("click", () => openShare({ tour: G.tourPlan }));
+  $("#t-briefs")?.addEventListener("click", async (e) => {
+    const b = e.currentTarget; b.disabled = true; let n = 0;
+    for (const st of G.tourPlan.stops) { b.textContent = `📄 ${st.city}… (${++n}/${G.tourPlan.stops.length})`; await post("/api/brief", { campaignId: G.cid, city: st.city }, 60000); }
+    b.textContent = "📄 Briefs ready"; b.disabled = false; open(`/briefs/${encodeURIComponent(G.cid)}`, "_blank");
+  });
+}
+// each night of the tour becomes a real move
+function tourMissions(p) {
+  G.real = G.real.filter((m) => m.src !== "Tour Planner");
+  for (const st of p.stops.filter((x) => x.night)) G.real.push({ id: "t" + st.n + "-" + p.id, text: `Play ${st.city} on ${new Date(st.night + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at ${st.venue?.name ?? "a room your Booker picks"}`, src: "Tour Planner", city: st.city, week: G.week, done: false });
+  hudReal();
+}
 function threatReport() {
   const RANK = { SIEGE: 0, HIGH: 1, MED: 2, LOW: 3, ALLY: 4 };
   const fs = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]);
@@ -1483,7 +1538,16 @@ function armyTick() {
   }
 }
 // draw the army, the caravans, and what a drag or a hover would do
+function drawTour(ctx, toS, d) {
+  const p = G?.tourPlan; if (!p) return;
+  const pt = (name) => { const c = G.cities.find((x) => x.name === name); return c ? toS(c.p) : null; };
+  const pts = [pt(p.input.home), ...p.stops.map((st) => pt(st.city))];
+  ctx.save(); ctx.strokeStyle = "rgba(255,233,176,.85)"; ctx.lineWidth = 2.2 * d; ctx.setLineDash([7 * d, 6 * d]); ctx.shadowColor = "#ffcf5a"; ctx.shadowBlur = 8 * d;
+  ctx.beginPath(); let started = false; for (const q of pts) { if (!q) continue; if (!started) { ctx.moveTo(q[0], q[1]); started = true; } else ctx.lineTo(q[0], q[1]); } ctx.stroke(); ctx.restore();
+  p.stops.forEach((st, i) => { const q = pts[i + 1]; if (!q) return; ctx.fillStyle = "#ffcf5a"; ctx.beginPath(); ctx.arc(q[0] + 16 * d, q[1] - 16 * d, 9 * d, 0, 6.283); ctx.fill(); ctx.fillStyle = "#1a1208"; ctx.font = `800 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.fillText(String(st.n), q[0] + 16 * d, q[1] - 12 * d); });
+}
 function drawArmy(ctx, toS, bez, at, d, s, now) {
+  drawTour(ctx, toS, d);
   const H = absH();
   for (const cv of G.caravans) {
     const k = clamp01((H - cv.h0) / cv.dur), a0 = toS(cv.back ? cv.to : cv.from), b0 = toS(cv.back ? cv.from : cv.to), c0 = bez(a0, b0), [X, Y] = at(a0, c0, b0, k);
@@ -1627,6 +1691,17 @@ function downloadIcs() {
 }
 
 // ---------------------------------------------------------------- starting a new campaign (your powers, the other players)
+function askMonday() {
+  if (!G || G.tour || G.mailAsked) return; G.mailAsked = true;
+  const box = $("#intro-body"); G.modal = true;
+  box.innerHTML = `<div class="br wb"><div class="br-k">MONDAY WAR REPORT</div><h2 class="mr-h">Get your 3 moves every Monday?</h2><p class="mr-p">One short email at 8 am your time: what changed on your map, your three moves with links, and your tour. Unsubscribe any time.</p>
+    <form id="mr-form" class="mr-f"><input id="mr-name" value="${esc(G.player.name.split(" ")[0])}" placeholder="First name" aria-label="First name"><input id="mr-email" type="email" required placeholder="you@email.com" aria-label="Email"><button class="go" type="submit">Yes, send it</button></form>
+    <button class="ghostbtn" id="mr-no">Not now</button><p class="note">Time zone: ${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}</p></div>`;
+  $("#intro").hidden = false;
+  const done = () => { $("#intro").hidden = true; G.modal = false; saveGame(); };
+  $("#mr-no").onclick = done;
+  $("#mr-form").onsubmit = async (e) => { e.preventDefault(); syncCampaign(); await new Promise((r) => setTimeout(r, 1400)); const r = await post("/api/mail/subscribe", { campaignId: G.cid, email: $("#mr-email").value.trim(), firstName: $("#mr-name").value.trim(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone }, 15000); toast(r?.ok ? "Done: your first war report lands Monday at 8 am." : "Couldn't save that email."); done(); };
+}
 function intro() {
   return new Promise((resolve) => {
     const c = G.c, best = c.split?.top, tags = (G.player.aud?.tags ?? []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
@@ -1781,7 +1856,7 @@ const SAVE_KEY = (name) => "conquest:v1:" + String(name).toLowerCase();
 let TOURING = false;
 function snapshot() {
   return {
-    v: 1, name: G.player.name, ts: Date.now(), over: G.over, week: G.week, hour: G.hour,
+    v: 1, cid: G.cid, mailAsked: !!G.mailAsked, tourPlan: G.tourPlan ?? null, name: G.player.name, ts: Date.now(), over: G.over, week: G.week, hour: G.hour,
     conquest: G.conquest, start: G.start, startHeld: G.startHeld, buzz: G.buzz, gold: G.gold, morale: G.morale,
     allies: G.allies, taken: G.taken, saved: G.saved, lost: G.lost, missions: G.missions, achPts: G.achPts, realDone: G.realDone,
     cities: G.cities.map((c) => [c.name, c.state, c.owner, c.contested]),
@@ -1792,11 +1867,26 @@ function snapshot() {
     army: [...G.army.values()].map((u) => (u.state === "moving" ? { id: u.id, p: u.to, at: u.toCity, state: "idle" } : { id: u.id, p: u.p, at: u.at, state: u.state === "working" ? "stationed" : u.state })),
   };
 }
-function saveGame() { if (!G || G.tour || G.noSave) return; try { localStorage.setItem(SAVE_KEY(G.player.name), JSON.stringify(snapshot())); } catch {} }
+function saveGame() { if (!G || G.tour || G.noSave) return; try { localStorage.setItem(SAVE_KEY(G.player.name), JSON.stringify(snapshot())); } catch {} syncCampaign(); }
+// the server keeps a copy of the board, so City Briefs, Tour Plans and the Monday email work off it
+let syncT = 0;
+function syncCampaign() {
+  if (!G?.cid || G.tour || G.noSave) return; clearTimeout(syncT);
+  syncT = setTimeout(() => {
+    const snap = { name: G.player.name, q: G.player.q, capital: G.capital, week: G.week, conquest: G.conquest, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, tags: (G.player.aud?.tags ?? []).slice(0, 8),
+      cities: G.cities.map((c) => ({ name: c.name, side: sideOf(c), owner: c.owner && c.owner !== "you" ? (G.fac.get(c.owner)?.name ?? null) : null })),
+      intents: G.intents, sieges: G.sieges, rivals: [...G.fac.values()].map((f) => ({ id: f.id, name: f.name })),
+      orders: G.orders.map((o) => ({ id: String(o.id), title: o.title, city: o.city ?? null, cost: costOf(o), gain: gainOf(o), done: !!o.done })),
+      real: G.real.map((m) => ({ text: m.text, city: m.city ?? null, done: !!m.done })) };
+    fetch("/api/campaign/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: G.cid, snap }) }).catch(() => {});
+  }, 1200);
+}
 function loadSave(name) { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY(name)) || "null"); return s?.v === 1 ? s : null; } catch { return null; } }
 function restore(s) {
   for (const [name, state, owner, contested] of s.cities) { const c = G.cities.find((x) => x.name === name); if (c) Object.assign(c, { state, owner, contested }); }
   for (const [id, allied, last] of s.fac) { const f = G.fac.get(id); if (f) Object.assign(f, { allied, last }); }
+  if (s.cid) G.cid = s.cid;
+  G.mailAsked = !!s.mailAsked; G.tourPlan = s.tourPlan ?? null;
   Object.assign(G, { week: s.week, hour: s.hour, conquest: s.conquest, start: s.start, startHeld: s.startHeld, buzz: s.buzz, gold: s.gold, morale: s.morale, allies: s.allies, taken: s.taken, saved: s.saved, lost: s.lost, missions: s.missions, achPts: s.achPts, realDone: s.realDone,
     orders: s.orders, doneLog: s.doneLog, crew: new Map(s.crew.map(([k, v]) => [k, { ...v, busy: false }])), sponsors: s.sponsors, intel: new Map(s.intel), prep: new Set(s.prep), forts: new Set(s.forts),
     reports: s.reports ?? {}, intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used) });
@@ -1856,7 +1946,7 @@ setInterval(() => { if (G && !$("#game").hidden) saveGame(); }, 12000);
 // the canvas can be exported.
 const proxied = (u) => (u && /^https:\/\/images\.qloo\.com\//.test(u) ? `/api/img?u=${encodeURIComponent(u)}` : null);
 function loadImg(src) { return new Promise((res) => { if (!src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); }
-async function shareCard() {
+async function shareCard(opts = {}) {
   const W = 1200, H = 630, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
   await document.fonts?.ready;
   const bg = x.createRadialGradient(W * 0.72, H * 0.45, 0, W * 0.72, H * 0.45, W * 0.7); bg.addColorStop(0, "#2a1450"); bg.addColorStop(0.55, "#0f0a1a"); bg.addColorStop(1, "#090909");
@@ -1878,8 +1968,14 @@ async function shareCard() {
   x.font = 'italic 400 52px "Instrument Serif", serif'; x.fillText(G.player.name.length > 22 ? G.player.name.slice(0, 21) + "…" : G.player.name, 196, 168);
   const [, an, aname] = ageOf(G.conquest);
   x.font = '500 15px "IBM Plex Mono", monospace'; x.fillStyle = "#e1bdff"; x.fillText(`AGE ${an} · ${aname.toUpperCase()} · WEEK ${G.week} OF ${WEEKS}`, 198, 200);
-  x.fillStyle = "#fff"; x.font = '700 108px "Inter Tight", sans-serif'; x.fillText(`${G.start}→${G.conquest}%`, 56, 360);
-  x.font = '300 22px "Inter Tight", sans-serif'; x.fillStyle = "#c9ccd1"; x.fillText("of my audience map conquered", 60, 398);
+  const tp = opts.tour;
+  if (tp) { // the route over the map, numbered
+    const pts = [tp.input.home, ...tp.stops.map((st) => st.city)].map((n) => G.cities.find((c) => c.name === n)).filter(Boolean).map((c) => [mx + c.p[0] * s, my + c.p[1] * s]);
+    x.strokeStyle = "#ffcf5a"; x.lineWidth = 3; x.setLineDash([9, 7]); x.beginPath(); pts.forEach(([X, Y], i) => (i ? x.lineTo(X, Y) : x.moveTo(X, Y))); x.stroke(); x.setLineDash([]);
+    pts.slice(1).forEach(([X, Y], i) => { x.fillStyle = "#ffcf5a"; x.beginPath(); x.arc(X, Y, 11, 0, 6.283); x.fill(); x.fillStyle = "#1a1208"; x.font = '800 13px "Inter Tight", sans-serif'; x.textAlign = "center"; x.fillText(String(i + 1), X, Y + 4.5); x.textAlign = "left"; });
+  }
+  x.fillStyle = "#fff"; x.font = '700 108px "Inter Tight", sans-serif'; x.fillText(tp ? `${tp.totals.nights} nights` : `${G.start}→${G.conquest}%`, 56, 360);
+  x.font = '300 22px "Inter Tight", sans-serif'; x.fillStyle = "#c9ccd1"; x.fillText(tp ? `on tour · ${tp.totals.fansReachable.toLocaleString()} fans reachable (Qloo)` : "of my audience map conquered", 60, 398);
   const stats = [["CITIES", `${held()}/${ground()}`], ["ALLIES", G.allies], ["AGENTS", [...G.crew.values()].filter((c) => c.recruited).length], ["REAL MOVES", `${G.real.filter((m) => m.done).length}/${G.real.length}`], ["SCORE", score().toLocaleString()]];
   stats.forEach(([k, v], i) => { const X = 60 + i * 108; x.fillStyle = "#828384"; x.font = '500 11px "IBM Plex Mono", monospace'; x.fillText(k, X, 450); x.fillStyle = "#f7f9fa"; x.font = '700 28px "Inter Tight", sans-serif'; x.fillText(String(v), X, 484); });
   const m = G.real.find((r) => !r.done) ?? G.real.at(-1);
@@ -1890,10 +1986,10 @@ async function shareCard() {
   x.fillStyle = "#828384"; x.font = '400 14px "IBM Plex Mono", monospace'; x.textAlign = "right"; x.fillText("Play your audience → conquest.agent", W - 50, H - 46); x.textAlign = "left";
   return cv;
 }
-async function openShare() {
+async function openShare(opts = {}) {
   if (!G) return;
-  const cv = await shareCard(), url = cv.toDataURL("image/png"), [, , aname] = ageOf(G.conquest);
-  const text = `I took my audience map from ${G.start}% to ${G.conquest}% in Conquest (${aname} age). My real move this week: ${(G.real.find((m) => !m.done) ?? G.real.at(-1))?.text ?? "play the next city"}`;
+  const cv = await shareCard(opts), url = cv.toDataURL("image/png"), [, , aname] = ageOf(G.conquest);
+  const text = opts.tour ? `On tour: ${opts.tour.totals.nights} nights, ${opts.tour.stops.map((st) => st.city).join(" → ")}. Planned with Conquest.` : `I took my audience map from ${G.start}% to ${G.conquest}% in Conquest (${aname} age). My real move this week: ${(G.real.find((m) => !m.done) ?? G.real.at(-1))?.text ?? "play the next city"}`;
   $("#intro-body").innerHTML = `<div class="ibanner">Share your campaign</div><div style="padding:18px 22px 0"><img src="${url}" alt="Your Conquest campaign card" style="width:100%;border-radius:8px;border:1px solid var(--hair)"></div>
     <div class="orow" style="justify-content:center;gap:10px;padding:14px 22px 0"><button class="go" id="sh-dl" style="width:auto;margin:0">Download image</button>${navigator.share ? `<button class="ghostbtn" id="sh-share" style="margin:0">Share…</button>` : ""}<button class="ghostbtn" id="sh-copy" style="margin:0">Copy caption</button><button class="ghostbtn" id="sh-x" style="margin:0">Close</button></div>`;
   $("#intro").hidden = false; G.modal = true;
@@ -2097,6 +2193,13 @@ function verdictFor(v, avg) {
   if (v.top) fix.push(`push it to ${v.top.city} first`);
   return { what, fix: fix.length ? fix.join("; ") : "keep the format: it fits your crowd" };
 }
+// how far to trust the simulated fans: who answered, and whether real numbers agree
+function panelConfidence(r) {
+  const live = /claude|live/i.test(r.source ?? ""), rho = r.rho, agree = rho != null && rho >= 0.4;
+  const level = live && agree ? "high" : live || agree || (rho != null && rho > 0) ? "medium" : "low";
+  const reason = [live ? "fans answered in their own words (AI)" : "rule-based fans built from Qloo tastes", rho == null ? "no real views to check against" : `ranking vs real views per day ρ ${rho}`].join("; ");
+  return { level, reason };
+}
 function xrayHtml() {
   const r = G.xray, h = ytHandle();
   const ig = handleOf("instagram"), tt = handleOf("tiktok"), xh = handleOf("twitter");
@@ -2108,7 +2211,8 @@ function xrayHtml() {
   if (!r) return plat + form + `<p class="note" style="margin-top:12px">Conquest reads your public channel feed (titles, descriptions, real views), plays each video to your simulated fans and the brain model, then tells you what would happen and what to change.</p>` + test;
   if (r.status !== "ok") return plat + form + `<p class="note" style="color:#ff8fa5;margin-top:12px">${esc(r.error ?? "Couldn't read that channel.")}</p>` + test;
   const rho = r.rho, trust = rho == null ? "Not enough videos to check against real views yet." : rho >= 0.4 ? `Taste fit tracks your real views per day (ρ ${rho}): use it to pick what to make next.` : rho > 0 ? `Taste fit loosely tracks your real views per day (ρ ${rho}).` : `Your views follow news hooks and format more than taste fit (ρ ${rho}). Use taste fit to choose which clip to push in which city, not to predict raw views.`;
-  return plat + form + `<div class="xp-sum"><b>${esc(r.channel)}</b><span>${esc(trust)} Average taste fit ${r.avg}/5.</span></div>` +
+  const conf = panelConfidence(r);
+  return plat + form + `<div class="xp-sum"><b>${esc(r.channel)}</b><span>${esc(trust)} Average taste fit ${r.avg}/5.</span><span class="conf">Fans: confidence ${conf.level} (${esc(conf.reason)}). Brain: confidence low (a stand-in model shaped like Meta's TRIBE v2, not a scan of real people).</span></div>` +
     r.videos.map((v, i) => { const vd = verdictFor(v, r.avg); return `<div class="xv">${v.thumb ? `<img src="${esc(v.thumb)}" alt="" loading="lazy">` : ""}<div class="xb"><a href="https://youtube.com/watch?v=${esc(v.videoId)}" target="_blank" rel="noopener">${esc(v.title)}</a>
       <div class="chips"><span>${v.views.toLocaleString()} real views${v.perDay ? ` · ${kfmt(v.perDay)}/day` : ""}</span><span class="g">${v.mean}/5 predicted</span><span>${v.pct45}% love it</span>${v.appeals.slice(0, 2).map((a) => `<span>${esc(a)}</span>`).join("")}</div>
       ${brainSpark(v.brain, v.deadZones ? [{ start: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)), end: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)) + 2 }] : [])}
@@ -2358,6 +2462,7 @@ const Drawer = {
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    else if (this.mode === "tour") { $("#drawer-t").textContent = "Tour Planner"; b.innerHTML = tourHtml(); bindTour(); }
     else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); bindThreats(); }
     else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); if (!G.xray && !G.xrayBusy && !G.xrayAuto) { G.xrayAuto = true; ensureChannel().then(() => { if (G.xrayHandle) runXray(G.xrayHandle); else this.render(); }); } }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
@@ -2427,8 +2532,12 @@ async function startGame(c, player) {
   renderSel(); renderRivalStrip();
   if (TOURING) { G.tour = true; G.noSave = true; } // a tour campaign is a demo: never saved
   const saved = TOURING ? null : loadSave(player.name);
-  if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") await intro(); }
+  G.cid = saved?.cid ?? (crypto.randomUUID?.() ?? String(Date.now())).replace(/-/g, "").slice(0, 16);
+  let fresh = !saved;
+  if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") { fresh = true; await intro(); } }
   else await intro();
+  // new campaigns: offer the Monday war report once, before the tutorial
+  if (fresh && !TOURING && !G.mailAsked) await new Promise((res) => { askMonday(); const iv = setInterval(() => { if ($("#intro").hidden) { clearInterval(iv); res(); } }, 300); });
   renderOrders(); saveGame();
   let coached = false; try { coached = localStorage.getItem("conquest-coached") === "1"; } catch {}
   if (!coached && !TOURING && !saved) setTimeout(() => Coach.start(), 500);
@@ -2610,6 +2719,7 @@ $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
 $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
 $("#share-btn").addEventListener("click", openShare);
 $("#xray-btn").addEventListener("click", () => (Drawer.mode === "xray" ? Drawer.close() : Drawer.open("xray")));
+$("#tour-btn").addEventListener("click", () => (Drawer.mode === "tour" ? Drawer.close() : Drawer.open("tour")));
 // closed panels open on click; the brain opens the X-ray once it's open
 $("#slot-brain").addEventListener("click", (e) => { const sec = $("#slot-brain"); if (!sec.classList.contains("open")) { sec.classList.add("open"); return; } if (e.target.closest(".stitle")) { sec.classList.remove("open"); return; } Drawer.open("xray"); });
 $("#council .chead").addEventListener("click", (e) => { if (e.target.closest("#trends-btn")) return; $("#council").classList.toggle("open"); });

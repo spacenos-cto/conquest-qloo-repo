@@ -9,7 +9,7 @@ import { METROS, miles, driveHours, type Metro } from "./geo.js";
 
 export type TourInput = { home: string; start: string; end: string; maxCities?: number; maxDriveHours?: number; flyingOk?: boolean; roomSize?: "small" | "mid" | "large" };
 export type Receipt = { source: string; ref?: string; detail?: string; at: string };
-export type Venue = { name: string; fit: number; bucket: string; address?: string | null; phone?: string | null; website?: string | null };
+export type Venue = { name: string; fit: number; bucket: string; stage?: boolean; address?: string | null; phone?: string | null; website?: string | null };
 export type Candidate = {
   city: string; geo: Metro; fans: number; venues: Venue[]; trend: number; trendNote: string;
   wx: { date: string; rain: number }[] | null; rival: "held_by_rival" | "ally" | "open" | "yours"; rivalName?: string | null; receipts: Receipt[];
@@ -106,6 +106,8 @@ export function bucketOf(name: string, tags: string[] = []): string {
 }
 const WANT = { small: "50–150", mid: "150–400", large: "400+" } as const;
 export function pickRooms(venues: Venue[], size?: TourInput["roomSize"]): Venue[] {
+  // rooms with a stage first, keeping Qloo's order within each group
+  venues = [...venues.filter((v) => v.stage !== false), ...venues.filter((v) => v.stage === false)];
   if (!size) return venues.slice(0, 2);
   const want = WANT[size], ok = venues.filter((v) => v.bucket === want || v.bucket === "unknown");
   return [...ok, ...venues.filter((v) => !ok.includes(v))].slice(0, 2);
@@ -124,7 +126,7 @@ export function confidenceOf(c: Candidate, night: string | null): Stop["confiden
 const nice = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 export function whyLine(c: Scored, night: string | null): string {
   const bits = [`${c.fans.toLocaleString()} fans (Qloo)`];
-  if (c.venues[0]) bits.push(`${c.venues[0].name} fits ${c.venues[0].fit}%`);
+  if (c.venues[0]) bits.push(`${c.venues[0].name} fits ${c.venues[0].fit}%${c.venues[0].stage === false ? " (no stage listed: confirm it hosts shows)" : ""}`);
   const rain = night ? c.wx?.find((w) => w.date === night)?.rain : undefined;
   if (rain != null) bits.push(`${rain}% rain ${nice(night!)}`);
   if (c.trend >= 0.7) bits.push(c.trendNote);

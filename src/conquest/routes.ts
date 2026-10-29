@@ -82,6 +82,11 @@ export function makeRoutes(d: Deps, send: Send) {
   async function handle(req: any, res: any, url: URL): Promise<boolean> {
     const p = url.pathname, m = (re: RegExp) => p.match(re);
     try {
+      // links in briefs and emails reopen the performer's campaign
+      if (p === "/" && url.searchParams.get("resume")) {
+        const snap = db.getCampaign(url.searchParams.get("resume")!);
+        res.writeHead(302, { location: snap ? `/?play=${encodeURIComponent(snap.name)}` : "/" }); res.end(); return true;
+      }
       if (req.method === "POST" && p === "/api/campaign/sync") { const b = Sync.parse(await body(req)); db.saveCampaign(b.id, b.snap); json(res, 200, { ok: true }); return true; }
       if (req.method === "POST" && p === "/api/tour/plan") {
         const b = TourReq.parse(await body(req));

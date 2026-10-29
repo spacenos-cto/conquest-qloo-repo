@@ -50,7 +50,7 @@ export async function gatherCandidates(d: TourDeps, name: string, who: { ids?: s
     ];
     return {
       city: c.name, geo, fans: c.you ?? 0,
-      venues: v.venues.map((x: any) => ({ name: x.name, fit: x.fit, bucket: bucketOf(x.name, x.tags), address: x.address, phone: x.phone, website: x.website })),
+      venues: v.venues.map((x: any) => ({ name: x.name, fit: x.fit, stage: x.stage, bucket: bucketOf(x.name, x.tags), address: x.address, phone: x.phone, website: x.website })),
       trend, trendNote,
       wx: wx?.status === "ok" ? (wx.days ?? []).map((x: any) => ({ date: x.date, rain: x.rain ?? 0 })) : null,
       rival: side === "rival" ? "held_by_rival" : side === "allied" ? "ally" : side === "you" ? "yours" : "open",

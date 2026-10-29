@@ -69,7 +69,7 @@ test("Monday 8 am is checked in the subscriber's own time zone", () => {
 // snapshots: the rendered brief and email for one fixture, with timestamps normalised.
 // Delete tests/__snapshots__/*.snap to accept an intended change.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-const norm = (s: string) => s.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[:\d.]*Z?/g, "<ts>").replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/g, "<ts>").replace(/[A-Z][a-z]{2} \d{1,2}, \d{4}/g, "<date>");
+const norm = (s: string) => s.replace(/\r\n/g, "\n").replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[:\d.]*Z?/g, "<ts>").replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/g, "<ts>").replace(/[A-Z][a-z]{2} \d{1,2}, \d{4}/g, "<date>");
 function snapshot(name: string, value: string) {
   const dir = new URL("./__snapshots__/", import.meta.url), file = new URL(`${name}.snap`, dir);
   if (!existsSync(dir)) mkdirSync(dir);

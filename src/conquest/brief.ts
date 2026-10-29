@@ -38,7 +38,7 @@ export async function buildBrief(d: BriefDeps, o: { name: string; ids?: string; 
   const types = ["tv_show", "artist", "brand", "podcast", "movie"];
   const also = loved.flatMap((l, i) => l.items.map((x) => ({ ...x, domain: DOMAIN[types[i]!]! }))).sort((a, b) => b.affinity - a.affinity).slice(0, 6);
   if (also.length) src("Qloo recommendations", `${also.length} cross-domain affinities for fans in ${o.city}`);
-  const rooms = venues.venues.slice(0, 3).map((v: any) => ({ name: v.name, fit: v.fit, bucket: bucketOf(v.name, v.tags), address: v.address, phone: v.phone, website: v.website }));
+  const rooms = [...venues.venues.filter((v: any) => v.stage !== false), ...venues.venues.filter((v: any) => v.stage === false)].slice(0, 3).map((v: any) => ({ name: v.name, fit: v.fit, stage: v.stage, bucket: bucketOf(v.name, v.tags), address: v.address, phone: v.phone, website: v.website }));
   if (rooms.length) src("Qloo places", `${rooms.length} rooms in ${o.city}, crowd fit = Qloo affinity`);
 
   // allies: one local performer and one podcast whose fans overlap
@@ -82,7 +82,7 @@ export async function buildBrief(d: BriefDeps, o: { name: string; ids?: string; 
   // three moves: the performer's real missions here first, then the obvious next steps
   const real = (o.snapshot?.real ?? []).filter((m: any) => !m.done && (m.city === o.city || String(m.text).includes(o.city))).map((m: any) => m.text);
   const moves = [...real,
-    rooms[0] && `Email ${rooms[0].name} about a date${weekend ? ` around ${nice(weekend.date)}` : ""}.`,
+    rooms[0] && !real.some((t: string) => t.includes(rooms[0]!.name)) && `Email ${rooms[0].name} about a date${weekend ? ` around ${nice(weekend.date)}` : ""}.`,
     also[0] && `Post a bit about ${also[0].name} to your ${o.city} fans.`,
     sponsor && `Send the ${sponsor.name} pitch.`,
     allyRows[0] && `Message ${allyRows[0].name}.`,

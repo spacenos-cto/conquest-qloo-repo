@@ -181,6 +181,8 @@ export async function liveCall(
           take: Number(params.take ?? 12),
         };
         if (params.location) q["filter.location.query"] = String(params.location);
+        // venue types (comedy clubs, music venues, theaters) for the Tour Planner and City Brief
+        if (params.tags) q["filter.tags"] = String(params.tags);
         const d = await insights(q);
         return ok(
           (d.results?.entities ?? []).map((e: any) => ({

@@ -1,4 +1,4 @@
-# Conquest: every feature, as built (Oct 29)
+# Conquest: every feature, as built (Oct 29, evening)
 
 **Conquest is a growth agent for comedians, creators and performers, played like a Rise of Nations strategy game.** Your real audience (from Qloo's taste graph) is the map, and every move in the game is a real growth move: a city to play, a venue to book, a sponsor to pitch, a collab to propose, a post to make.
 
@@ -16,7 +16,7 @@
 | **Opening sound** | Made in the browser: a "ta-dum", a swell, then a "ba-dum-tss" rimshot on the touch. Browsers mute pages until the first tap, so the first tap turns sound on and replays the scene; the second tap skips it. |
 | **Hero** | "Your audience is a map. Go conquer it." Free instant campaign card with **Play as** Jason Calacanis / Cedric the Entertainer / the LA Dodgers, "type your own name", and **watch the jury tour**. |
 | **Sections** | The problem, the USP, who it's for, who pays (no prices), the product, your army (agent faces), what you get each week, know-what-lands-before-you-post, rivals, comparison against alternatives, Contact us, the end call-to-action ("Start your Conquest"). |
-| **Nav** | Why us · Who it's for · Product · Value · Compare · Contact us, plus **Get Enterprise** (mails venky@spacenos.com) and **Start your Conquest**. |
+| **Nav** | Why us · Who it's for · Product · Value · Compare · Tour Planner · Contact us, plus **Get Enterprise** (mails venky@spacenos.com) and **Start your Conquest**. |
 | **Live touches** | A starfield, a 3D point-cloud brain behind sections, a live "trending now" toast from Google Trends, coordinates in the footer. |
 
 ## 2. Getting in
@@ -131,6 +131,62 @@ Send an agent to a city (click it then a city, or drag it onto the map). It marc
    - J.J. Abrams: 23% → 54%.
    - Cedric: 28% → 36%.
 3. **Demo script:** [docs/DEMO-SCRIPT.md](DEMO-SCRIPT.md).
+
+## 11. Tour Planner (new)
+
+**What it answers:** "I have these dates free and will drive 5 hours a day: where do I play, in what order, in which rooms?"
+
+| Part | What it does |
+|---|---|
+| **Inputs** | Home city, date window, max cities (default 6), max drive hours per leg (default 5) or "flying is fine", room size (50–150 / 150–400 / 400+). In the game: the **🗺 Tour** button. |
+| **Scoring (0–100)** | 40% fans (Qloo, log-scaled against your biggest city) · 20% venue crowd fit (Qloo places) · 15% trend lift (Google Trends in that state) · 15% dry evenings in the window (Open-Meteo 16-day; unknown counts as average) · 10% rival pressure (lower if a rival holds it, higher if an ally does). |
+| **Route** | Nearest neighbour from home, then 2-opt. Drive time = straight-line miles / 55 mph; any leg over the cap is marked **fly**. |
+| **Nights** | Thursday, Friday or Saturday; the driest of that run when a forecast exists; a travel day after drives over 4 hours. |
+| **Rooms** | Qloo places filtered by place type: comedy clubs first, then music venues and theaters. Adult clubs are removed. Room size is guessed from the name. |
+| **Trust** | Every stop carries its receipts (Qloo ledger refs plus the Trends and Open-Meteo calls) and a confidence line (e.g. "high · 4 of 4 signals"). |
+| **Outputs** | A plan page (`/tour/:id`) with the route map and table; **.ics** (one event per night, 8 pm in each city's own time zone); **CSV**; plain text; **Make City Briefs**; **Share** (the share card with the route). Each night also becomes a real move. |
+| **AI path** | With the AI on, Claude may re-order the stops and write the "why" lines. It can't add or drop cities (this is checked). |
+| **API** | `POST /api/tour/plan`, `GET /api/tour/:id` (+ `.ics`, `.csv`, `.txt`). Plans are saved in sqlite. |
+| **Speed** | About 5–10 seconds for a 6-stop plan with the AI off. |
+
+## 12. City Brief (new)
+
+**One printed page per city that a manager can forward.** It lives at `/brief/:campaignId/:city` and prints to one page on Letter.
+
+1. **Header:** city, performer, date, "Fans here: N (Qloo E4)".
+2. **What they also love:** the top 6 across TV, music, brands, podcasts and film (Qloo).
+3. **Rooms:** 3 venues with a size guess, crowd fit, and address, phone and website when Qloo has them.
+4. **Allies:** a local performer and a podcast whose fans overlap, each with a one-line pitch (Claude writes it when the AI is on).
+5. **Sponsor:** one brand, with an email subject line.
+6. **Timing:** the driest weekend night in the next 16 days, plus what's trending in the state.
+7. **Watch out:** the rival holding the city, with their Wikipedia momentum.
+8. **Three moves** as checkboxes, then the sources with timestamps.
+
+**Where to find it:** a **📄 City Brief** button on every city report, **Make City Briefs** on a Tour Plan, and an index at `/briefs/:campaignId`.
+
+**Rules:** a section with no data says "Not enough signal yet — send a Scout" and never invents content. Briefs are cached per campaign, city and week.
+
+## 13. Monday war report (new)
+
+1. **Opt-in:** after the campaign briefing, a new campaign asks once: "Get your 3 moves every Monday?". It stores the email, first name and time zone.
+2. **When:** 8 am Monday in the performer's own time zone. The server checks every minute.
+3. **Content (under 200 words):**
+   - What changed: sieges, attacks, cities won or lost, a trend in the home state.
+   - The 3 moves, each linked to its actual asset (a brief section or the calendar file).
+   - The tour line, and a link to the map.
+   - A "Quiet week — tap to end week N" version when nothing happened.
+4. **Sending:**
+   - It goes out through Resend when `MAIL_API_KEY` is set.
+   - Otherwise it's written to `out/mail/`, so it works on localhost.
+   - Every send is logged.
+   - One-click unsubscribe, which the scheduler honours.
+5. **Preview:** `npm run mail:preview --campaign=<id>` writes the email to `out/mail/` and opens it. It never sends.
+
+## 14. Confidence lines
+
+The X-ray now says how far to trust each part:
+1. **Fans:** e.g. "confidence low (rule-based fans built from Qloo tastes; ranking vs real views ρ −0.89)".
+2. **Brain:** always "confidence low (a stand-in model, not a scan of real people)".
 
 ---
 

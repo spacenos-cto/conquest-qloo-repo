@@ -40,7 +40,7 @@ export function briefHtml(b: Brief, links: { index?: string; game?: string } = {
   <h2 id="loves">What they also love</h2>
   ${b.also.length ? `<div class="chips">${b.also.map((x) => `<span class="chip">${e(x.name)} <small>${e(x.domain)} · ${x.affinity}%</small></span>`).join("")}</div>` : none}
   <h2 id="rooms">Rooms</h2>
-  ${b.rooms.length ? `<table><tr><th>Venue</th><th>Size (guess)</th><th>Crowd fit</th><th>Contact</th></tr>${b.rooms.map((r: any) => `<tr><td>${e(r.name)}${r.address ? `<br><small>${e(r.address)}</small>` : ""}</td><td>${e(r.bucket)}</td><td>${r.fit}%</td><td>${[r.phone && e(r.phone), r.website && `<a href="${e(r.website)}">website</a>`].filter(Boolean).join("<br>") || "<small>not listed</small>"}</td></tr>`).join("")}</table>` : none}
+  ${b.rooms.length ? `<table><tr><th>Venue</th><th>Size (guess)</th><th>Crowd fit</th><th>Contact</th></tr>${b.rooms.map((r: any) => `<tr><td>${e(r.name)}${r.stage === false ? " <small>(no stage listed: confirm it hosts shows)</small>" : ""}${r.address ? `<br><small>${e(r.address)}</small>` : ""}</td><td>${e(r.bucket)}</td><td>${r.fit}%</td><td>${[r.phone && e(r.phone), r.website && `<a href="${e(r.website)}">website</a>`].filter(Boolean).join("<br>") || "<small>not listed</small>"}</td></tr>`).join("")}</table>` : none}
   <div class="cols">
     <div><h2 id="allies">Allies</h2>${b.allies.length ? b.allies.map((a: any) => `<p><b>${e(a.name)}</b> <small>· ${e(a.kind)} · ${a.affinity}% of your fans here</small><br>${e(a.pitch)}</p>`).join("") : none}</div>
     <div><h2 id="sponsor">Sponsor</h2>${b.sponsor ? `<p><b>${e(b.sponsor.name)}</b> <small>· ${b.sponsor.affinity}% affinity (Qloo)</small><br>Subject: <i>${e(b.sponsor.subject)}</i></p>` : none}
@@ -68,7 +68,7 @@ export function tourHtml(p: Plan, links: { ics: string; csv: string; txt: string
   ${p.stops.map((s, i) => `<tr><td>${s.n}</td><td><b>${e(s.city)}</b>, ${e(s.state)}${links.briefs?.[i] ? `<br><a href="${e(links.briefs[i]!)}">City Brief</a>` : ""}</td><td>${s.night ? nice(s.night) : "<i>doesn't fit</i>"}</td><td>${e(s.venue?.name ?? "send a Booker")}${s.backup ? `<br><small>${e(s.backup.name)}</small>` : ""}</td><td>${s.fit != null ? s.fit + "%" : "?"}</td><td>${s.fans.toLocaleString()}</td><td>${s.drive.mode === "fly" ? "✈ fly" : `${s.drive.hours} h drive`}<br><small>${s.drive.miles} mi</small></td><td>${e(s.why)}<br><span class="conf">confidence: ${s.confidence.level} (${e(s.confidence.reason)})</span></td></tr>`).join("")}</table>
   <div class="foot">${e(p.method)}${p.ai ? ` Order and notes by ${e(p.ai.model)}; cities chosen by the rules.` : ""} Generated ${p.generatedAt ? new Date(p.generatedAt).toISOString().slice(0, 16).replace("T", " ") : ""} UTC.</div>
 </div>
-<script src="/vendor/d3-geo.min.js"></script><script src="/vendor/topojson-client.min.js"></script>${mapScript(p)}`;
+<script src="/vendor/d3-array.min.js"></script><script src="/vendor/d3-geo.min.js"></script><script src="/vendor/topojson-client.min.js"></script>${mapScript(p)}`;
   return shell(`Tour plan · ${p.performer ?? ""}`, body);
 }
 
