@@ -1298,7 +1298,7 @@ async function runAgent(a, city) {
   let out = null;
   try { out = await AGENT_JOBS[id](city); } catch (e) { out = { line: `<span class="rv">came back empty-handed (${esc(e?.message ?? e)})</span>` }; }
   u.phase = "back"; u.t0 = performance.now(); u.dur = 1800;
-  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`);
+  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`); keepReport(id, city, out);
   if (out.intel) { G.intel.set(city.name, [...(G.intel.get(city.name) ?? []).filter((x) => x[0] !== out.intel[0]), out.intel]); if (G.pinned === city.name) cityPanel(city); }
   if (out.float) float(city.p, out.float, "#7fd8ff");
   Sound.play("potion"); G.missions++;
@@ -1440,7 +1440,7 @@ async function arrive(u, city) {
 async function jobAt(a, city) {
   let out = null;
   try { out = await AGENT_JOBS[a.id](city); } catch (e) { out = { line: `<span class="rv">came back empty-handed (${esc(e?.message ?? e)})</span>` }; }
-  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`);
+  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`); keepReport(a.id, city, out);
   if (out.intel) G.intel.set(city.name, [...(G.intel.get(city.name) ?? []).filter((x) => x[0] !== out.intel[0]), out.intel]);
   if (out.float) float(city.p, out.float, "#e1bdff");
   if (out.night) G.nights.push(out.night);
@@ -1787,7 +1787,7 @@ function snapshot() {
     cities: G.cities.map((c) => [c.name, c.state, c.owner, c.contested]),
     fac: [...G.fac.values()].map((f) => [f.id, f.allied, f.last]),
     orders: G.orders, doneLog: G.doneLog, crew: [...G.crew], sponsors: G.sponsors, intel: [...G.intel], prep: [...G.prep], forts: [...G.forts],
-    intents: G.intents, sieges: G.sieges, used: G.potions.filter((p) => p.used).map((p) => p.title), nights: G.nights, drafts: G.drafts, pitches: G.pitches,
+    reports: G.reports ?? {}, intents: G.intents, sieges: G.sieges, used: G.potions.filter((p) => p.used).map((p) => p.title), nights: G.nights, drafts: G.drafts, pitches: G.pitches,
     real: G.real, ach: [...G.ach], parleyed: [...G.parleyed],
     army: [...G.army.values()].map((u) => (u.state === "moving" ? { id: u.id, p: u.to, at: u.toCity, state: "idle" } : { id: u.id, p: u.p, at: u.at, state: u.state === "working" ? "stationed" : u.state })),
   };
@@ -1799,7 +1799,7 @@ function restore(s) {
   for (const [id, allied, last] of s.fac) { const f = G.fac.get(id); if (f) Object.assign(f, { allied, last }); }
   Object.assign(G, { week: s.week, hour: s.hour, conquest: s.conquest, start: s.start, startHeld: s.startHeld, buzz: s.buzz, gold: s.gold, morale: s.morale, allies: s.allies, taken: s.taken, saved: s.saved, lost: s.lost, missions: s.missions, achPts: s.achPts, realDone: s.realDone,
     orders: s.orders, doneLog: s.doneLog, crew: new Map(s.crew.map(([k, v]) => [k, { ...v, busy: false }])), sponsors: s.sponsors, intel: new Map(s.intel), prep: new Set(s.prep), forts: new Set(s.forts),
-    intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used) });
+    reports: s.reports ?? {}, intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used) });
   G.army = new Map(s.army.map((u) => [u.id, { ...u }]));
   assignStates(); G.layer = null;
 }
@@ -2169,19 +2169,43 @@ function openUnitPop(id) {
   if (!G) return; G.pop = id; renderUnitPop(); Sound.play("select");
 }
 function closeUnitPop() { if (!G) return; G.pop = null; $("#unitpop").hidden = true; }
+// What each agent is, in plain words: the job, what you get to use in real
+// life, and what it does on the board.
+const AGENT_EXPLAIN = {
+  scout: ["Finds what your fans in a city also love: shows, brands, music.", "A list of things to mention in your posts and shows there", "City prepared: moves there cost ⚡1 less, battles +30%"],
+  booker: ["Finds the venue in a city whose crowd matches yours.", "A venue to book, plus a backup", "City prepared: moves there cost ⚡1 less, battles +30%"],
+  diplomat: ["Finds a performer whose fans would also like you, and opens a deal.", "A collab partner and a message ready to send", "An ally who fights at your side"],
+  sponsor: ["Finds a brand your fans already love.", "A sponsor to pitch, with the email drafted", "Gold every week"],
+  herald: ["Finds a podcast your fans listen to.", "A guest spot to pitch", "+2 buzz and more hype"],
+  reader: ["Shows how fans in a city react to your material.", "Who loved it and who didn't, fan by fan", "City prepared"],
+  trend: ["Checks what's trending in a city right now (Google Trends).", "A topic to post about while it's hot", "New trends to ride for buzz"],
+  oracle: ["Checks the 7-day weather for a city.", "The best dry night for a show", "City prepared, more hype"],
+  spy: ["Checks your rivals' fame and who attacks next (Wikipedia).", "Their search trends and their next move", "Warning before an attack"],
+  scribe: ["Writes a post for your fans in a city.", "A post ready to publish", "+1 buzz"],
+  showrunner: ["Plans a whole show night in a city you hold.", "A night plan: venue, music, sponsor, host", "+200 gold"],
+  listener: ["Reads what Reddit says about you.", "What fans really say about you", "Locked until you connect Reddit"],
+};
+function keepReport(id, city, out) {
+  const d = document.createElement("div"); d.innerHTML = out.intel ?? out.line ?? "";
+  G.reports ??= {}; G.reports[id] = { city: city.name, text: d.textContent.trim().slice(0, 220), week: G.week };
+}
 function renderUnitPop() {
   const id = G?.pop, el = $("#unitpop"); if (!id) { el.hidden = true; return; }
-  const a = agentOf(id), c = G.crew.get(id), u = G.army.get(id);
-  const head = `<div class="up-h" style="${agentGrad(id)}"><span class="up-face emo">${a.icon}</span><div><b>${esc(a.name)}</b><small>${esc(a.role)} · ${esc(a.src)}</small></div><button class="up-x" title="Close">✕</button></div>`;
+  const a = agentOf(id), c = G.crew.get(id), u = G.army.get(id), [does, get, game] = AGENT_EXPLAIN[id] ?? [a.role, AG_GAIN[id], ""];
+  const head = `<div class="up-h" style="${agentGrad(id)}"><span class="up-face emo">${a.icon}</span><div><b>${esc(a.name)}</b><small>${esc(does)}</small></div><button class="up-x" title="Close">✕</button></div>`;
+  const gives = `<div class="up-gets"><div><small>You get</small><span>${esc(get)}</span></div><div><small>In the game</small><span>${esc(game)}</span></div></div>`;
+  const rep = G.reports?.[id];
+  const last = rep ? `<div class="up-rep"><small>Last report · ${esc(rep.city)}${rep.week === G.week ? " · this week" : ""}</small><span>${esc(rep.text)}</span></div>` : "";
   let body;
-  if (a.locked) body = `<p>Reddit blocks anonymous apps. Connect your Reddit account to hire the Listener.</p>`;
-  else if (!c?.recruited) body = `<p><b>Brings you:</b> ${esc(AG_GAIN[id])}.</p><button class="go up-go" id="up-hire" ${G.gold >= a.cost ? "" : "disabled"}>Hire for 🪙${a.cost}</button>${G.gold < a.cost ? `<p class="note">You have 🪙${G.gold}. Cities, caravans and sponsors pay more gold.</p>` : ""}`;
-  else if (u?.state === "moving") body = `<p>On the march to <b>${esc(u.toCity)}</b>. ETA ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168))}.</p>`;
-  else if (u?.state === "working") body = `<p>Working in <b>${esc(u.at)}</b>: calling ${esc(a.src)} right now…</p>`;
+  if (a.locked) body = gives + `<p class="note">Reddit blocks anonymous apps. Connect your Reddit account to hire the Listener.</p>`;
+  else if (!c?.recruited) body = gives + `<button class="go up-go" id="up-hire" ${G.gold >= a.cost ? "" : "disabled"}>Hire for 🪙${a.cost}</button>${G.gold < a.cost ? `<p class="note">You have 🪙${G.gold}. Cities, caravans and sponsors bring more gold.</p>` : `<p class="note">After hiring: send it to a city. It travels on the clock, then calls ${esc(a.src)} and reports back.</p>`}`;
+  else if (u?.state === "moving") body = gives + `<p class="up-st">🚶 On the way to <b>${esc(u.toCity)}</b> · arrives ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168))}. Then it calls ${esc(a.src)}.</p>` + last;
+  else if (u?.state === "working") body = gives + `<p class="up-st">⚙️ Working in <b>${esc(u.at)}</b>: calling ${esc(a.src)} right now…</p>` + last;
   else {
     const used = c.week === G.week;
-    body = `<p class="up-q">Where should ${esc(a.name)} go?</p>` + missionTargets(id).map(({ c: ct, why }) => { const dist = Math.hypot(ct.p[0] - (u?.p[0] ?? ct.p[0]), ct.p[1] - (u?.p[1] ?? ct.p[1])), hrs = Math.max(1.5, dist / SPEED); return `<button class="up-t" data-goto="${esc(ct.name)}"><span><b>${esc(ct.name)}</b><small>${esc(why)}</small></span><em>${u?.at === ct.name ? "here" : Math.round(hrs) + "h"}</em></button>`; }).join("") +
-      `<p class="note">${used ? "Its job already ran this week; it can still move and hold a city." : `On arrival: ${esc(AG_GAIN[id])}.`} Or click any city on the map.</p>`;
+    body = gives + last + (used ? `<p class="up-st done">✓ Done for this week. Next report: Monday. You can still send it to guard a city.</p>` : "") +
+      `<p class="up-q">Send it to</p>` + missionTargets(id).map(({ c: ct, why }) => { const dist = Math.hypot(ct.p[0] - (u?.p[0] ?? ct.p[0]), ct.p[1] - (u?.p[1] ?? ct.p[1])), hrs = Math.max(1.5, dist / SPEED); return `<button class="up-t" data-goto="${esc(ct.name)}"><span><b>${esc(ct.name)}</b><small>${esc(why)}</small></span><em>${u?.at === ct.name ? "it's here" : "arrives in " + Math.round(hrs) + "h"}</em></button>`; }).join("") +
+      `<p class="note">Or click any city on the map, or drag the agent onto it.</p>`;
   }
   el.innerHTML = head + `<div class="up-b">${body}</div>`; el.hidden = false;
   el.querySelector(".up-x").onclick = closeUnitPop;

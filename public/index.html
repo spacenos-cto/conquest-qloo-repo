@@ -1470,6 +1470,17 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 #game .clock .cdial{width:30px;height:30px;flex:none}
 #mapside .clock{gap:6px;padding:6px 8px}#mapside .clock b{font-size:13.5px}#mapside .clock small{font-size:9px}#game #mapside .clock .cdial{width:22px;height:22px}#game #mapside .clock .clk{width:28px;height:28px}#mapside .clock>span:nth-child(2){min-width:0;flex:1}
 #game .council .chead span{white-space:nowrap}
+
+/* agent card v2: plain words */
+.unitpop{width:340px;max-height:calc(100% - 20px);overflow:auto}
+.up-h small{font-size:12.5px;line-height:1.35}
+.up-gets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.up-gets>div{border:1px solid var(--hair);border-radius:8px;padding:7px 9px;background:rgba(247,249,250,.03)}
+.up-gets small,.up-rep small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e1bdff;margin-bottom:2px}
+.up-gets span{font-size:12.5px;line-height:1.35;color:#eef0f3}
+.up-rep{border:1px solid rgba(61,255,154,.3);background:rgba(61,255,154,.05);border-radius:8px;padding:7px 9px;margin-bottom:10px;font-size:12.5px;line-height:1.4}
+.up-rep small{color:#9dffcb}
+.up-st{font-size:13px;margin:0 0 10px;color:#eef0f3}.up-st.done{color:#9dffcb}
 </style>
 </head>
 <body>
@@ -1744,6 +1755,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=242"></script>
+<script src="app.js?v=250"></script>
 </body>
 </html>
