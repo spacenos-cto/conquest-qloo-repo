@@ -33,6 +33,16 @@ test("drive cap: any leg over the cap is marked fly", () => {
   for (const l of lg) assert.ok(l.mode === "fly" || l.hours <= 5);
 });
 
+test("driving only: every city is within the cap of home or a picked city, and the plan says what flying adds", () => {
+  const plan = buildPlan({ home: "Atlanta", start: "2026-11-02", end: "2026-11-30", maxCities: 4, maxDriveHours: 5 }, [cand("San Francisco", 5000), cand("Charlotte", 400), cand("Nashville", 300), cand("Detroit", 900)]) as any;
+  const cities = plan.stops.map((s: any) => s.city);
+  assert.ok(!cities.includes("San Francisco"), "San Francisco is far past a 5 h drive");
+  for (const l of plan.legs) assert.equal(l.mode, "drive");
+  assert.match(plan.note ?? "", /Flying is fine/);
+  const fly = buildPlan({ home: "Atlanta", start: "2026-11-02", end: "2026-11-30", maxCities: 4, maxDriveHours: 5, flyingOk: true }, [cand("San Francisco", 5000), cand("Charlotte", 400)]) as any;
+  assert.ok(fly.legs.some((l: any) => l.mode === "fly"), "flying is fine: long legs are flights");
+});
+
 test("nights land on Thu/Fri/Sat, in order, inside the window", () => {
   const stops = [{ wx: null }, { wx: null }, { wx: null }];
   const lg = [{ from: "a", to: "b", miles: 100, hours: 2, mode: "drive" as const }, { from: "b", to: "c", miles: 300, hours: 5.5, mode: "drive" as const }, { from: "c", to: "d", miles: 100, hours: 2, mode: "drive" as const }];
@@ -50,7 +60,7 @@ test("nights pick the driest Thu-Sat when the forecast says so", () => {
 test("room size guess and CSV / ICS output", () => {
   assert.equal(bucketOf("The Comedy Store"), "50–150");
   assert.equal(bucketOf("Fox Theatre"), "150–400");
-  const plan = buildPlan({ home: "Chicago", start: "2026-11-02", end: "2026-11-30", maxCities: 3 }, [cand("Detroit", 900), cand("St. Louis", 700), cand("Minneapolis", 500), cand("Denver", 10)]) as any;
+  const plan = buildPlan({ home: "Chicago", start: "2026-11-02", end: "2026-11-30", maxCities: 3, flyingOk: true }, [cand("Detroit", 900), cand("St. Louis", 700), cand("Minneapolis", 500), cand("Denver", 10)]) as any;
   plan.id = "t1";
   assert.equal(plan.stops.length, 3);
   const csv = toCsv(plan);

@@ -1341,7 +1341,8 @@ button.wb-chip{cursor:pointer;font-family:var(--sans)}button.wb-chip:hover{borde
 .docsheet{width:min(900px,100%);height:calc(100vh - 36px);display:flex;flex-direction:column;padding:0!important;overflow:hidden}
 .dv-top{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--hair)}
 .dv-top b{flex:1;font:600 12px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:#e1bdff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dv-top .ghostbtn,.dv-top .go{margin:0;padding:7px 12px;font-size:12.5px;text-decoration:none}
+.dv-top .ghostbtn,.dv-top .go{margin:0;padding:8px 14px;font-size:13px;text-decoration:none;width:auto;flex:none;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;min-height:0}
+.dv-top b{min-width:0}
 #dv-frame{flex:1;width:100%;border:0;background:#f4f2f7}
 
 /* hook v2.1: readable caption, gentle zoom that keeps everyone in frame, sound chip */
@@ -1804,6 +1805,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=261"></script>
+<script src="app.js?v=262"></script>
 </body>
 </html>

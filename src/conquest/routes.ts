@@ -93,7 +93,7 @@ export function makeRoutes(d: Deps, send: Send) {
         if (!METROS[b.home]) { json(res, 400, { status: "error", error: `Pick a home city we know: ${Object.keys(METROS).join(", ")}` }); return true; }
         if (b.end < b.start) { json(res, 400, { status: "error", error: "The end date is before the start date." }); return true; }
         const snap = b.campaignId ? db.getCampaign(b.campaignId) : null;
-        let plan = await planTour(d, b.name, { ids: b.ids }, { home: b.home, start: b.start, end: b.end, maxCities: b.maxCities, maxDriveHours: b.flyingOk ? 99 : b.maxDriveHours, flyingOk: b.flyingOk, roomSize: b.roomSize }, snap);
+        let plan = await planTour(d, b.name, { ids: b.ids }, { home: b.home, start: b.start, end: b.end, maxCities: b.maxCities, maxDriveHours: b.maxDriveHours, flyingOk: b.flyingOk, roomSize: b.roomSize }, snap);
         plan = await aiTour(plan);
         plan.id = db.newId(6); (plan as any).campaignId = b.campaignId ?? null; db.saveTour(plan.id, b.campaignId ?? null, plan);
         json(res, 200, { status: "ok", ...plan, links: { page: `/tour/${plan.id}`, ics: `/api/tour/${plan.id}.ics`, csv: `/api/tour/${plan.id}.csv`, txt: `/api/tour/${plan.id}.txt` } });

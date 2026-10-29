@@ -911,7 +911,7 @@ const LV_LABEL = { SIEGE: "Under siege", HIGH: "Attacking", MED: "Attacking", LO
 const isoDay = (d) => d.toISOString().slice(0, 10);
 function tourDefaults() {
   const t = new Date(); t.setDate(t.getDate() + ((4 - t.getDay() + 7) % 7 || 7)); const e = new Date(t); e.setDate(e.getDate() + 27);
-  return { home: METROS[G.capital] ? G.capital : "Chicago", start: isoDay(t), end: isoDay(e), maxCities: 6, maxDriveHours: 5, flyingOk: false, roomSize: "" };
+  return { home: METROS[G.capital] ? G.capital : "Chicago", start: isoDay(t), end: isoDay(e), maxCities: 6, maxDriveHours: 5, flyingOk: true, roomSize: "" };
 }
 function tourHtml() {
   const f = G.tourForm ?? tourDefaults(), p = G.tourPlan;
@@ -930,7 +930,7 @@ function tourHtml() {
     <div class="tstops">${p.stops.map((st) => `<div class="tstop"><b class="tn">${st.n}</b><div><div class="tl"><b>${esc(st.city)}</b> · ${st.night ? new Date(st.night + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "<i>doesn't fit</i>"} · ${st.drive.mode === "fly" ? "✈ fly" : `🚗 ${st.drive.hours} h`}</div>
       <div class="tv">${esc(st.venue?.name ?? "send a Booker")}${st.backup ? ` <small>(backup: ${esc(st.backup.name)})</small>` : ""} · <b>${st.fit ?? "?"}% fit</b> · ${st.fans.toLocaleString()} fans</div>
       <div class="tw">${esc(st.why)}</div><div class="tc">confidence: ${st.confidence.level} · ${esc(st.confidence.reason)}${G.cid ? ` · <a href="#" data-tbrief="${esc(st.city)}">📄 brief</a>` : ""}</div></div></div>`).join("")}</div>
-    <p class="note">${esc(p.method)}</p>`;
+    <p class="note">${esc(p.method)}</p>`.replace(`<div class="tacts">`, `${p.note ? `<p class="note" style="color:#ffc857">${esc(p.note)}</p>` : ""}<div class="tacts">`);
 }
 function bindTour() {
   const f = $("#tour-form"); if (!f) return;

@@ -64,9 +64,25 @@ export function twoOpt(home: Metro, stops: { geo: Metro }[], order: number[]): n
 }
 
 export type Leg = { from: string; to: string; miles: number; hours: number; mode: "drive" | "fly" };
-/** every leg over the drive cap is marked "fly" */
-export function legs(home: { city: string; geo: Metro }, stops: { city: string; geo: Metro }[], maxDriveHours: number): Leg[] {
-  let at = home; return stops.map((s) => { const h = driveHours(at.geo, s.geo), m = Math.round(miles(at.geo, s.geo)); const leg: Leg = { from: at.city, to: s.city, miles: m, hours: Math.round(h * 10) / 10, mode: h > maxDriveHours ? "fly" : "drive" }; at = s; return leg; });
+/** when flying is fine, every leg over the drive cap is marked "fly"; otherwise it stays a (long) drive */
+export function legs(home: { city: string; geo: Metro }, stops: { city: string; geo: Metro }[], maxDriveHours: number, flyingOk = true): Leg[] {
+  let at = home; return stops.map((s) => { const h = driveHours(at.geo, s.geo), m = Math.round(miles(at.geo, s.geo)); const leg: Leg = { from: at.city, to: s.city, miles: m, hours: Math.round(h * 10) / 10, mode: flyingOk && h > maxDriveHours ? "fly" : "drive" }; at = s; return leg; });
+}
+/**
+ * Driving only: keep the best cities that chain within the drive cap, each one
+ * reachable from home or from a city already picked. Returns who was left out.
+ */
+export function withinReach<T extends { city: string; geo: Metro }>(home: Metro, ranked: T[], cap: number, max: number): { picked: T[]; skipped: T[] } {
+  const picked: T[] = [], skipped: T[] = [];
+  for (let grew = true; grew && picked.length < max;) {
+    grew = false;
+    for (const c of ranked) {
+      if (picked.includes(c) || picked.length >= max) continue;
+      if ([home, ...picked.map((p) => p.geo)].some((g) => driveHours(g, c.geo) <= cap)) { picked.push(c); grew = true; break; } // best reachable first, then look again
+    }
+  }
+  for (const c of ranked) if (!picked.includes(c)) skipped.push(c);
+  return { picked, skipped };
 }
 
 const addDays = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -138,9 +154,14 @@ export function whyLine(c: Scored, night: string | null): string {
 export function buildPlan(input: TourInput, cands: Candidate[]) {
   const home = METROS[input.home]; if (!home) throw new Error(`unknown home city: ${input.home}`);
   const maxCities = Math.max(1, Math.min(12, input.maxCities ?? 6)), cap = input.maxDriveHours ?? 5;
-  const scored = scoreCities(cands.filter((c) => c.city !== input.home), input.start, input.end).sort((a, b) => b.score - a.score).slice(0, maxCities);
+  const ranked = scoreCities(cands.filter((c) => c.city !== input.home), input.start, input.end).sort((a, b) => b.score - a.score);
+  const reach = input.flyingOk ? { picked: ranked.slice(0, maxCities), skipped: [] } : withinReach(home, ranked, cap, maxCities);
+  const scored = reach.picked;
+  // a short tour because the drive cap ruled out big cities: say so, and what flying would add
+  const left = reach.skipped.slice(0, 3).filter((c) => c.fans > Math.min(...scored.map((s) => s.fans), Infinity) * 0.5);
+  const note = !input.flyingOk && scored.length < maxCities && left.length ? `${scored.length === 1 ? `Only ${scored[0]!.city} is` : `Only ${scored.length} cities are`} within a ${cap} h drive. Tick “Flying is fine” to add ${left.map((c) => c.city).join(", ")}.` : null;
   const order = route(home, scored), stopsC = order.map((i) => scored[i]!);
-  const lg = legs({ city: input.home, geo: home }, stopsC, cap), nights = assignNights(stopsC, lg, input.start, input.end);
+  const lg = legs({ city: input.home, geo: home }, stopsC, cap, !!input.flyingOk), nights = assignNights(stopsC, lg, input.start, input.end);
   const stops: Stop[] = stopsC.map((c, i) => {
     const rooms = pickRooms(c.venues, input.roomSize);
     return { n: i + 1, city: c.city, state: c.geo.state, tz: c.geo.tz, night: nights[i] ?? null, venue: rooms[0] ?? null, backup: rooms[1] ?? null, fans: c.fans, score: c.score, parts: c.parts,
@@ -149,7 +170,7 @@ export function buildPlan(input: TourInput, cands: Candidate[]) {
   const booked = stops.filter((s) => s.night);
   return {
     input: { ...input, maxCities, maxDriveHours: cap },
-    stops, legs: lg,
+    stops, legs: lg, note,
     totals: { nights: booked.length, fansReachable: booked.reduce((a, s) => a + s.fans, 0), miles: lg.reduce((a, l) => a + l.miles, 0), driveHours: Math.round(lg.filter((l) => l.mode === "drive").reduce((a, l) => a + l.hours, 0) * 10) / 10, flights: lg.filter((l) => l.mode === "fly").length },
     weights: WEIGHTS,
     method: "Score = 40% fans (log, Qloo) + 20% venue crowd fit (Qloo) + 15% trend lift (Google Trends) + 15% dry evenings (Open-Meteo, 16-day forecast; unknown counts as average) + 10% rival pressure. Route = nearest neighbour + 2-opt; drive time = straight-line miles / 55 mph.",
