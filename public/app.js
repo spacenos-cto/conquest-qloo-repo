@@ -776,6 +776,7 @@ const Radar = (() => {
   function frame(now) {
     if (!G || cv.offsetParent === null) return;
     fit(cv, 2); const W = cv.width, H = cv.height, d = cv._dpr || 1, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 8 * d;
+    hits = []; hd = d;
     const cap = G.cities.find((c) => c.name === G.capital) ?? G.cities[0]; if (!cap) return;
     const RANGE = 560, pos = (p) => { const dx = p[0] - cap.p[0], dy = p[1] - cap.p[1], dd = Math.hypot(dx, dy), k = Math.min(1, dd / RANGE); return [cx + (dx / (dd || 1)) * k * R, cy + (dy / (dd || 1)) * k * R]; };
     ctx.clearRect(0, 0, W, H);
@@ -798,11 +799,12 @@ const Radar = (() => {
     ctx.font = `600 ${9.5 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center";
     for (const f of G.fac.values()) {
       const col = f.allied ? COL.allied : f.col;
-      for (const c of G.cities.filter((x) => x.owner === f.id && x.state === "rival")) { const [X, Y] = pos(c.p); ctx.globalAlpha = lit(X, Y) * 0.8; ctx.fillStyle = col; ctx.fillRect(X - 3 * d, Y - 3 * d, 6 * d, 6 * d); }
+      for (const c of G.cities.filter((x) => x.owner === f.id && x.state === "rival")) { const [X, Y] = pos(c.p); hits.push({ fid: f.id, x: X, y: Y }); ctx.globalAlpha = lit(X, Y) * 0.8; ctx.fillStyle = col; ctx.fillRect(X - 3 * d, Y - 3 * d, 6 * d, 6 * d); }
       const it = G.intents.find((x) => x.fid === f.id); if (!it || f.allied) continue;
       const to = G.cities.find((c) => c.name === it.city); if (!to) continue;
       const k = 0.1 + 0.78 * clamp01(G.hour / 168), from = pos(it.from), dst = pos(to.p), X = from[0] + (dst[0] - from[0]) * k, Y = from[1] + (dst[1] - from[1]) * k;
       const a = lit(X, Y); ctx.globalAlpha = 0.5; ctx.strokeStyle = col; ctx.setLineDash([3 * d, 4 * d]); ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(dst[0], dst[1]); ctx.stroke(); ctx.setLineDash([]);
+      hits.push({ fid: f.id, x: X, y: Y, army: true });
       ctx.globalAlpha = a; ctx.shadowColor = col; ctx.shadowBlur = 14 * d * a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y, 5.5 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.strokeStyle = col; ctx.lineWidth = 1.5 * d; ctx.arc(X, Y, (8 + ((now / 120) % 10)) * d, 0, 6.283); ctx.stroke();
       ctx.globalAlpha = Math.min(1, a + 0.3); ctx.fillStyle = "#e9eef7"; ctx.fillText(f.name.split(" ").slice(-1)[0].toUpperCase(), X, Y - 10 * d);
@@ -813,8 +815,25 @@ const Radar = (() => {
     ctx.fillStyle = "rgba(225,189,255,.7)"; ctx.font = `600 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.fillText(`HQ · ${G.capital?.toUpperCase() ?? ""}`, 8 * d, H - 8 * d);
     ctx.textAlign = "right"; ctx.fillText(`SUN · ${Math.max(0, Math.ceil((168 - G.hour) / 24))}D`, W - 8 * d, 14 * d);
   }
+  // click a blip to pick that rival; click anywhere else for the full threat report
+  let hits = [], hd = 1;
+  const near = (e) => { const x = e.offsetX * hd, y = e.offsetY * hd; let best = null, bd = 16 * hd; for (const h of hits) { const q = Math.hypot(h.x - x, h.y - y); if (q < bd) { bd = q; best = h; } } return best; };
+  cv.addEventListener("mousemove", (e) => { const h = G && near(e); cv.style.cursor = h ? "pointer" : "zoom-in"; cv.title = h ? `${G.fac.get(h.fid)?.name ?? ""}: click for counter-moves` : "Click for the full threat report"; });
+  cv.addEventListener("click", (e) => { if (!G) return; const h = near(e); Sound.play("select"); if (h) select({ type: "rival", id: h.fid }); else Drawer.open("radar"); });
   return { frame };
 })();
+// every rival: what they hold, what they're doing this week, and what happens if you do nothing
+function threatReport() {
+  const rows = [...G.fac.values()].map((f) => {
+    const it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id), ct = it && G.cities.find((c) => c.name === it.city);
+    const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name);
+    const ignore = sg ? `${sg.city} falls in ${sg.left} week${sg.left > 1 ? "s" : ""}: −${pts(G.cities.find((c) => c.name === sg.city))}% conquest.`
+      : it && !G.forts.has(it.city) ? `Sunday they reach ${it.city} and a 2-week siege starts (${ct ? pts(ct) : 0}% conquest at stake).`
+      : it ? `Your walls in ${it.city} will bounce them.` : f.allied ? "Allied: they fight with you." : "No attack planned this week.";
+    return `<div class="move"><span class="emo" style="font-size:18px">${f.allied ? "🕊️" : it ? "⚔️" : "👀"}</span><span><b>${esc(f.name)}</b> · ${threatLevel(f)}<small>${held.length ? "holds " + esc(held.slice(0, 3).join(", ")) : "holds none of your cities"}</small>${esc(ignore)}</span></div>`;
+  }).join("");
+  return `<p class="note" style="margin:0 0 10px">Rivals are the performers your fans also follow (Qloo). Each week some pick one of your cities to attack, and you see them coming days ahead. Their moves are simulated from their real footprints and Wikipedia momentum.</p><div class="dgroup">IF YOU DO NOTHING</div><div class="moves">${rows}</div><div class="dgroup">COUNTER-MOVES</div><div class="threats" id="threats"></div>`;
+}
 function threatLevel(f) {
   if (f.allied) return "ALLY";
   const it = G.intents.find((x) => x.fid === f.id);
@@ -1873,6 +1892,7 @@ const Drawer = {
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); renderThreats(); }
     else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
     else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $$("[data-real]").forEach((x) => x.addEventListener("click", () => markReal(x.dataset.real))); $("#moves-ics").onclick = downloadIcs; $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }

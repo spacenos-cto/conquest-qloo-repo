@@ -1060,6 +1060,54 @@ body.hooked{overflow:hidden}
 #hook.touch .hk-spark::before{content:"";position:absolute;left:-110px;top:-110px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#fff 0,#e1bdff 25%,rgba(175,80,255,.6) 45%,rgba(175,80,255,0) 70%);animation:burst 1s ease-out .2s both}
 @keyframes burst{from{transform:scale(.1);opacity:1}to{transform:scale(3.2);opacity:0}}
 .hk-skip{position:absolute;bottom:26px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8a7fa6}
+/* ===== business case: usp, who, pays, value, compare ===== */
+.usp,.who,.value{padding:120px 0;background:#090909}
+.usp3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:50px}
+@media (max-width:900px){.usp3{grid-template-columns:1fr}}
+.usp3 > div{position:relative;padding:28px 24px;border-radius:19px;border:1px solid var(--hair);overflow:hidden}
+.usp3 > div:nth-child(2){background:radial-gradient(circle at 50% 0%,rgba(175,80,255,.35),rgba(175,80,255,0) 70%)}
+.usp3 .n{position:absolute;right:14px;bottom:-18px;font-size:110px;font-weight:700;letter-spacing:-.06em;color:rgba(255,255,255,.06)}
+.usp3 h3{font-size:24px;font-weight:500;letter-spacing:-.02em;margin:0 0 10px}
+.usp3 p{margin:0;font-size:16px;font-weight:300;line-height:1.5;color:#d9dce0}
+.seg4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:50px}
+@media (max-width:1000px){.seg4{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.seg4{grid-template-columns:1fr}}
+.audc{padding:24px 20px;border-radius:19px;border:1px solid var(--hair);background:rgba(247,249,250,.02)}
+.audc.next{border-style:dashed}
+.audc .si{display:inline-grid;place-items:center;width:52px;height:52px;border-radius:14px;font-size:28px;background:radial-gradient(circle at 35% 25%,#c27aff,#4c1a91);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+.audc h3{font-size:20px;font-weight:500;letter-spacing:-.02em;margin:14px 0 8px}
+.audc h3 small{font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--steel);text-transform:uppercase;margin-left:6px}
+.audc q{display:block;font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.3;color:#e1bdff;margin-bottom:10px}
+.audc p{margin:0;font-size:14.5px;font-weight:300;line-height:1.5;color:#d9dce0}
+.pay{margin-top:70px}
+.ptable{margin-top:18px;border-top:1px solid var(--hair)}
+.ptable .pr{display:grid;grid-template-columns:1.1fr .8fr 1.4fr;gap:20px;padding:18px 4px;border-bottom:1px solid var(--hair);align-items:center;font-size:16px}
+@media (max-width:760px){.ptable .pr{grid-template-columns:1fr;gap:4px}}
+.ptable .pr.head{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--steel)}
+.ptable .pr small{display:block;font-size:12.5px;color:var(--steel)}
+.ptable .pr b{font-weight:600;color:#fff}
+.ptable .pr > span:last-child{color:#d9dce0;font-weight:300}
+.ptable .pr.hl{background:linear-gradient(90deg,rgba(175,80,255,.16),rgba(175,80,255,0));}
+.pay .note{margin-top:14px;font-size:13px}
+.val6{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}
+@media (max-width:900px){.val6{grid-template-columns:1fr}}
+.val6 > div{display:grid;grid-template-columns:44px 1fr;gap:2px 14px;align-items:center;padding:18px;border-radius:16px;border:1px solid var(--hair)}
+.val6 .emo{grid-row:1/3;font-size:30px}
+.val6 b{font-size:17px;font-weight:500}
+.val6 span:not(.emo){font-size:14px;color:var(--steel)}
+.cmp{margin-top:56px}
+.cmpw{overflow-x:auto}
+.cmp table{width:100%;min-width:820px;border-collapse:collapse;font-size:14px}
+.cmp th,.cmp td{padding:14px 12px;border-bottom:1px solid var(--hair);text-align:left;vertical-align:top}
+.cmp thead th{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);font-weight:400}
+.cmp tbody th{font-weight:400;color:#e6e7ea;width:24%}
+.cmp td{color:#c9ccd1}
+.cmp .us{background:rgba(175,80,255,.12);color:#fff}
+.cmp thead .us{color:#e1bdff;border-top:2px solid #af50ff}
+.cmp i{font-style:normal;font-weight:700;margin-right:4px}
+.cmp i.y{color:#7dffb5}.cmp i.p{color:#f5b544}.cmp i.n{color:#55575d}
+.cmpsum{margin:26px 0 8px;font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.02em;line-height:1.3}
+.cmpsum em{font-family:var(--serif);font-weight:400}
 </style>
 </head>
 <body>
@@ -1070,7 +1118,7 @@ body.hooked{overflow:hidden}
 <div id="site">
   <header class="nav2"><div class="navin">
     <a class="brand2" href="#top"><b>CONQUEST</b><span>.AGENT</span></a>
-    <nav class="links2"><a href="#story">Why</a><a href="#product">Product</a><a href="#army">Agents</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a></nav>
+    <nav class="links2"><a href="#usp">Why us</a><a href="#who-for">Who it's for</a><a href="#product">Product</a><a href="#value">Value</a><a href="#compare">Compare</a><a href="#pricing">Pricing</a></nav>
     <div class="navcta"><button class="btn-dark" id="signin">Sign in</button><button class="btn-line" data-play>Play now</button></div>
   </div></header>
 
@@ -1107,6 +1155,40 @@ body.hooked{overflow:hidden}
     <div class="era now" data-era="3"><div class="ghostnum">ERA 3</div><div class="wrap2 eg"><div><div class="eh"><b>Era 3</b><span class="tagbox">CONQUEST</span></div><h3 class="mix2">The strategist is <em>on your side.</em></h3><p><b>No guessing.</b> Agents read your real fans on Qloo's taste graph, test your material on 1,000 of them, watch your rivals, and hand you the next city to take. <em>Every move</em> is a real growth move.</p></div><div class="globe"><canvas id="globe" aria-hidden="true"></canvas></div></div></div>
   </section>
 
+
+  <!-- the USP, who it's for, who pays -->
+  <section class="usp" id="usp"><div class="wrap2">
+    <div class="stamp-sm">[THE_USP]</div>
+    <h2 class="mix2">The only growth tool that <em>plays</em> your real audience, and makes you <em>do the moves.</em></h2>
+    <div class="usp3">
+      <div><span class="n">01</span><h3>Real taste data, not vanity metrics</h3><p>Qloo's taste graph knows where your fans live and what else they love. Not likes: taste.</p></div>
+      <div><span class="n">02</span><h3>Agents that act</h3><p>Twelve agents book rooms, find sponsors, pitch partners and test your posts. Every call is live, and every line cites its source.</p></div>
+      <div><span class="n">03</span><h3>A weekly loop that ends in real life</h3><p>Every move in the game becomes a real mission for your week. Tick it off when it's done and the game pays you.</p></div>
+    </div>
+  </div></section>
+
+  <section class="who" id="who-for"><div class="wrap2">
+    <div class="stamp-sm">[WHO_ITS_FOR]</div>
+    <h2 class="mix2">Built for people whose <em>audience is the business.</em></h2>
+    <div class="seg4">
+      <div class="audc"><span class="si"><span class="emo">🎤</span></span><h3>Comedians and touring performers</h3><q>Which city do I book next, and will they show up?</q><p>The next city and the room whose crowd fits yours, a battle-tested set, and rival alerts.</p></div>
+      <div class="audc"><span class="si"><span class="emo">🎥</span></span><h3>Creators and podcasters</h3><q>What do I post, and who do I collab with?</q><p>Your YouTube X-rayed, collab partners with the pitch written, and sponsors your fans already love.</p></div>
+      <div class="audc"><span class="si"><span class="emo">🧑‍💼</span></span><h3>Managers and agencies</h3><q>Ten clients, no time to research each one.</q><p>A campaign per client and one weekly plan each, with real missions you can hand to the talent.</p></div>
+      <div class="audc next"><span class="si"><span class="emo">🏟️</span></span><h3>Teams, venues and brands <small>next</small></h3><q>Who's our crowd outside our home city?</q><p>Fan territory, partner fit and sponsor fit. Try it as the LA Dodgers.</p></div>
+    </div>
+    <div class="pay">
+      <div class="stamp-sm">[WHO_PAYS]</div>
+      <div class="ptable">
+        <div class="pr head"><span>Who</span><span>Plan</span><span>Why they pay</span></div>
+        <div class="pr"><span>Mid-size creators and comics<small>10k to 1M followers</small></span><b>Creator · $19/mo</b><span>One booked show or one sponsor deal can pay for the year.</span></div>
+        <div class="pr hl"><span>Touring headliners and podcasters</span><b>Headliner · $49/mo</b><span>Tours, sponsors and collabs are their revenue; this plans all three.</span></div>
+        <div class="pr"><span>Talent managers and agencies</span><b>Manager · $149/mo</b><span>Ten performers' campaigns, a weekly plan for each, agents as MCP tools.</span></div>
+        <div class="pr"><span>Teams, venues and brands</span><b>Custom</b><span>Fan territory and partner fit across many markets.</span></div>
+      </div>
+      <p class="note">More than 50 million people earn from an audience (Goldman Sachs). Almost none of them can afford a strategist.</p>
+    </div>
+  </div></section>
+
   <!-- product: experience the campaign -->
   <section class="product" id="product"><div class="wrap2">
     <h2 class="center mix2">Experience the <em>campaign</em></h2>
@@ -1127,6 +1209,21 @@ body.hooked{overflow:hidden}
   <section class="army2" id="army"><div class="wrap2">
     <div class="stamp">Y O U R &nbsp; A R M Y</div>
     <div class="rows" id="armygrid"></div>
+  </div></section>
+
+
+  <!-- what you get every week -->
+  <section class="value" id="value"><div class="wrap2">
+    <div class="stamp">W H A T &nbsp; Y O U &nbsp; G E T</div>
+    <p class="lead2">Every Monday, a battle plan built from live data. Every Sunday, what you actually did.</p>
+    <div class="val6">
+      <div><span class="emo">🎟️</span><b>The next city to play</b><span>and the room whose crowd fits yours</span></div>
+      <div><span class="emo">💼</span><b>Sponsors your fans already love</b><span>with the pitch to send</span></div>
+      <div><span class="emo">🕊️</span><b>A collab partner</b><span>whose crowd is new to you, and the DM</span></div>
+      <div><span class="emo">🎬</span><b>Your content X-rayed</b><span>what lands, where, and what to cut</span></div>
+      <div><span class="emo">⚔️</span><b>Rival alerts, days ahead</b><span>with counter-moves</span></div>
+      <div><span class="emo">📅</span><b>Show nights on your calendar</b><span>picked around the weather</span></div>
+    </div>
   </div></section>
 
   <!-- battle-test with the brain -->
@@ -1156,6 +1253,12 @@ body.hooked{overflow:hidden}
       <div class="cc"><span class="num">03</span><small>GENERIC AI CHAT</small><p>Confident answers with no data behind them.</p><a>vs. a chatbot →</a></div>
       <div class="cc bloom"><span class="num">04</span><small>CONQUEST</small><p>Live taste data, a 1,000-fan panel, rivals on radar and agents that act. Every move cites its source.</p><a data-play>Play it →</a></div>
     </div>
+    <div class="cmp"><div class="cmpw"><table>
+      <thead><tr><th></th><th class="us">Conquest</th><th>Chartmetric</th><th>Later · Sprout Social</th><th>Bandsintown</th><th>ChatGPT</th></tr></thead>
+      <tbody><tr><th>Where your fans are, by city</th><td class="us"><i class="y">✓</i> taste graph</td><td><i class="p">◐</i> streaming & social</td><td><i class="p">◐</i> follower geography</td><td><i class="p">◐</i> fan trackers</td><td><i class="n">✗</i></td></tr><tr><th>What else your fans love</th><td class="us"><i class="y">✓</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Test content before you post</th><td class="us"><i class="y">✓</i> 1,000 fans + brain</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="p">◐</i> opinions, no data</td></tr><tr><th>Rivals and partners, mapped</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> artist comparisons</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Agents that act: book, pitch, scout</th><td class="us"><i class="y">✓</i> 12 agents</td><td><i class="n">✗</i></td><td><i class="p">◐</i> scheduling</td><td><i class="p">◐</i> show announcements</td><td><i class="p">◐</i> drafts</td></tr><tr><th>A weekly plan you actually do</th><td class="us"><i class="y">✓</i> real missions</td><td><i class="n">✗</i></td><td><i class="p">◐</i> content calendar</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Comedians and podcasters, not just music</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td></tr></tbody>
+    </table></div>
+    <p class="cmpsum">The others tell you <em>what happened.</em> Conquest tells you <em>where to go next,</em> does the legwork, and makes sure you do it.</p>
+    <p class="note">✓ yes · ◐ partly · ✗ no. Based on each product's public features as we understand them; corrections welcome.</p></div>
   </div></section>
 
   <section id="pricing" class="pricing2"><div class="wrap2">
@@ -1249,7 +1352,7 @@ body.hooked{overflow:hidden}
     <div class="deck" id="deck">
       <section class="slot s-army" id="slot-army"><div class="stitle">Agent army <span class="hint" id="army-hint"></span></div><div class="units" id="agents"></div></section>
       <section class="slot s-brain" id="slot-brain" title="Click to X-ray your real content"><div class="stitle">Crowd brain · X-ray ›</div><canvas id="brainp" class="brainc" aria-label="Predicted brain response to your material"></canvas><div class="regions" id="regions"></div><div class="bnote" id="brain-note"></div></section>
-      <section class="slot s-radar" id="slot-radar"><div class="stitle">Minimap · radar</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas></section>
+      <section class="slot s-radar" id="slot-radar"><div class="stitle">Minimap · radar ›</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas></section>
       <section class="slot s-next" id="slot-next"><div class="stitle"><span id="sel-title">Next move</span> <button class="lnk" id="all-orders">All orders <b id="ocount"></b></button></div><div id="primary"></div></section>
       <div class="s-end"><button class="endturn" id="endturn" title="Fast-forward to Sunday midnight: income lands, then the rivals strike"><i>⌛</i><span>END</span><b>WEEK</b></button><div class="note" id="weeknote"></div></div>
     </div>
@@ -1269,6 +1372,6 @@ body.hooked{overflow:hidden}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=100"></script>
+<script src="app.js?v=112"></script>
 </body>
 </html>
