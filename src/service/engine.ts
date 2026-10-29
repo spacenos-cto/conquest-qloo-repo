@@ -78,6 +78,7 @@ export async function audienceReport(name: string) {
     momentum: fp.momentum,
     refs: fp.refs,
     composition,
+    stimulus: pickStimulus(fp.audience),
     personas: personas.map((p) => ({
       id: p.id,
       metro: p.metro,
@@ -123,6 +124,8 @@ export async function rehearseReport(name: string) {
     verdicts,
     narrative: checked,
     respondentMode: respMode,
+    // per-person scores [personaId, score] so the map can light each dot up
+    reactions: replies.map((r) => [r.personaId, r.score]),
     receipts: receiptsFor(runId),
   };
 }
