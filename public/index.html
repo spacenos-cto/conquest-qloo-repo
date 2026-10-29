@@ -404,6 +404,145 @@ section{position:relative;padding:110px 0}
 .why3 p{color:var(--mist);margin:6px 0 0}
 .note{font-size:11.5px;color:var(--ash)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* ===== redesign: one world, fixed rails, icon set ===== */
+#game section{padding:0}
+.radarc{height:140px}
+.factions{max-height:176px;overflow:auto}
+.rail.left .tabsp{min-height:250px}
+.rail{overflow-y:auto;scrollbar-width:thin}
+html,body{background:#0b1018}
+.nav{background:linear-gradient(180deg,#0b1018,rgba(11,16,24,.86) 60%,rgba(11,16,24,0))}
+.ic{width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.16em;flex:none;display:inline-block}
+:root{--ease:cubic-bezier(.22,1,.36,1)}
+#game{display:grid;grid-template-rows:56px minmax(0,1fr)}
+#game[hidden]{display:none}
+.hud{height:56px;padding:0 12px;flex-wrap:nowrap;gap:12px;border-bottom:1px solid #3a2f17}
+.lvl,.lvl img,.lvl .ph{width:40px;height:40px}
+.lvl b{min-width:20px;height:20px;font-size:10px;right:-5px;bottom:-3px}
+.cmd{min-width:230px}
+.xpbar{height:8px}
+.orbs{gap:16px}
+.orbw{flex-direction:row;gap:7px}
+.orbw > span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.orbw em{margin-left:0}
+.orb{width:40px;height:40px}
+.orb b{font-size:11.5px}
+.orb.short{animation:short .5s ease 2}
+@keyframes short{50%{box-shadow:0 0 0 3px #ff4d6d,0 0 24px #ff4d6d}}
+.orbw.spot{border-radius:999px;padding:2px 8px 2px 2px}
+.mini span .ic{color:var(--bronze-hi)}
+.icobtn{display:inline-flex;align-items:center;gap:6px}
+.icobtn .ic{color:var(--bronze-hi)}
+.war{grid-template-columns:320px minmax(0,1fr) 360px;gap:8px;padding:8px;min-height:0;height:100%}
+.rail{display:flex;flex-direction:column;gap:8px;min-height:0}
+.rail .panel{flex:none}
+.rail.left .tabsp{flex:1;min-height:0;display:flex;flex-direction:column}
+.tab{flex:1;min-height:0;overflow:auto}
+.seg{display:flex;gap:4px;margin:10px 10px 6px;padding:3px;border-radius:9px;background:#0a0f18;border:1px solid #2a3446}
+.seg button{flex:1;border:0;border-radius:7px;padding:6px 8px;background:none;color:var(--ash);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.seg button.on{background:linear-gradient(180deg,#2a2213,#1a150c);color:var(--bronze-hi);box-shadow:inset 0 0 0 1px var(--bronze)}
+.radarc{height:170px}
+.threats{gap:5px}
+.threat{padding:6px 8px}
+.threat p{margin:3px 0 5px;font-size:11.5px;line-height:1.35}
+.cnt button{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 6px}
+.cnt .ic{color:var(--bronze-hi)}
+.factions{gap:4px;padding:4px 10px 10px}
+.fac{padding:5px 7px}
+.fac .fl{display:none}
+.fac:hover .fl{display:block}
+.agents{gap:5px;padding:4px 10px 10px}
+.agent{padding:6px 7px}
+.agent .ai{color:var(--bronze-hi);font-size:15px}
+.agent .ai .ic{width:17px;height:17px}
+.agent button{display:inline-flex;align-items:center;gap:4px}
+.more{width:100%;margin-top:2px;background:none;border:1px dashed #2a3446;border-radius:8px;color:var(--mist);padding:6px;font-size:12px}
+.more:hover{border-color:var(--bronze-hi);color:#fff}
+.mapcol{display:flex;flex-direction:column;gap:8px;min-height:0}
+.mapcol .mapwrap{flex:1;min-height:0}
+.ops{flex:none;transition:height .3s var(--ease)}
+.opshead{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px 4px;background:none;border:0;text-align:left;color:inherit}
+.opshead .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ops-last{flex:1;min-width:0;font-family:var(--mono)}
+.opshead .chev{color:var(--bronze-hi);transition:transform .3s}
+.ops.collapsed .opslog{display:none}
+.ops.collapsed .chev{transform:rotate(-90deg)}
+.ops:not(.collapsed) #ops-last{display:none}
+.opslog{height:128px}
+.opslog .ic{color:var(--bronze-hi)}
+.legend{transition:opacity .6s var(--ease)}
+.legend.hide{opacity:0}
+.mapwrap:hover .legend.hide{opacity:.9}
+.advisor .ptitle,.primary .ptitle{display:flex;align-items:center;gap:8px}
+.chip{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);font-size:11.5px;letter-spacing:.02em;text-transform:none;font-weight:600;color:#7fd8ff;background:rgba(56,216,255,.08);border:1px solid rgba(56,216,255,.35);border-radius:999px;padding:3px 9px}
+.chip b{font-family:var(--mono)}
+.brief{min-height:0;font-size:13.5px}
+.quests{padding:6px 12px 10px}
+.rail.right .primary{flex:1;min-height:0;overflow:auto}
+#primary{padding:6px 12px 12px}
+.pcard h3{font-family:var(--game);font-size:19px;letter-spacing:.03em;margin:4px 0 2px}
+.pcard .pk{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ash);text-transform:uppercase;letter-spacing:.06em}
+.pcard .pk .ic{color:var(--bronze-hi);width:16px;height:16px}
+.pcard .pg{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:13px;margin:2px 0 8px}
+.pcard .pg b{color:var(--good);font-weight:500}
+.pcard .why{font-size:13px;line-height:1.5;color:#e2e8f3}
+.pcard .why .rc{display:block;margin-top:5px;font-size:11px;color:var(--ash);font-family:var(--mono)}
+.pcard .orow .go{font-size:14px}
+.pcard.empty{color:var(--ash);font-size:13px}
+.railbtns{display:flex;gap:8px}
+.railbtns .ghostbtn{flex:1;margin:0;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.endw .go{margin:0;display:flex;align-items:center;justify-content:center;gap:8px}
+.endw .note{text-align:center;margin-top:5px}
+/* drawer */
+.drawer{position:fixed;top:56px;right:0;bottom:0;width:min(440px,100%);z-index:56;background:linear-gradient(180deg,#151d2b,#0b111b);border-left:1px solid var(--bronze);box-shadow:-20px 0 60px rgba(0,0,0,.6);transform:translateX(105%);transition:transform .35s var(--ease);display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.dhead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #2a3446}
+.dhead b{font-family:var(--game);letter-spacing:.08em;color:var(--bronze-hi)}
+.dbody{flex:1;overflow:auto;padding:10px}
+.dbody .orders{padding:0}
+.moves{display:grid;gap:8px}
+.move{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:9px 10px;border-radius:9px;border:1px solid #2a3446;background:rgba(255,255,255,.025);font-size:13px;line-height:1.45}
+.move .ic{color:var(--bronze-hi);margin-top:2px}
+.move small{display:block;color:var(--ash);font-size:11px;font-family:var(--mono)}
+.dgroup{font-family:var(--game);font-size:11px;letter-spacing:.14em;color:var(--bronze-hi);margin:10px 2px 2px}
+/* onboarding */
+.coachdim{position:fixed;inset:0;background:rgba(2,4,9,.5);z-index:72;pointer-events:none;transition:opacity .3s}
+.spot{position:relative;z-index:74!important;box-shadow:0 0 0 3px #ffcf5a,0 0 44px rgba(255,207,90,.45)!important;animation:spotp 1.6s ease-in-out infinite}
+@keyframes spotp{50%{box-shadow:0 0 0 5px #ffcf5a,0 0 64px rgba(255,207,90,.6)}}
+.coach{position:fixed;z-index:76;left:50%;bottom:28px;transform:translateX(-50%);width:min(460px,calc(100vw - 24px));padding:12px 16px 14px;border-radius:14px;background:linear-gradient(180deg,#1d2638,#101722);border:1px solid var(--bronze-hi);box-shadow:0 20px 60px rgba(0,0,0,.7),0 0 30px rgba(255,207,90,.2);animation:coachin .45s var(--ease) both}
+@keyframes coachin{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+.coach p{margin:6px 0 10px;font-size:15px;line-height:1.45}
+.coach .row2{display:flex;gap:8px;align-items:center}
+.coach .row2 .go{width:auto;margin:0}
+.coach .row2 .ghostbtn{margin:0}
+/* mobile */
+.tabbar,.mbar{display:none}
+@media (max-width:1440px){.war{grid-template-columns:290px minmax(0,1fr) 330px}}
+@media (max-width:1180px){
+  #game{position:fixed;inset:0}
+  .war{grid-template-columns:1fr;padding:6px 6px 116px}
+  .war .lcol{display:flex}
+  .hud{gap:8px;padding:0 8px}
+  .hud .bt,.xp,.mini,#plan-btn .lbl,.orbw > span{display:none}
+  .cmd{min-width:0}
+  .orbs{margin:0 auto;gap:8px}
+  .rail{position:fixed;left:0;right:0;bottom:58px;max-height:70vh;overflow:auto;z-index:52;padding:10px;background:#0b111b;border-top:1px solid var(--bronze);box-shadow:0 -20px 50px rgba(0,0,0,.6);transform:translateY(110%);transition:transform .35s var(--ease)}
+  .rail.open{transform:none}
+  .rail.left .tabsp{min-height:300px}
+  .ops{position:fixed;left:0;right:0;bottom:58px;z-index:52;transform:translateY(130%);transition:transform .35s var(--ease)}
+  .ops.open{transform:none}
+  .ops.open .opslog{display:block;height:40vh}
+  .mapcol .mapwrap{min-height:0}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:58px;z-index:53;background:#0d131e;border-top:1px solid #2a3446}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:0;color:var(--ash);font-size:10.5px}
+  .tabbar button .ic{width:20px;height:20px}
+  .tabbar button.on{color:var(--bronze-hi)}
+  .mbar{display:flex;position:fixed;left:8px;right:8px;bottom:64px;z-index:51;gap:8px;align-items:center;padding:8px 8px 8px 12px;border-radius:12px;background:linear-gradient(180deg,#1d2638,#101722);border:1px solid var(--bronze)}
+  .mbar span{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbar .go{width:auto;margin:0;padding:8px 12px;font-size:13px}
+  .drawer{top:56px}
+  .coach{bottom:130px}
+}
 </style>
 </head>
 <body>
@@ -413,7 +552,7 @@ section{position:relative;padding:110px 0}
 <div id="site">
   <header class="nav"><div class="wrap">
     <a class="brand" href="#top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 28 V5" stroke="#ffb829" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#8052ff"/></svg>CONQUEST</a>
-    <nav class="links"><a href="#army">Your army</a><a href="#rivals">Rivals</a><a href="#brain">Battle-test</a><a href="#pricing">Pricing</a><button class="ghost" id="signin">Sign in</button><button class="pill" data-play>Play Conquest</button></nav>
+    <nav class="links"><a href="#army">Product</a><a href="#how">How it works</a><a href="#pricing">Pricing</a><button class="ghost" id="signin">Sign in</button><button class="pill" data-play>Play Conquest</button></nav>
   </div></header>
 
   <section class="hero2" id="top"><div class="wrap hgrid">
@@ -433,12 +572,12 @@ section{position:relative;padding:110px 0}
     </div>
   </div>
   <div class="wrap"><div class="live">
-    <span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain model</span>
+    <span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain model (stub)</span><span><i class="stub"></i>X · TikTok · Reddit: connect</span>
   </div></div></section>
 
   <section id="army"><div class="wrap">
     <div class="label">Your army</div>
-    <h2 class="big">Eleven agents. Each one does a real job.</h2>
+    <h2 class="big">An army of agents. Each one does a real job.</h2>
     <p class="lead" style="max-width:640px">Recruit them with gold, send them to a city, and watch them march across the map, make the call and come back with something you can act on tonight.</p>
     <div class="army" id="armygrid"></div>
   </div></section>
@@ -522,44 +661,56 @@ section{position:relative;padding:110px 0}
   <div class="hud">
     <span class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><path d="M7 28 V5" stroke="#ffb829" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#8052ff"/></svg><span class="bt">CONQUEST</span></span>
     <div class="cmd"><div class="lvl"><span id="hud-face"></span><b id="lvl-n">I</b></div><div class="xp"><div class="xpt"><b id="age-name">Open Mic</b><span id="xp-text"></span></div><div class="xpbar"><i id="xp-fill"></i></div></div></div>
-    <div class="orbs">
-      <div class="orbw" title="Buzz: spend it on orders. Recharges every week."><div class="orb buzz" id="orb-buzz"><b></b></div><span>Buzz<em id="rate-buzz"></em></span></div>
-      <div class="orbw" title="Hype: how hard your material lands (panel rating). Raises buzz income."><div class="orb hype" id="orb-hype"><b></b></div><span>Hype</span></div>
-      <div class="orbw" title="Gold: ticket sales and sponsors. Recruits agents and fortifies cities."><div class="orb gold" id="orb-gold"><b></b></div><span>Gold<em id="rate-gold"></em></span></div>
+    <div class="orbs" id="orbs">
+      <div class="orbw" id="ow-buzz" title="Buzz: your actions this week. Recharges every Sunday."><div class="orb buzz" id="orb-buzz"><b></b></div><span>Buzz<em id="rate-buzz"></em></span></div>
+      <div class="orbw" id="ow-hype" title="Hype: how hard your material hits (1,000-fan panel rating). More hype, more buzz."><div class="orb hype" id="orb-hype"><b></b></div><span>Hype</span></div>
+      <div class="orbw" id="ow-gold" title="Gold: ticket sales and sponsors. Pays for agents and walls."><div class="orb gold" id="orb-gold"><b></b></div><span>Gold<em id="rate-gold"></em></span></div>
     </div>
     <div class="mini" id="mini"></div>
-    <div class="hudr"><button class="icobtn" id="sound" title="Sound on or off">🔊</button><button class="icobtn" id="exit">Exit</button></div>
+    <div class="hudr">
+      <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">This week's moves</span></button>
+      <button class="icobtn" id="help" title="Replay the guided first turn">?</button>
+      <button class="icobtn" id="sound" title="Sound on or off">🔊</button>
+      <button class="icobtn" id="exit" title="Back to the site">Exit</button>
+    </div>
   </div>
   <div class="war">
-    <div class="col lcol">
-      <div class="panel"><div class="ptitle">Threat radar</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas><div class="threats" id="threats"></div></div>
-      <div class="panel"><div class="ptitle">Crowd brain · TRIBE</div><canvas id="brainp" class="brainc" aria-label="Predicted brain response to your material"></canvas><div class="regions" id="regions"></div><div class="note" style="padding:0 12px 10px" id="brain-note"></div></div>
-      <div class="panel"><div class="ptitle">Factions</div><div class="factions" id="factions"></div></div>
-      <div class="panel"><div class="ptitle">Agent HQ</div><div class="agents" id="agents"></div></div>
-      <div class="panel"><div class="ptitle">Trend potions</div><div class="trends" id="trends"></div></div>
-      <div class="panel"><div class="ptitle">Commander</div><div class="player" id="player"></div><div class="intel" id="intel"></div></div>
-    </div>
-    <div class="mapcol">
-    <div class="mapwrap panel" id="mapwrap">
-      <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
-      <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
-      <div class="events" id="events" aria-live="polite"></div>
-      <div class="cityp panel" id="cityp" hidden></div>
-      <div class="legend" id="legend"></div>
-      <div class="banner" id="banner"><span class="rib" id="banner-t"></span><small id="banner-s"></small></div>
-    </div>
-    <div class="panel ops"><div class="ptitle">Agent ops · live calls</div><div class="opslog" id="ops" aria-live="polite"></div></div>
-    </div>
-    <div class="col">
-      <div class="panel advisor"><div class="ptitle">War council</div>
+    <aside class="rail left" id="rail-left">
+      <section class="panel radarp" id="p-threats"><div class="ptitle">Threat radar</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas><div class="threats" id="threats"></div></section>
+      <section class="panel" id="p-factions"><div class="ptitle">Factions</div><div class="factions" id="factions"></div></section>
+      <section class="panel tabsp" id="p-tabs">
+        <div class="seg" role="tablist"><button role="tab" data-tab="agents" class="on">Agents</button><button role="tab" data-tab="brain">Brain</button><button role="tab" data-tab="intel">Intel</button></div>
+        <div class="tab" id="tab-agents"><div class="agents" id="agents"></div></div>
+        <div class="tab" id="tab-brain" hidden><canvas id="brainp" class="brainc" aria-label="Predicted brain response to your material"></canvas><div class="regions" id="regions"></div><div class="note" style="padding:0 12px 10px" id="brain-note"></div></div>
+        <div class="tab" id="tab-intel" hidden><div class="player" id="player"></div><div class="intel" id="intel"></div></div>
+      </section>
+    </aside>
+    <main class="mapcol">
+      <div class="mapwrap panel" id="mapwrap">
+        <div class="clock" id="clock"><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
+        <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
+        <div class="events" id="events" aria-live="polite"></div>
+        <div class="cityp panel" id="cityp" hidden></div>
+        <div class="legend" id="legend"></div>
+        <div class="banner" id="banner"><span class="rib" id="banner-t"></span><small id="banner-s"></small></div>
+      </div>
+      <section class="panel ops" id="p-ops"><button class="opshead" id="ops-toggle" aria-expanded="true"><span class="ptitle" style="padding:0">Live calls</span><span class="note" id="ops-count"></span><span class="note" id="ops-last"></span><span class="chev">▾</span></button><div class="opslog" id="ops" aria-live="polite"></div></section>
+    </main>
+    <aside class="rail right" id="rail-right">
+      <section class="panel advisor"><div class="ptitle">War council <button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
         <div class="face"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#1a2333" stroke="#f0c46a" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#8052ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#f0c46a"/><circle cx="24" cy="16" r="3" fill="#ffb829"/></svg><div><b>General Conquest</b><span>Your growth agent</span></div></div>
         <div class="brief" id="brief"></div>
         <div class="quests" id="quests"></div>
-        <div style="padding:0 12px"><button class="ghostbtn" id="simulate" style="width:100%">▶ Simulate my whole plan</button></div>
-      </div>
-      <div class="panel"><div class="ptitle">Orders <span class="note" style="letter-spacing:0;text-transform:none;font-family:var(--sans)">· tap one for the briefing</span></div><div class="orders" id="orders"></div><div class="gofoot"><button class="go" id="endturn">End week ▸</button><div class="note" style="margin-top:6px;text-align:center" id="weeknote"></div></div></div>
-    </div>
+      </section>
+      <section class="panel primary" id="p-primary"><div class="ptitle">Your next move</div><div id="primary"></div></section>
+      <div class="railbtns"><button class="ghostbtn" id="all-orders">All orders <b id="ocount"></b></button><button class="ghostbtn" id="simulate">▶ Simulate plan</button></div>
+      <div class="endw"><button class="go" id="endturn">End week ⌛</button><div class="note" id="weeknote"></div></div>
+    </aside>
   </div>
+  <aside class="drawer" id="drawer" aria-hidden="true"><div class="dhead"><b id="drawer-t">All orders</b><button class="icobtn" id="drawer-x" title="Close">✕</button></div><div class="dbody" id="drawer-b"></div></aside>
+  <div class="coach" id="coach" hidden role="dialog" aria-live="polite"><div class="ptitle" id="coach-step">Step 1 of 5</div><p id="coach-t"></p><div class="row2"><button class="go" id="coach-go">Continue</button><button class="ghostbtn" id="coach-skip">Skip tutorial</button></div></div>
+  <div class="mbar" id="mbar"></div>
+  <nav class="tabbar" id="tabbar"><button data-sheet="threats">⚔<span>Threats</span></button><button data-sheet="orders">🚩<span>Orders</span></button><button data-sheet="agents">🤖<span>Agents</span></button><button data-sheet="brain">🔥<span>Brain</span></button><button data-sheet="log">📡<span>Log</span></button></nav>
 </div>
 
 <div class="victory" id="victory" hidden><div class="vbox panel"><span class="banner on" style="position:static;transform:none;opacity:1"><span class="rib" id="v-title">CAMPAIGN COMPLETE</span></span><dl class="stats" id="v-stats"></dl><p class="note" style="margin:0 26px 10px">Gains are projected from the agent's plan; your real growth comes from doing them.</p><button class="go" id="v-copy">Copy battle plan</button><button class="go" id="v-map">Examine map</button><button class="go" id="v-again">Play again</button><button class="go" id="v-site">Back to site</button></div></div>
@@ -571,6 +722,6 @@ section{position:relative;padding:110px 0}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=43"></script>
+<script src="app.js?v=54"></script>
 </body>
 </html>

@@ -110,6 +110,7 @@ const Field = (() => {
   }
 
   function frame(now) {
+    if (mode === "panel" && cv.offsetParent === null) return; // brain tab not showing
     if (mode === "off") { if (!blank) { ctx.clearRect(0, 0, cv.width, cv.height); blank = true; } return; }
     blank = false; fit(cv, 1.5);
     const W = cv.width, H = cv.height, d = cv._dpr || 1, t = REDUCED ? 0 : now / 1000;
@@ -245,6 +246,79 @@ const STATE_TEXT = {
 const STATE = { Seattle: "WA", Portland: "OR", "San Francisco": "CA", "Los Angeles": "CA", "Las Vegas": "NV", Phoenix: "AZ", "Salt Lake City": "UT", Denver: "CO", Dallas: "TX", Houston: "TX", "San Antonio": "TX", "Kansas City": "MO", Minneapolis: "MN", "St. Louis": "MO", Memphis: "TN", "New Orleans": "LA", Chicago: "IL", Detroit: "MI", Nashville: "TN", Atlanta: "GA", Charlotte: "NC", Raleigh: "NC", Miami: "FL", Orlando: "FL", Cleveland: "OH", Washington: "DC", Baltimore: "MD", Philadelphia: "PA", "New York": "NY", Boston: "MA" };
 
 
+
+// ---------------------------------------------------------------- icons
+// One 24px line-icon set for the DOM and the map canvas (Path2D reads the same
+// paths). Emoji in any text we render are swapped for these.
+const PATHS = {
+  bolt: "M13 2 4 14h7l-1 8 9-12h-7z",
+  coin: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7v10 M15 9.5c0-1.4-1.3-2-3-2s-3 .8-3 2 1.3 1.8 3 2.2 3 1 3 2.3-1.3 2-3 2-3-.8-3-2",
+  heart: "M12 20s-7-4.4-9-9c-1.3-3 .7-6.5 4-6.5 2 0 3.5 1.2 5 3 1.5-1.8 3-3 5-3 3.3 0 5.3 3.5 4 6.5-2 4.6-9 9-9 9z",
+  shield: "M12 3l8 3v6c0 5-3.6 8.2-8 9.5C7.6 20.2 4 17 4 12V6z",
+  swords: "M4 4l10 10 M4 4h4 M4 4v4 M20 4 10 14 M20 4h-4 M20 4v4 M7 15l2 2 M17 15l-2 2 M5 17l2 2-2 2-2-2z M19 17l-2 2 2 2 2-2z",
+  dove: "M3 14c3 0 5-1 7-4 1.5-2.5 3-5 6-5 2 0 3 1.2 3.5 2.5L22 8l-2.3 1c-.3 4-3.7 8-8.7 8-3.2 0-6-1.2-8-3z M10 17l-2 4 M14 16.5l1 4",
+  hands: "M2 11l4-4 3 1.5L12 7l3 1.5L18 7l4 4 M6 7v6l5 5 2-1 2 1 3-3 M9 12l3 3 M11 10l3 3",
+  scout: "M10 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0 M21 12a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0 M10 12h4 M4 9l2-5h3l1 5 M20 9l-2-5h-3l-1 5",
+  ticket: "M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z M14 7v2 M14 11v2 M14 15v2",
+  case: "M3 8h18v12H3z M8 8V5h8v3 M3 13h18 M11 13v2h2v-2",
+  mic: "M9 3h6v9a3 3 0 0 1-6 0z M5 11a7 7 0 0 0 14 0 M12 18v3 M9 21h6",
+  eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6",
+  trend: "M3 17l6-6 4 4 8-8 M15 7h6v6",
+  cloud: "M7 19h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 12a3.5 3.5 0 0 0 1 7z M9 3v2 M3.5 6.5 5 8",
+  crosshair: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10 M12 1v5 M12 18v5 M1 12h5 M18 12h5",
+  pen: "M4 20l4-1L19 8l-3-3L5 16z M14 7l3 3 M4 20h16",
+  tent: "M3 20 12 4l9 16z M12 4v16 M9 20l3-6 3 6 M12 4l2-2",
+  ear: "M7 9a5 5 0 1 1 10 0c0 3.5-3.5 4.5-3.5 8a3 3 0 0 1-5.5 1.5 M10 9a2 2 0 1 1 4 0c0 1.2-1 1.6-1.5 2.5",
+  flask: "M9 3h6 M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3 M7.5 15h9",
+  flag: "M5 21V4 M5 4h12l-3 4 3 4H5",
+  castle: "M4 21V9h3V6h2v3h2V5h2v4h2V6h2v3h3v12z M10 21v-4a2 2 0 0 1 4 0v4",
+  bot: "M5 9h14v10H5z M12 5v4 M12 3a1 1 0 1 0 0 2a1 1 0 1 0 0-2 M9 13v1 M15 13v1 M9 16.5h6 M3 13v2 M21 13v2",
+  star: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z",
+  crown: "M3 18h18 M4 15 3 7l5 4 4-7 4 7 5-4-1 8z",
+  sound: "M4 9h4l5-4v14l-5-4H4z M16.5 9a4 4 0 0 1 0 6 M19 6.5a7.5 7.5 0 0 1 0 11",
+  mute: "M4 9h4l5-4v14l-5-4H4z M17 9l5 6 M22 9l-5 6",
+  exit: "M14 4h6v16h-6 M10 8l-4 4 4 4 M6 12h10",
+  help: "M12 21a9 9 0 1 0 0-18a9 9 0 1 0 0 18 M9.5 9.2a2.6 2.6 0 1 1 3.7 2.4c-.7.4-1.2 1-1.2 1.9 M12 17v.5",
+  plan: "M8 3h8v3H8z M6 4.5H4V21h16V4.5h-2 M8 11h8 M8 15h5 M15.5 15l1.2 1.2L19 14",
+  hourglass: "M6 3h12 M6 21h12 M7 3c0 6 10 6 10 9s-10 3-10 9 M17 3c0 6-10 6-10 9",
+  radar: "M12 3a9 9 0 1 0 9 9 M12 7a5 5 0 1 0 5 5 M12 12l7-7 M12 11a1 1 0 1 0 0 2",
+  play: "M7 4l13 8-13 8z",
+  check: "M4 12l5 5L20 6",
+  flame: "M12 21c-4 0-7-2.7-7-6.5 0-3 2-5 3.5-6.5.3 2 1.5 3 2.5 3-1-3 .5-6.5 3-8 0 3 2.5 5 3.5 7 .7 1.4 1.5 2.8 1.5 4.5 0 3.8-3 6.5-7 6.5z",
+  skull: "M12 3c-4.4 0-8 3.1-8 7.5 0 2.6 1.3 4.4 3 5.5V20h10v-4c1.7-1.1 3-2.9 3-5.5C20 6.1 16.4 3 12 3z M9 11a1.5 1.5 0 1 0 0 3 M15 11a1.5 1.5 0 1 0 0 3 M10 20v-2 M14 20v-2",
+  close: "M6 6l12 12 M18 6 6 18",
+  chev: "M9 6l6 6-6 6",
+};
+const P2D = {};
+const pathOf = (k) => (P2D[k] ??= new Path2D(PATHS[k] ?? PATHS.star));
+const I = (k, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${PATHS[k] ?? PATHS.star}"/></svg>`;
+function drawIcon(ctx, k, x, y, size, col, lw = 2) {
+  ctx.save(); ctx.translate(x - size / 2, y - size / 2); ctx.scale(size / 24, size / 24);
+  ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(pathOf(k)); ctx.restore();
+}
+// emoji → icon key; anything else pictographic is dropped
+const EMO = { "⚡": "bolt", "🪙": "coin", "🛡": "shield", "⚔": "swords", "🕊": "dove", "🤝": "hands", "🔭": "scout", "🎟": "ticket", "💼": "case", "🎙": "mic", "🎤": "mic", "🎭": "eye", "📈": "trend", "🌦": "cloud", "🕵": "crosshair", "✍": "pen", "🎪": "tent", "👂": "ear", "🧪": "flask", "🚩": "flag", "🏴": "flag", "🏰": "castle", "🤖": "bot", "🏆": "star", "⭐": "star", "🔥": "flame", "⏱": "hourglass", "⌛": "hourglass", "📅": "hourglass", "👑": "crown", "💀": "skull", "📡": "radar", "🩸": "swords", "🗡": "swords", "🧱": "shield", "💰": "coin", "🏄": "trend", "✦": "star", "❤": "heart", "🔊": "sound", "🔇": "mute", "📋": "plan" };
+const EMO_RE = /(\p{Extended_Pictographic})️?/gu, EMO_ONE = /\p{Extended_Pictographic}/u;
+const iconFor = (ch) => EMO[ch] ?? EMO[ch.replace(/️/g, "")];
+// split text into a leading icon key and clean text (for the canvas); unmapped glyphs stay
+function deEmoji(text) { let icon = null; const clean = String(text).replace(EMO_RE, (m, ch) => { const k = iconFor(ch); if (!k) return m; icon ??= k; return ""; }).replace(/\s{2,}/g, " ").trim(); return { icon, text: clean }; }
+// swap mapped emoji in every text node under root for svg icons
+function iconize(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (EMO_ONE.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const n of nodes) {
+    if (n.parentNode?.closest?.("svg,script,style,textarea,input,canvas")) continue;
+    const frag = document.createDocumentFragment(); let last = 0; const s = n.nodeValue;
+    s.replace(EMO_RE, (m, ch, off) => { const k = iconFor(ch); if (!k) return m; if (off > last) frag.append(s.slice(last, off)); const t = document.createElement("template"); t.innerHTML = I(k); frag.append(t.content); last = off + m.length; return m; });
+    if (!last) continue;
+    if (last < s.length) frag.append(s.slice(last));
+    n.replaceWith(frag);
+  }
+}
+new MutationObserver((ms) => { for (const m of ms) { if (m.type === "characterData") { if (m.target.parentNode) iconize(m.target.parentNode); } else for (const n of m.addedNodes) if (n.nodeType === 1) iconize(n); else if (n.nodeType === 3 && n.parentNode) iconize(n.parentNode); } })
+  .observe(document.body, { childList: true, subtree: true, characterData: true });
+iconize(document.body);
+
 // ---------------------------------------------------------------- the war map
 // Real US state borders (us-atlas, Albers USA). Each state belongs to the
 // faction of the scouted city inside it; states with no scouted city fall
@@ -355,6 +429,12 @@ const MapView = (() => {
     ctx.lineWidth = 3 * d; ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(X, Y, r, 0, 6.283); ctx.stroke();
     return true;
   }
+  function iconText(text, X, Y, col, px, font = "700") {
+    const { icon, text: t } = deEmoji(text); ctx.font = `${font} ${px}px "Cinzel", serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const w = ctx.measureText(t).width, iw = icon ? px * 1.15 : 0, x0 = X - (w + iw) / 2;
+    if (icon) drawIcon(ctx, icon, x0 + px * 0.5, Y, px, col, 2.4);
+    ctx.fillStyle = col; ctx.fillText(t, x0 + iw, Y); ctx.textAlign = "center";
+  }
   function badge(X, Y, txt, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y, 7.5 * d, 0, 6.283); ctx.fill(); ctx.fillStyle = "#000"; ctx.font = `700 ${10 * d}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, X, Y + 0.5 * d); }
   function token(ct, now, night) {
     const [X, Y] = toS(ct.p), key = sideOf(ct), col = colOf(key), r = (7 + ct.presence * 8) * d, t = now / 1000;
@@ -380,12 +460,12 @@ const MapView = (() => {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = `700 ${11 * d}px "Cinzel", serif`; ctx.fillStyle = key === "fog" ? "#6b7480" : "#e9eef7"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4 * d;
     ctx.fillText(ct.name.toUpperCase(), X, Y + rr + 10 * d); ctx.shadowBlur = 0;
-    if (cap) { ctx.font = `${16 * d}px serif`; ctx.fillText("👑", X, Y - rr - 9 * d); }
+    if (cap) drawIcon(ctx, "crown", X, Y - rr - 10 * d, 18 * d, "#ffcf5a", 2.2);
     else if (ct.state === "frontline") badge(X + rr * 0.8, Y - rr * 0.8, "!", "#ff9f43");
     if (G.prep.has(ct.name)) badge(X + rr * 0.85, Y + rr * 0.75, "✓", "#7fd8ff");
     if (siege) badge(X - rr * 0.9, Y - rr * 0.8, String(siege.left), "#ff4d6d");
     else if (ct.contested && key === "you") badge(X - rr * 0.9, Y - rr * 0.8, "⚔", "#ff4d6d");
-    if (isTarget) { ctx.font = `${16 * d}px serif`; ctx.fillText("🚩", X + rr + 6 * d, Y - rr - 4 * d); }
+    if (isTarget) drawIcon(ctx, "flag", X + rr + 6 * d, Y - rr - 6 * d, 18 * d, "#fff", 2.2);
     // what-if ghost: the city in your colour, with the gain floating up
     const pv = G.preview; if (pv && pv.city === ct.name) {
       const k = (now - pv.t0) / 2600; if (k >= 0 && k < 1) {
@@ -445,14 +525,14 @@ const MapView = (() => {
     }
     for (const ct of G.cities) token(ct, now, night);
     // rival armies on the march toward the city they mean to take this week
-    for (const it of G.intents) {
+    for (const it of G.intents.slice(0, 2)) {
       const f = G.fac.get(it.fid), to = G.cities.find((c) => c.name === it.city); if (!f || !to || f.allied) continue;
       const a0 = toS(it.from), b0 = toS(to.p), c0 = bez(a0, b0), k = 0.1 + 0.78 * clamp01(G.hour / 168), [X, Y] = at(a0, c0, b0, k);
       ctx.save(); ctx.strokeStyle = f.col; ctx.globalAlpha = 0.55; ctx.setLineDash([4 * d, 6 * d]); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
       const blocked = G.forts.has(to.name);
       if (!face(X, Y, 13 * d, f.img, f.col)) { ctx.fillStyle = f.col; ctx.beginPath(); ctx.arc(X, Y, 11 * d, 0, 6.283); ctx.fill(); }
       ctx.font = `700 ${10 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillStyle = blocked ? "#3dff9a" : "#ff8fa5"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4 * d;
-      ctx.fillText(blocked ? "🛡 walls up" : `⚔ ${to.name.toUpperCase()} · SUN`, X, Y - 20 * d); ctx.shadowBlur = 0;
+      iconText(blocked ? "🛡 WALLS UP" : `⚔ ${to.name.toUpperCase()} · SUN`, X, Y - 22 * d, blocked ? "#3dff9a" : "#ff8fa5", 10.5 * d); ctx.shadowBlur = 0;
       if (blocked) { const [TX, TY] = b0; ctx.strokeStyle = "#3dff9a"; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(TX, TY, 24 * d, 0, 6.283); ctx.stroke(); }
     }
     // floating numbers
@@ -460,7 +540,7 @@ const MapView = (() => {
     for (const f of G.floats) {
       const k = (now - f.t0) / 1900, [X, Y] = toS(f.p);
       ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `800 ${17 * d}px "Cinzel", serif`; ctx.textAlign = "center";
-      ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; ctx.fillText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; iconText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d, f.col, 17 * d, "800"); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
     // your agents in the field
     for (const u of G.units) {
@@ -470,7 +550,7 @@ const MapView = (() => {
       const bob = u.phase === "work" ? Math.sin(now / 150) * 3 * d : 0;
       const [UX, UY] = u.phase === "work" ? b0 : [X, Y];
       ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(UX, UY - 18 * d + bob, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke();
-      ctx.font = `${13 * d}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(u.icon, UX, UY - 18 * d + bob);
+      drawIcon(ctx, deEmoji(u.icon).icon ?? "bot", UX, UY - 18 * d + bob, 15 * d, "#7fd8ff", 2.2);
       if (u.phase === "work") { ctx.fillStyle = "#7fd8ff"; ctx.font = `600 ${9.5 * d}px "IBM Plex Mono", monospace`; ctx.fillText("working…", UX, UY - 36 * d); }
     }
     for (const f of G.fx) {
@@ -524,6 +604,7 @@ function banner(title, sub, good = true) {
 function ops(html) {
   const box = $("#ops"); const el = document.createElement("div");
   el.innerHTML = `<span class="t">${Clock.label()}</span> · ${html}`; box.prepend(el);
+  if (G) { G.opsN = (G.opsN ?? 0) + 1; $("#ops-count").textContent = `· ${G.opsN}`; $("#ops-last").textContent = el.textContent; }
   while (box.children.length > 60) box.lastChild.remove();
 }
 function float(p, text, col = "#ffcf5a", dx = 0) { if (p) G.floats.push({ p, text, col, dx, t0: performance.now() }); }
@@ -571,7 +652,7 @@ const Clock = (() => {
   function tick(now) {
     const dt = last ? Math.min(0.25, (now - last) / 1000) : 0; last = now;
     if (!G || G.over) return;
-    if (!paused && !G.busy && !G.simulating && !G.modal) {
+    if (!paused && !G.busy && !G.simulating && !G.modal && !G.coach) {
       G.hour += dt * RATE * speed;
       questTick();
       if (G.hour >= 168) { G.hour = 168; speed = 1; $("#cfast").textContent = "⏩"; endWeek(); }
@@ -631,7 +712,7 @@ function hud(delta) {
   orb("#orb-buzz", G.buzz / BUZZ_MAX, `⚡${G.buzz}`); $("#rate-buzz").textContent = `+${regen()}/wk`;
   orb("#orb-hype", (G.morale - 1) / 4, G.morale.toFixed(1));
   orb("#orb-gold", Math.min(1, G.gold / 800), `${G.gold}`); $("#rate-gold").textContent = `+${income()}/wk`;
-  $("#mini").innerHTML = [["🏰", `${held()}/${ground()}`, "Cities held"], ["🤝", G.allies, "Allies"], ["🤖", [...G.crew.values()].filter((c) => c.recruited).length, "Agents"], ["🏆", G.ach.size, "Achievements"], ["★", score().toLocaleString(), "Score"]]
+  $("#mini").innerHTML = [["🏰", `${held()}/${ground()}`, "Cities held"], ["🤝", G.allies, "Allies"], ["🤖", [...G.crew.values()].filter((c) => c.recruited).length, "Agents"], ["⭐", score().toLocaleString(), "Score"]]
     .map(([i, v, t]) => `<span title="${t}"><i>${i}</i>${v}</span>`).join("");
   $("#weeknote").textContent = `Sunday midnight: +⚡${regen()} buzz, +🪙${income()} gold, then the rivals strike.`;
   factions(); renderThreats();
@@ -644,7 +725,7 @@ function factions() {
     .concat([...G.fac.values()].map((f) => row({ name: f.name, img: f.img, col: f.allied ? COL.allied : f.col, st: f.allied ? `<span class="st allied">Allied</span>` : f.strategy === "ally" ? `<span class="st ally">Ally?</span>` : `<span class="st rival">Nemesis</span>`, n: G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, last: f.last, title: f.plan.reason, r: reach(f) })));
   const useFame = all.some((x) => x.v), max = Math.max(1, ...all.map((x) => (useFame ? x.v ?? 0 : x.r)));
   $("#factions").innerHTML = all.map((x) => `<div class="fac" style="--c:${x.col}" ${x.title ? `title="${esc(x.title)}"` : ""}>${avatar(x.img, x.name, "fp")}<span>${esc(x.name)}</span>${x.st}<b>${x.n}</b><span class="pw"><i style="width:${((useFame ? x.v ?? 0 : x.r) / max) * 100}%"></i></span><span class="fl">${x.v != null ? `${kfmt(x.v)} views/30d${x.mo != null ? ` ${x.mo >= 0 ? "▲" : "▼"}${Math.abs(x.mo)}%` : ""} · ` : ""}${esc(x.last || "")}</span></div>`).join("")
-    + `<div class="note" style="padding:4px 2px 0">Number = cities held. Bar = ${useFame ? "fame: Wikipedia views, last 30 days (live)" : "reach across your cities (Qloo)"}.</div>`;
+    ;
 }
 function playerCard() {
   const p = G.player, socials = (p.socials || []).filter((s) => s.network !== "imdb");
@@ -737,13 +818,14 @@ function threatLevel(f) {
 }
 function renderThreats() {
   if (!G) return;
-  $("#threats").innerHTML = [...G.fac.values()].map((f) => {
+  const RANK = { HIGH: 0, MED: 1, LOW: 2, ALLY: 3 };
+  $("#threats").innerHTML = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]).slice(0, 2).map((f) => {
     const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), mo = G.fame.get(f.name)?.momentum;
     const strikeAt = strikeCity(f);
-    const why = f.allied ? "Fighting at your side." : it ? (G.forts.has(it.city) ? `Marching on ${it.city}, but your walls are up.` : `Marching on ${it.city}. Arrives Sunday; if it lands, a 2-week siege starts.`) : f.strategy === "ally" ? "Shares your crowd's taste, not hostile. A good partner." : "Watching your ground.";
+    const why = f.allied ? "Fighting at your side." : it ? (G.forts.has(it.city) ? `Marching on ${it.city}. Walls up.` : `Marching on ${it.city} · arrives Sunday.`) : f.strategy === "ally" ? "Same taste, new crowd. A good partner." : "Watching your ground.";
     const btns = f.allied ? "" : `<div class="cnt">
-      ${it ? `<button data-fort="${esc(it.city)}" ${G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled"} title="Walls up in ${esc(it.city)} this week: their attack bounces">🛡 Fortify · 🪙80</button>` : ""}
-      <button data-strike="${esc(f.id)}" ${strikeAt && G.buzz >= 4 ? "" : "disabled"} title="${strikeAt ? `Hit them first in ${esc(strikeAt.name)}` : "They hold no city to hit"}">⚔ Strike · ⚡4</button>
+      ${it ? `<button data-fort="${esc(it.city)}" ${G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled"} title="Walls up in ${esc(it.city)} this week: their attack bounces">🛡 Fortify 🪙80</button>` : ""}
+      <button data-strike="${esc(f.id)}" ${strikeAt && G.buzz >= 4 ? "" : "disabled"} title="${strikeAt ? `Hit them first in ${esc(strikeAt.name)}` : "They hold no city to hit"}">⚔ Strike ⚡4</button>
       <button data-parley="${esc(f.id)}" title="Offer a partnership instead of a fight">🕊 Parley</button></div>`;
     return `<div class="threat${lv === "HIGH" ? " hi" : ""}" style="--c:${f.allied ? COL.allied : f.col}"><div class="th">${avatar(f.img, f.name, "fp")}<span>${esc(f.name)}${mo != null ? ` <small style="color:var(--ash)">${mo >= 0 ? "▲" : "▼"}${Math.abs(mo)}%</small>` : ""}</span><span class="lv ${lv}">${lv}</span></div><p>${esc(why)}</p>${btns}</div>`;
   }).join("");
@@ -829,7 +911,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
       { id: "open", name: `Open for them${city ? ` in ${city}` : ""}`, text: "Take the smaller slot; they bring the crowd.", buzz: 3, gold: 0, p: clampP(0.72 + b / 300) },
     ];
     const best = offers.filter((x) => x.p >= 0.7).sort((x, y) => x.buzz * 40 + x.gold - (y.buzz * 40 + y.gold))[0];
-    const pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.charAt(0).toLowerCase() + best.name.slice(1) : `a co-bill${city ? ` in ${city}` : ""}`}. Same taste, different rooms: we both grow.`;
+    const pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.toLowerCase() : "a co-bill"}${city ? ` in ${city}` : ""}. Same taste, different rooms: we both grow.`;
     box.innerHTML = `<div class="ptitle">Parley</div><h2>Parley with ${esc(name)}</h2><p class="sub2">Barter score ${b}/100 · ${Math.round(netnew * 100)}% of their crowd is new to you · ${Math.round(convert * 100)}% would cross over</p>
       <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>You</b></div><div class="vsx" style="color:var(--good);text-shadow:0 0 18px rgba(61,255,154,.6)">🤝</div><div class="side" style="--c:${col}">${avatar(img, name)}<b>${esc(name)}</b></div></div>
       <div class="offers">${offers.map((x, i) => `<button class="offer${x === best ? " best" : ""}" data-of="${i}" ${(G.buzz >= x.buzz && G.gold >= x.gold) ? "" : "disabled"}><b>${esc(x.name)}${x === best ? " · smallest that likely works" : ""}</b><small>${esc(x.text)}</small><span class="pr"><em>${Math.round(x.p * 100)}%</em>${x.buzz ? `⚡${x.buzz}` : `🪙${x.gold}`}</span></button>`).join("")}</div>
@@ -847,7 +929,7 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
       const yes = Math.random() < x.p;
       v.className = "verdict " + (yes ? "win" : "lose"); v.textContent = yes ? "DEAL!" : "THEY PASSED";
       Sound.play(yes ? "alliance" : "nope");
-      if (yes) { if (f) { f.allied = true; f.last = "Fighting at your side"; G.intents = G.intents.filter((it) => it.fid !== f.id); G.sieges = G.sieges.filter((s) => s.fid !== f.id); } G.allies++; ach("diplomat"); ops(`<span class="ok">🤝 ${esc(name)} accepted: ${esc(x.name)}</span>`); float(capP(), "🤝 ALLY", COL.allied); MapView.relayer(); }
+      if (yes) { G.pitches.push(pitch.replace(/\n/g, " ")); if (f) { f.allied = true; f.last = "Fighting at your side"; G.intents = G.intents.filter((it) => it.fid !== f.id); G.sieges = G.sieges.filter((s) => s.fid !== f.id); } G.allies++; ach("diplomat"); ops(`<span class="ok">🤝 ${esc(name)} accepted: ${esc(x.name)}</span>`); float(capP(), "🤝 ALLY", COL.allied); MapView.relayer(); }
       else ops(`<span class="rv">🕊 ${esc(name)} passed on ${esc(x.name)}</span>`);
       $("#prow").innerHTML = `<button class="go" id="pdone">${yes ? "Seal it" : "Close"}</button>`;
       $("#pdone").onclick = () => { hud(); close(yes ? "accept" : "reject"); };
@@ -862,7 +944,7 @@ function questTick() {
   if (G.hour < G.nextQuest) return;
   G.nextQuest = G.hour + 20 + G.rng() * 10;
   G.quests = G.quests.filter((q) => q.until > G.hour);
-  if (G.quests.length >= 3) return;
+  if (G.quests.length >= 2) return;
   const pool = [];
   const pot = G.potions.find((p) => !p.used && !G.quests.some((q) => q.ref === p.title));
   if (pot) pool.push({ ref: pot.title, icon: "🔥", title: `Trend wave: “${pot.title}”`, text: `Trending in ${pot.where}. Post a take before it fades.`, reward: "+⚡3 +🪙40", claim: () => { pot.used = true; G.buzz = Math.min(BUZZ_MAX, G.buzz + 3); G.gold += 40; ach("surfer"); renderTrends(); } });
@@ -898,11 +980,13 @@ async function loadTrends() {
   const el = $("#gt-state"); if (el) el.textContent = G.potions.length ? "live" : "unavailable";
 }
 function renderTrends() {
-  const box = $("#trends"); if (!box) return;
+  $("#trends-n").textContent = G.potions.filter((p) => !p.used).length;
+  if (Drawer.mode !== "trends") return;
+  const box = $("#drawer-b");
   const pot = G.potions.slice(0, 5).map((p, i) => `<button class="potion${p.used ? " used" : ""}" data-p="${i}" ${p.used ? "disabled" : ""}><span>🧪</span><span>${esc(p.title)}<small>Trending in ${esc(p.where)} · ${esc(p.traffic || "rising")} searches</small></span><span class="use">${p.used ? "used" : "+⚡3"}</span></button>`).join("");
   const lock = [["𝕏", "X trends", "X's trends need the paid X API. Connect your X account to unlock this slot."], ["♪", "TikTok trends", "TikTok trends need TikTok's Research API. Connect your TikTok to unlock this slot."]]
     .map(([ic, n, why]) => `<button class="potion lock" data-lock="${esc(why)}"><span>${ic}</span><span>${n}<small>Not connected</small></span><span class="use">connect</span></button>`).join("");
-  box.innerHTML = (pot || `<div class="note">Loading live Google Trends…</div>`) + lock + `<div class="note">Potion = post a take on that trend this week (+3 buzz). Tragedies are filtered out.</div>`;
+  box.innerHTML = `<div class="trends">` + (pot || `<div class="note">Loading live Google Trends…</div>`) + lock + `</div>` + `<div class="note">Potion = post a take on that trend this week (+3 buzz). Tragedies are filtered out.</div>`;
   $$("[data-p]").forEach((b) => b.addEventListener("click", () => drink(+b.dataset.p)));
   $$("[data-lock]").forEach((b) => b.addEventListener("click", () => toast(b.dataset.lock)));
 }
@@ -936,7 +1020,8 @@ const AGENTS = [
 const deployCity = () => G.cities.find((c) => c.name === G.pinned) ?? G.cities.find((c) => c.name === G.orders[G.sel]?.city) ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
 function renderAgents() {
   const city = deployCity();
-  $("#agents").innerHTML = AGENTS.map((a) => {
+  const list = G.allAgents ? AGENTS : AGENTS.filter((a, i) => i < 6 || G.crew.get(a.id)?.recruited);
+  $("#agents").innerHTML = list.map((a) => {
     const c = G.crew.get(a.id) ?? {};
     let btn;
     if (a.locked) btn = `<button data-lockag="1">Connect</button>`;
@@ -945,7 +1030,8 @@ function renderAgents() {
     else if (c.week === G.week) btn = `<button disabled>Back next week</button>`;
     else btn = `<button data-dep="${a.id}" ${G.over ? "disabled" : ""}>Deploy → ${esc(city?.name ?? "")}</button>`;
     return `<div class="agent${c.busy ? " busy" : ""}${a.locked ? " lock" : ""}"><span class="ai">${a.icon}</span><span>${a.name}<small>${a.role}</small><span class="src${a.locked ? " no" : ""}">${a.src}</span></span>${btn}</div>`;
-  }).join("") + `<div class="note">Deploy goes to the city you clicked on the map, else your selected order's city.</div>`;
+  }).join("") + (G.allAgents ? "" : `<button class="more" id="more-agents">+${AGENTS.length - list.length} more agents</button>`) + `<div class="note" style="margin-top:6px">Deploy goes to the city you clicked on the map, else your next move's city.</div>`;
+  $("#more-agents")?.addEventListener("click", () => { G.allAgents = true; renderAgents(); });
   $$("[data-rec]").forEach((b) => b.addEventListener("click", () => recruit(b.dataset.rec)));
   $$("[data-dep]").forEach((b) => b.addEventListener("click", () => deploy(b.dataset.dep)));
   $$("[data-lockag]").forEach((b) => b.addEventListener("click", () => toast("Reddit blocks anonymous apps. Connect a Reddit account to unlock the Listener.")));
@@ -964,6 +1050,11 @@ function prep(city, why) {
 async function deploy(id) {
   const a = AGENTS.find((x) => x.id === id), c = G.crew.get(id), city = deployCity(); if (!a || !c || c.busy || !city) return;
   c.busy = true; c.week = G.week; renderAgents();
+  await runAgent(a, city);
+  c.busy = false; hud(); renderAgents(); renderOrders(); council();
+}
+async function runAgent(a, city) {
+  const id = a.id;
   const home = G.cities.find((x) => x.name === G.capital) ?? city;
   const u = { icon: a.icon, from: home.p, to: city.p, t0: performance.now(), dur: 2200, phase: "go" }; G.units.push(u);
   Sound.play("select"); ops(`<span class="ag">${a.icon} ${a.name}</span> marching to <b>${esc(city.name)}</b>`);
@@ -976,7 +1067,6 @@ async function deploy(id) {
   if (out.float) float(city.p, out.float, "#7fd8ff");
   Sound.play("potion"); G.missions++;
   setTimeout(() => { G.units = G.units.filter((x) => x !== u); }, 1800);
-  c.busy = false; hud(); renderAgents(); renderOrders(); council();
 }
 const pick = (arr, used) => (arr ?? []).find((x) => !used.has(x.name));
 const AGENT_JOBS = {
@@ -1070,14 +1160,16 @@ const AGENT_JOBS = {
 function preyOf(f) {
   const mine = G.cities.filter((c) => sideOf(c) === "you" && !G.sieges.some((s) => s.city === c.name));
   const rel = (c) => (c.rivals.find((r) => r.id === f.id)?.count ?? 0) / Math.max(1, c.you);
-  const hit = mine.filter((c) => c.contested === f.name || rel(c) > 0.5).sort((a, b) => rel(b) - rel(a))[0];
-  if (hit) return hit;
-  // no foothold in your cities: border pressure on your city closest to their ground
-  const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival");
-  return theirs.length ? mine.sort((a, b) => Math.min(...theirs.map((t) => Math.hypot(t.p[0] - a.p[0], t.p[1] - a.p[1]))) - Math.min(...theirs.map((t) => Math.hypot(t.p[0] - b.p[0], t.p[1] - b.p[1]))))[0] : null;
+  return mine.filter((c) => c.contested === f.name || rel(c) > 0.5).sort((a, b) => rel(b) - rel(a))[0];
 }
 // at the start of each week, rivals decide who they'll attack, and the radar shows it
 function planIntents() {
+  planIntentsRaw();
+  G.intents.sort((a, b) => (G.fac.get(a.fid)?.strategy === "compete" ? 0 : 1) - (G.fac.get(b.fid)?.strategy === "compete" ? 0 : 1));
+  G.intents = G.intents.slice(0, 2);
+  for (const it of G.intents) ops(`<span class="rv">📡 radar: ${esc(G.fac.get(it.fid)?.name)}</span> is massing toward <b>${esc(it.city)}</b> · arrives Sunday`);
+}
+function planIntentsRaw() {
   G.intents = [];
   for (const f of G.fac.values()) {
     if (f.allied) continue;
@@ -1087,7 +1179,6 @@ function planIntents() {
     const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival");
     const from = nearest(theirs, prey)?.p ?? [Math.max(20, Math.min(MW - 20, prey.p[0] + (prey.p[0] > MW / 2 ? 260 : -260))), Math.max(20, prey.p[1] - 180)];
     G.intents.push({ fid: f.id, city: prey.name, from });
-    ops(`<span class="rv">📡 radar: ${esc(f.name)}</span> is massing toward <b>${esc(prey.name)}</b> · arrives Sunday`);
   }
 }
 
@@ -1119,8 +1210,40 @@ function sparkline(o) {
   const P = (arr) => arr.map((v, i) => `${(i / n) * (W - 40) + 4},${H - 6 - ((v - lo) / (hi - lo)) * (H - 14)}`).join(" ");
   return `<svg viewBox="0 0 ${W} ${H}" aria-label="Projected conquest with and without this order"><polyline points="${P(without)}" fill="none" stroke="#5f5f66" stroke-width="1.5" stroke-dasharray="4 3"/><polyline points="${P(withP)}" fill="none" stroke="#ffb829" stroke-width="2.2"/><text x="${W - 34}" y="12" fill="#ffb829" font-size="10" font-family="IBM Plex Mono">${withP.at(-1)}%</text><text x="${W - 34}" y="${H - 4}" fill="#8a8f99" font-size="10" font-family="IBM Plex Mono">${without.at(-1)}%</text></svg>`;
 }
+function recommended() {
+  const open = G.orders.map((o, i) => [o, i]).filter(([o]) => !o.done);
+  const d = open.find(([o]) => o.kind === "defend"); if (d) return d[1];
+  const aff = open.filter(([o]) => costOf(o) <= G.buzz && o.gain).sort(([a], [b]) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a));
+  return (aff[0] ?? open[0])?.[1] ?? -1;
+}
+function actionLabel(o, c, can) {
+  const ct = o.city && G.cities.find((x) => x.name === o.city), foe = (o.kind === "rivalry" || o.kind === "defend") && ct;
+  return can ? (foe ? `⚔ To battle · ⚡${c}` : o.kind === "alliance" || o.kind === "ally" ? "🕊 Open parley" : `🚩 Execute · ⚡${c}`) : G.busy ? "…" : `Need ⚡${c}`;
+}
+function renderPrimary() {
+  const rec = recommended(), i = G.sel >= 0 && G.orders[G.sel] && !G.orders[G.sel].done ? G.sel : rec, o = G.orders[i];
+  G.primary = i;
+  if (!o) { $("#primary").innerHTML = `<div class="pcard empty">Every order is done. Let the week run out, or end it.</div>`; $("#mbar").innerHTML = ""; return; }
+  const c = costOf(o), g = gainOf(o), can = c <= G.buzz && !G.busy && !G.over, ct = o.city && G.cities.find((x) => x.name === o.city);
+  const foe = (o.kind === "rivalry" || o.kind === "defend") && ct && (facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid));
+  $("#primary").innerHTML = `<div class="pcard"><div class="pk">${ICON[o.kind] ?? ""} ${o.kind === "edit" ? "sharpen" : o.kind}${i === rec ? ' · <span style="color:var(--good)">recommended</span>' : ""}${o.city && G.prep.has(o.city) ? ' · <span style="color:#7fd8ff">prepared ✓</span>' : ""}</div>
+    <h3>${esc(o.title)}</h3>
+    <div class="pg">${g ? `<b>+${g}% conquest</b>` : "<b>keeps your ground</b>"}<span>⚡${c}</span>${foe ? `<span>${Math.round(oddsFor(ct, foe).p * 100)}% odds</span>` : ""}</div>
+    <div class="why">${esc(o.detail)}<span class="rc">Source: ${esc(o.receipt)}</span></div>
+    <div class="fc"><b>WHAT HAPPENS</b><ol>${(FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => `<li><span>${d}</span>${esc(t)}</li>`).join("")}</ol><div class="skip">${esc(skipText(o))}</div>${sparkline(o)}</div>
+    <div class="orow"><button class="go" id="p-exec" ${can ? "" : "disabled"}>${actionLabel(o, c, can)}</button><button class="ghostbtn" id="p-prev">▶ Preview</button></div></div>`;
+  $("#p-exec").onclick = () => execute(i); $("#p-prev").onclick = () => preview(o);
+  $("#mbar").innerHTML = `<span>${esc(o.title)}${g ? ` · +${g}%` : ""}</span><button class="go" id="m-exec" ${can ? "" : "disabled"}>${actionLabel(o, c, can)}</button>`;
+  $("#m-exec").onclick = () => execute(i);
+}
 function renderOrders() {
-  $("#orders").innerHTML = G.orders.map((o, i) => {
+  renderPrimary();
+  $("#ocount").textContent = `· ${G.orders.filter((o) => !o.done).length}`;
+  $("#endturn").disabled = G.busy || G.over;
+  if (Drawer.mode === "orders") Drawer.render();
+}
+function ordersHtml() {
+  return `<div class="orders">` + G.orders.map((o, i) => {
     const c = costOf(o), g = gainOf(o), can = !o.done && c <= G.buzz && !G.busy && !G.over, prepped = o.city && G.prep.has(o.city);
     const ct = o.city && G.cities.find((x) => x.name === o.city), foe = (o.kind === "rivalry" || o.kind === "defend") && ct && (facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid));
     const odds = foe ? ` · ${Math.round(oddsFor(ct, foe).p * 100)}% odds` : "";
@@ -1129,11 +1252,39 @@ function renderOrders() {
       <div class="obody"><div class="gen">${GENERAL}<div>${esc(o.detail)}<span class="rc">Source: ${esc(o.receipt)}${g ? ` · +${g}% conquest (projected)` : ""}</span></div></div>
       ${o.done ? "" : `<div class="fc"><b>WHAT HAPPENS</b><ol>${(FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => `<li><span>${d}</span>${esc(t)}</li>`).join("")}</ol><div class="skip">${esc(skipText(o))}</div>${sparkline(o)}</div>
       <div class="orow"><button class="go" data-x="${i}" ${can ? "" : "disabled"}>${can ? (foe ? `⚔ To battle · ⚡${c}` : o.kind === "alliance" || o.kind === "ally" ? "🕊 Open parley" : `Execute · ⚡${c}`) : G.busy ? "…" : `Need ⚡${c}`}</button><button class="ghostbtn" data-pv="${i}">▶ Preview</button></div>`}</div></div>`;
-  }).join("");
-  $$("#orders [data-o]").forEach((b) => b.addEventListener("click", () => selectOrder(+b.dataset.o)));
-  $$("#orders [data-x]").forEach((b) => b.addEventListener("click", () => execute(+b.dataset.x)));
-  $$("#orders [data-pv]").forEach((b) => b.addEventListener("click", () => preview(G.orders[+b.dataset.pv])));
-  $("#endturn").disabled = G.busy || G.over;
+  }).join("") + "</div>";
+}
+// the right-hand drawer: all orders, live trends, or this week's real-world moves
+const Drawer = {
+  mode: null,
+  open(mode) { this.mode = mode; $("#drawer").classList.add("open"); $("#drawer").setAttribute("aria-hidden", "false"); this.render(); },
+  close() { this.mode = null; $("#drawer").classList.remove("open"); $("#drawer").setAttribute("aria-hidden", "true"); },
+  render() {
+    if (!G || !this.mode) return;
+    const b = $("#drawer-b");
+    if (this.mode === "orders") {
+      $("#drawer-t").textContent = "All orders"; b.innerHTML = ordersHtml();
+      $$("#drawer-b [data-o]").forEach((x) => x.addEventListener("click", () => { selectOrder(+x.dataset.o); this.close(); }));
+      $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
+      $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
+    } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
+  },
+};
+// the real-world to-do list, built from everything the agents and orders found
+function movesHtml() {
+  const rec = G.orders[recommended()];
+  const row = (ic, t, src) => `<div class="move">${ic}<span>${esc(t)}${src ? `<small>${esc(src)}</small>` : ""}</span></div>`;
+  const doNow = rec ? [row("🚩", `${rec.title}: ${rec.detail}`, rec.receipt)] : [];
+  const done = G.doneLog.map((o) => row("✓", `${o.title}: ${o.detail}`, o.receipt));
+  const intel = [...G.intel.entries()].flatMap(([city, ts]) => ts.map((t) => row("📡", `${city}: ${t.replace(/^\S+\s/, "")}`, "agent intel")));
+  const money = G.sponsors.map((x) => row("💼", `Pitch ${x.name} a sponsored post (+${x.perWeek} gold a week in-game).`, "Qloo brands your fans love"));
+  const posts = G.drafts.map((x) => row("✍️", `Post: ${x}`, "Copywriter"));
+  const deals = G.pitches.map((x) => row("🕊", x, "Parley pitch"));
+  const trends = G.potions.filter((p) => p.used).map((p) => row("🧪", `Post a take on “${p.title}” (trending in ${p.where}).`, "Google Trends"));
+  const grp = (t, a) => (a.length ? `<div class="dgroup">${t}</div>${a.join("")}` : "");
+  return `<div class="moves">${grp("Do next", doNow)}${grp("You committed to", done)}${grp("Deals to send", deals)}${grp("Money", money)}${grp("Posts", [...posts, ...trends])}${grp("Intel from your agents", intel)}</div>
+    <button class="go" id="moves-copy" style="margin-top:12px">Copy my battle plan</button><p class="note">Every line came from live data or your simulated fans. Do them for real.</p>`;
 }
 function preview(o) {
   if (!o) return;
@@ -1141,8 +1292,7 @@ function preview(o) {
   G.preview = { city, t0: performance.now(), label: o.kind === "defend" ? "HOLDS" : g ? `+${g}%` : "+⚡", col: o.kind === "alliance" || o.kind === "ally" ? COL.allied : COL.you };
 }
 function selectOrder(i) {
-  if (!G || G.busy) return; G.sel = G.sel === i ? -1 : i; Sound.play("select"); renderOrders(); renderAgents();
-  if (G.sel === i) { preview(G.orders[i]); const el = $$("#orders .order")[i]; el?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  if (!G || G.busy || !G.orders[i]) return; G.sel = i; Sound.play("select"); renderOrders(); renderAgents(); preview(G.orders[i]);
 }
 // fast-forward the whole plan as ghosts on the map
 async function simulatePlan() {
@@ -1162,14 +1312,15 @@ async function startGame(c, player) {
   await Atlas.ready;
   const cities = c.territory.cities.filter((x) => METROS[x.name]).map((x) => ({ ...x, p: ALB(METROS[x.name]) })).filter((x) => x.p);
   const fac = new Map(c.rivals.map((r, i) => [r.id, { id: r.id, name: r.name, col: RIVAL_COLS[i % 3], strategy: r.strategy, allied: false, plan: r, img: qlooImg(r.id), last: r.holds.length ? `Holds ${r.holds.slice(0, 2).join(", ")}` : "Scouting your fans" }]));
-  G = { c, player, cities, fac, week: 1, hour: 9, conquest: c.territory.conquest, start: c.territory.conquest, startHeld: 0, orders: c.missions.map((m) => ({ ...m, done: false })), sel: 0, allies: 0, taken: 0, saved: 0, lost: 0, missions: 0, buzz: 8, gold: 300, morale: c.aggregate.mean, sieges: [], intents: [], forts: new Set(), quests: [], nextQuest: 14, potions: [], sponsors: [], fx: [], temp: [], units: [], floats: [], anim: null, busy: false, over: false, simulating: false, modal: false, capital: c.territory.capital?.name, pinned: null, last: "Took the field", prep: new Set(), intel: new Map(), fame: new Map(), crew: new Map(), parleyed: new Set(), reactions: new Map(), drafts: [], ach: new Set(), achPts: 0, preview: null, rng: mulberry([...player.name].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7)) };
+  G = { c, player, cities, fac, week: 1, hour: 9, conquest: c.territory.conquest, start: c.territory.conquest, startHeld: 0, orders: c.missions.map((m) => ({ ...m, done: false })), sel: 0, allies: 0, taken: 0, saved: 0, lost: 0, missions: 0, buzz: 8, gold: 300, morale: c.aggregate.mean, sieges: [], intents: [], forts: new Set(), quests: [], nextQuest: 14, potions: [], sponsors: [], fx: [], temp: [], units: [], floats: [], anim: null, busy: false, over: false, simulating: false, modal: false, capital: c.territory.capital?.name, pinned: null, last: "Took the field", prep: new Set(), intel: new Map(), fame: new Map(), crew: new Map(), parleyed: new Set(), reactions: new Map(), drafts: [], pitches: [], doneLog: [], opsN: 0, allAgents: false, coach: false, sheet: null, ach: new Set(), achPts: 0, preview: null, rng: mulberry([...player.name].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7)) };
   assignStates(); G.startHeld = held(); G.layer = null; lastOrb = {};
   for (const f of fac.values()) portrait(f.img); portrait(player.image);
 
   $("#site").hidden = true; $("#scan").hidden = true; $("#game").hidden = false; scrollTo(0, 0);
   Field.setMode("panel", $("#brainp")); Neuro.play(c.tribe); brainNote();
   $("#legend").innerHTML = [["You", COL.you], ...[...fac.values()].map((f) => [f.name, f.col]), ["Allied", COL.allied], ["Open ground", COL.open], ["Uncharted", COL.fog]].map(([n, col]) => `<span><i style="background:${col}"></i>${esc(n)}</span>`).join("") + `<span style="color:#3dff9a">◯ ripe to take</span>`;
-  $("#ops").innerHTML = ""; $("#quests").innerHTML = ""; Clock.reset();
+  $("#ops").innerHTML = ""; $("#quests").innerHTML = ""; $("#ops-count").textContent = ""; Clock.reset(); Drawer.close(); tab("agents");
+  $("#legend").classList.remove("hide"); setTimeout(() => $("#legend").classList.add("hide"), 4000);
   planIntents();
   playerCard(); renderTrends(); hud(); renderOrders(); renderAgents(); $("#cityp").hidden = true; $("#victory").hidden = true;
   const nem = c.rivals.find((r) => r.strategy === "compete");
@@ -1181,6 +1332,8 @@ async function startGame(c, player) {
   ev.forEach(([t, k], i) => setTimeout(() => event(t, k), 400 + i * 900));
   Sound.play("ageup");
   loadTrends();
+  let coached = false; try { coached = localStorage.getItem("conquest-coached") === "1"; } catch {}
+  if (!coached) setTimeout(() => Coach.start(), 900);
   api(`/api/rehearse?${qs(player.q)}`).then((r) => { for (const [id, s] of r?.reactions ?? []) G.reactions.set(id, s); }).catch(() => {});
   api(`/api/fame?names=${encodeURIComponent([player.name, ...[...fac.values()].map((f) => f.name)].join("|"))}`).then((r) => {
     if (r?.status === "ok") for (const p of r.people) G.fame.set(p.name, p);
@@ -1200,7 +1353,7 @@ function boom(p, col) {
 async function execute(i) {
   const o = G?.orders[i]; if (!o || o.done || G.busy || G.over || G.modal) return;
   const cost = costOf(o), gain = gainOf(o);
-  if (cost > G.buzz) { Sound.play("nope"); toast(`Not enough buzz: this needs ⚡${cost}. Claim an opportunity, drink a potion or let the week end.`); return; }
+  if (cost > G.buzz) { const ob = $("#orb-buzz"); ob.classList.remove("short"); void ob.offsetWidth; ob.classList.add("short"); Sound.play("nope"); toast(`Not enough buzz: this needs ⚡${cost}. Claim an opportunity, drink a potion or let the week end.`); return; }
   const ct = o.city ? G.cities.find((c) => c.name === o.city) : null;
   let paid = false;
   // fights are battles with real odds; partnerships are negotiations
@@ -1232,7 +1385,7 @@ async function execute(i) {
     title = "Material sharpened"; sub += " · the brain lights up, hype up"; event("✍️ Material sharpened: every city hits harder.", "you"); Sound.play("conquer");
     for (const c of G.cities.filter((c) => sideOf(c) === "you")) G.fx.push({ p: c.p, ring: true, r: 60, col: COL.you, t0: performance.now() + Math.random() * 500, dur: 1100 });
   }
-  G.last = title; ops(`<span class="ok">order</span> ${esc(o.title)} <span class="ok">${gain ? `+${gain}%` : "done"}</span>${paid ? "" : ` · ⚡${cost}`}`);
+  G.doneLog.push(o); G.last = title; ops(`<span class="ok">order</span> ${esc(o.title)} <span class="ok">${gain ? `+${gain}%` : "done"}</span>${paid ? "" : ` · ⚡${cost}`}`);
   const p = ct?.p ?? capP();
   MapView.flip(p); if (p) { boom(p, o.kind === "alliance" || o.kind === "ally" ? COL.allied : COL.you); if (gain) float(p, `+${gain}%`); }
   G.conquest = Math.min(100, G.conquest + gain);
@@ -1242,8 +1395,9 @@ async function execute(i) {
   const after = ageOf(G.conquest);
   if (after !== before) { banner(`THE ${after[2].toUpperCase()} AGE`, `You advanced to Age ${after[1]}`); Sound.play("ageup"); event(`👑 You advanced to the ${after[2]} age.`, "you"); ach("rising"); await sleep(1900); }
   G.busy = false;
+  Coach.executed(o, ct);
   if (!G.orders.some((x) => !x.done && x.kind !== "defend")) { renderOrders(); setTimeout(victory, 700); return; }
-  G.sel = G.orders.findIndex((x) => !x.done && costOf(x) <= G.buzz); renderOrders(); renderAgents(); council();
+  G.sel = -1; renderOrders(); renderAgents(); council();
 }
 
 // end the week: armies arrive, sieges resolve, income lands, buzz recharges
@@ -1299,7 +1453,7 @@ async function endWeek() {
   planIntents();
   event(`📅 Week ${G.week} begins. +⚡${gain} +🪙${gold}.`, "you");
   const urgent = G.orders.findIndex((o) => !o.done && o.kind === "defend");
-  G.sel = urgent >= 0 ? urgent : G.orders.findIndex((o) => !o.done && costOf(o) <= G.buzz);
+  G.sel = urgent >= 0 ? urgent : -1;
   hud(); renderOrders(); renderAgents(); council();
 }
 
@@ -1343,10 +1497,77 @@ $("#v-again").addEventListener("click", () => { $("#victory").hidden = true; sta
 $("#v-site").addEventListener("click", () => { $("#victory").hidden = true; toSite(); });
 $("#v-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Battle plan copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } });
 $("#simulate").addEventListener("click", simulatePlan);
+$("#all-orders").addEventListener("click", () => (Drawer.mode === "orders" ? Drawer.close() : Drawer.open("orders")));
+$("#trends-btn").addEventListener("click", () => (Drawer.mode === "trends" ? Drawer.close() : Drawer.open("trends")));
+$("#plan-btn").addEventListener("click", () => (Drawer.mode === "moves" ? Drawer.close() : Drawer.open("moves")));
+$("#drawer-x").addEventListener("click", () => Drawer.close());
+$("#help").addEventListener("click", () => { try { localStorage.removeItem("conquest-coached"); } catch {} Coach.start(); });
+$("#ops-toggle").addEventListener("click", () => { const p = $("#p-ops"); p.classList.toggle("collapsed"); $("#ops-toggle").setAttribute("aria-expanded", String(!p.classList.contains("collapsed"))); });
+$("#legend").addEventListener("mouseenter", () => $("#legend").classList.remove("hide"));
+function tab(name) { $$(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name)); for (const t of ["agents", "brain", "intel"]) $(`#tab-${t}`).hidden = t !== name; }
+$$(".seg button").forEach((b) => b.addEventListener("click", () => tab(b.dataset.tab)));
+// phones: rails become bottom sheets, picked from a tab bar
+function sheet(name) {
+  if (!G) return; G.sheet = G.sheet === name ? null : name;
+  $("#rail-left").classList.remove("open"); $("#rail-right").classList.remove("open"); $("#p-ops").classList.remove("open");
+  $$("#tabbar button").forEach((b) => b.classList.toggle("on", b.dataset.sheet === G.sheet));
+  const n = G.sheet; if (!n) return;
+  if (n === "orders") $("#rail-right").classList.add("open");
+  else if (n === "log") $("#p-ops").classList.add("open");
+  else { $("#rail-left").classList.add("open"); if (n === "agents" || n === "brain") tab(n); ($(n === "threats" ? "#p-threats" : "#p-tabs")).scrollIntoView({ block: "start" }); }
+}
+$$("#tabbar button").forEach((b) => b.addEventListener("click", () => sheet(b.dataset.sheet)));
+
+// ---------------------------------------------------------------- the guided first turn
+// Five beats, clock paused: your ground, your first move (a real agent call
+// follows it), a rival on the radar, the three resources, then the board is yours.
+const Coach = (() => {
+  let step = -1, dim = null, spotEl = null;
+  const mobile = () => innerWidth < 1180;
+  const STEPS = [
+    { spot: () => "#mapwrap", go: "Continue", t: () => `This is your ground. Fans already live here. ${G.capital ?? "Your capital"} is your capital and you hold ${held()} cit${held() === 1 ? "y" : "ies"}.`, enter: () => { const p = capP(); if (p) { boom(p, COL.you); float(p, "👑 YOUR CAPITAL"); } } },
+    { spot: () => (mobile() ? "#mbar" : "#p-primary"), go: null, t: () => { const o = G.orders[recommended()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = recommended(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
+    { spot: () => (mobile() ? null : "#p-threats"), go: "Continue", t: () => { const it = G.intents[0], f = it && G.fac.get(it.fid); return f ? `A rival is moving: ${f.name} is marching on ${it.city} and arrives Sunday. Fortify the city or strike first.` : "Rivals show up on the radar days before they strike. Fortify or strike first."; }, enter: () => { ensureThreat(); hud(); } },
+    { spot: () => "#orbs", go: "Continue", t: () => "Three resources run your campaign. ⚡ Buzz = your actions this week. ❤ Hype = how hard your material hits. 🪙 Gold = money for agents and walls.", enter: () => ["#orb-buzz", "#orb-hype", "#orb-gold"].forEach((id, k) => setTimeout(() => { const e = $(id); e.classList.remove("pulse"); void e.offsetWidth; e.classList.add("pulse"); }, k * 450)) },
+    { spot: () => null, go: "Play", t: () => "First city taken. Real venues. Real data. The board is yours: the clock starts now. Pause any time." },
+  ];
+  function clear() { spotEl?.classList.remove("spot"); spotEl = null; }
+  function show() {
+    clear(); const s = STEPS[step]; s.enter?.();
+    $("#coach-step").textContent = `Step ${step + 1} of ${STEPS.length}`; $("#coach-t").textContent = s.t();
+    $("#coach-go").hidden = !s.go; $("#coach-go").textContent = s.go ?? "";
+    const sel = s.spot(); spotEl = sel ? $(sel) : null; spotEl?.classList.add("spot");
+    if (!dim) { dim = document.createElement("div"); dim.className = "coachdim"; $("#game").appendChild(dim); }
+  }
+  function end() { clear(); dim?.remove(); dim = null; $("#coach").hidden = true; step = -1; if (G) { G.coach = false; council(); } try { localStorage.setItem("conquest-coached", "1"); } catch {} }
+  function next() { step++; if (step >= STEPS.length) return end(); show(); }
+  $("#coach-go").addEventListener("click", next);
+  $("#coach-skip").addEventListener("click", end);
+  return {
+    start() { if (!G || G.over) return; G.coach = true; step = -1; $("#coach").hidden = false; Drawer.close(); next(); },
+    // after the first order lands, a free Booker proves it's real data
+    async executed(o, ct) {
+      if (step !== 1 || !G.coach) return;
+      $("#coach-t").textContent = "Watch: your Booker is calling Qloo for a real stage there…"; clear();
+      const city = ct ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
+      if (city) await runAgent(AGENTS.find((a) => a.id === "booker"), city);
+      toast("Real data. Real venues. This is what you'll do for real.");
+      await sleep(1200); next();
+    },
+  };
+})();
+// make sure there's a rival on the radar for the tutorial to point at
+function ensureThreat() {
+  if (G.intents.length) return;
+  const f = [...G.fac.values()].find((x) => !x.allied && x.strategy === "compete") ?? [...G.fac.values()].find((x) => !x.allied); if (!f) return;
+  const prey = preyOf(f) ?? G.cities.find((c) => sideOf(c) === "you"); if (!prey) return;
+  const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival");
+  G.intents.push({ fid: f.id, city: prey.name, from: nearest(theirs, prey)?.p ?? [Math.max(20, Math.min(MW - 20, prey.p[0] + (prey.p[0] > MW / 2 ? 260 : -260))), Math.max(20, prey.p[1] - 180)] });
+}
 addEventListener("keydown", (e) => {
   if (!G || $("#game").hidden || G.modal || e.target.closest("input,textarea")) return;
   if (/^[1-9]$/.test(e.key) && G.orders[+e.key - 1]) selectOrder(+e.key - 1);
-  if ((e.key === "Enter" || e.key === "e" || e.key === "E") && G.sel >= 0) { e.preventDefault(); execute(G.sel); }
+  if ((e.key === "Enter" || e.key === "e" || e.key === "E") && G.primary >= 0) { e.preventDefault(); execute(G.primary); }
   if (e.key === " ") { e.preventDefault(); Clock.toggle(); }
 });
 function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site").hidden = false; Field.setMode("site"); Neuro.reset(); if (G) G.over = true; }
@@ -1355,7 +1576,7 @@ function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site
 // ---------------------------------------------------------------- the landing page
 // The hero is the game itself in miniature: real state borders, your colour
 // spreading city by city, rivals pushing back, agents on the march.
-$("#armygrid").innerHTML = AGENTS.map((a) => `<div class="unit"><span class="ui">${a.icon}</span><h3>${a.name}</h3><p>${a.role}</p><div class="src${a.locked ? " no" : ""}">${a.src}${a.locked ? "" : " · live"}</div></div>`).join("");
+$("#armygrid").innerHTML = AGENTS.slice(0, 6).map((a) => `<div class="unit"><span class="ui">${a.icon}</span><h3>${a.name}</h3><p>${a.role}</p><div class="src${a.locked ? " no" : ""}">${a.src}${a.locked ? "" : " · live"}</div></div>`).join("") + `<div class="unit more-unit"><span class="ui">🤖</span><h3>+${AGENTS.length - 6} more</h3><p>${AGENTS.slice(6).map((a) => a.name).join(", ")}. Waiting in the war room.</p></div>`;
 
 const HeroMap = (() => {
   const cv = $("#heromap"), ctx = cv.getContext("2d");
@@ -1378,7 +1599,7 @@ const HeroMap = (() => {
     if (!cand.length || flips > 16) { reset(); return; }
     const pickS = cand[Math.floor(Math.random() * Math.min(3, cand.length))].s, from = mine.sort((a, b) => Math.hypot(a.c[0] - pickS.c[0], a.c[1] - pickS.c[1]) - Math.hypot(b.c[0] - pickS.c[0], b.c[1] - pickS.c[1]))[0];
     const wasRival = own.get(pickS.id);
-    units.push({ from: from.c, to: pickS.c, t0: now, icon: ["🎟️", "🔭", "🕊️", "📈", "💼"][flips % 5] });
+    units.push({ from: from.c, to: pickS.c, t0: now, ik: ["ticket", "scout", "dove", "trend", "case"][flips % 5] });
     setTimeout(() => { own.set(pickS.id, "you"); fx.push({ p: pickS.c, t0: performance.now(), text: wasRival ? "⚔ TAKEN" : `+${3 + Math.floor(Math.random() * 9)}%` }); }, 1400);
     flips++;
   }
@@ -1412,13 +1633,13 @@ const HeroMap = (() => {
       const [X, Y] = toS(ALB(METROS[name])), col = f ? FAC[f] : "#7d8796";
       ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = col; ctx.lineWidth = 2.2 * d; ctx.shadowColor = col; ctx.shadowBlur = 12 * d; ctx.beginPath(); ctx.arc(X, Y, (name === "Atlanta" ? 10 : 6) * d, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
       ctx.fillStyle = "#e9eef7"; ctx.font = `700 ${10 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(name.toUpperCase(), X, Y + 20 * d);
-      if (name === "Atlanta") { ctx.font = `${14 * d}px serif`; ctx.fillText("👑", X, Y - 16 * d); }
+      if (name === "Atlanta") drawIcon(ctx, "crown", X, Y - 18 * d, 16 * d, "#ffcf5a", 2.2);
     }
     // agents marching, conquests landing
     units = units.filter((u) => now - u.t0 < 1500);
-    for (const u of units) { const q = ease(clamp01((now - u.t0) / 1400)), a = toS(u.from), b = toS(u.to), X = a[0] + (b[0] - a[0]) * q, Y = a[1] + (b[1] - a[1]) * q - Math.sin(q * Math.PI) * 30 * d; ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.font = `${13 * d}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(u.icon, X, Y); ctx.textBaseline = "alphabetic"; }
+    for (const u of units) { const q = ease(clamp01((now - u.t0) / 1400)), a = toS(u.from), b = toS(u.to), X = a[0] + (b[0] - a[0]) * q, Y = a[1] + (b[1] - a[1]) * q - Math.sin(q * Math.PI) * 30 * d; ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke(); drawIcon(ctx, u.ik, X, Y, 14 * d, "#7fd8ff", 2.2); }
     fx = fx.filter((f) => now - f.t0 < 1800);
-    for (const f of fx) { const q = clamp01((now - f.t0) / 1800), [X, Y] = toS(f.p); ctx.strokeStyle = "#ffcf5a"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#ffcf5a"; ctx.font = `800 ${16 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 16 * d - q * 30 * d); ctx.globalAlpha = 1; }
+    for (const f of fx) { const q = (now - f.t0) / 1800, [X, Y] = toS(f.p); ctx.strokeStyle = "#ffcf5a"; ctx.globalAlpha = 1 - q; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, ease(q) * 70 * d, 0, 6.283); ctx.stroke(); ctx.fillStyle = "#ffcf5a"; ctx.font = `800 ${16 * d}px "Cinzel", serif`; ctx.textAlign = "center"; ctx.fillText(f.text, X, Y - 16 * d - q * 30 * d); ctx.globalAlpha = 1; }
   }
   return { frame };
 })();
