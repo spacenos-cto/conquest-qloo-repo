@@ -668,6 +668,9 @@ function ach(id) {
 // ---------------------------------------------------------------- the world clock
 // One game week runs in about 84 seconds. Night sweeps across the map from
 // east to west by real longitude; at Sunday midnight the week ends on its own.
+// line icons for the clock buttons (emoji render as coloured boxes)
+const CLOCK_ICONS = { pause: '<path d="M9 6v12M15 6v12"/>', play: '<path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor"/>', fast: '<path d="M4 6l8 6-8 6zM12 6l8 6-8 6z" fill="currentColor"/>', slow: '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none" font-family="Inter Tight, sans-serif">1×</text>' };
+function clockIcon(sel, k) { const b = $(sel); if (b) b.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${CLOCK_ICONS[k]}</svg>`; }
 const Clock = (() => {
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], RATE = 2; // game hours per real second
   let last = 0, speed = 1, paused = false, shown = "";
@@ -688,19 +691,19 @@ const Clock = (() => {
     if (!paused && !G.busy && !G.simulating && !G.modal && !G.coach) {
       G.hour += dt * RATE * speed;
       questTick(dt);
-      if (G.hour >= 168) { G.hour = 168; speed = 1; $("#cfast").textContent = "⏩"; endWeek(); }
+      if (G.hour >= 168) { G.hour = 168; speed = 1; clockIcon("#cfast", "fast"); endWeek(); }
     }
     const lab = hourLab(Math.min(G.hour, 167.99));
-    if (lab !== shown) { shown = lab; $("#ctime").textContent = lab.toUpperCase() + " ET"; $("#cday").textContent = `WEEK ${G.week} OF ${WEEKS}`; $("#cdial").style.setProperty("--k", `${((G.hour % 24) / 24) * 100}%`); if (lab.endsWith(":00")) renderQuests(); }
+    if (lab !== shown) { shown = lab; $("#ctime").textContent = lab.toUpperCase(); $("#cday").textContent = `WEEK ${G.week} OF ${WEEKS} · ET`; $("#cdial").style.setProperty("--k", `${((G.hour % 24) / 24) * 100}%`); if (lab.endsWith(":00")) renderQuests(); }
   }
   return {
     tick, nightAt, fmt,
     label: () => (G ? fmt(Math.min(G.hour, 167.99)) : ""),
     localLabel: (ct) => { const lon = METROS[ct.name]?.[0] ?? -75, h = (((G.hour % 24) + (lon + 75) / 15) % 24 + 24) % 24; return `${pad(Math.floor(h))}:${pad(Math.floor(((h % 1) * 60) / 15) * 15)}`; },
-    toggle() { paused = !paused; $("#cpause").textContent = paused ? "▶" : "⏸"; return paused; },
-    fast() { speed = speed > 1 ? 1 : 12; $("#cfast").textContent = speed > 1 ? "1×" : "⏩"; },
-    finishWeek() { speed = 60; paused = false; $("#cpause").textContent = "⏸"; },
-    reset() { speed = 1; paused = false; last = 0; shown = ""; $("#cpause").textContent = "⏸"; $("#cfast").textContent = "⏩"; },
+    toggle() { paused = !paused; clockIcon("#cpause", paused ? "play" : "pause"); return paused; },
+    fast() { speed = speed > 1 ? 1 : 12; clockIcon("#cfast", speed > 1 ? "slow" : "fast"); },
+    finishWeek() { speed = 60; paused = false; clockIcon("#cpause", "pause"); },
+    reset() { speed = 1; paused = false; last = 0; shown = ""; clockIcon("#cpause", "pause"); clockIcon("#cfast", "fast"); },
   };
 })();
 
@@ -1149,10 +1152,12 @@ function questLeft(q) {
 }
 // only touch the countdown text, so the cards don't re-render every frame
 function questClock() { for (const q of G.quests) { const el = $(`[data-ql="${q.id}"]`), t = "⏱ " + questLeft(q); if (el && el.textContent !== t) el.textContent = t; } }
+function questBadge() { const n = G?.quests?.length ?? 0, b = $("#council-more"); if (b) b.textContent = n ? `🎁 ${n} opportunit${n > 1 ? "ies" : "y"} · more ▾` : "Why · more ▾"; }
 function renderQuests() {
   if (!G) return;
   const before = G.quests.length; G.quests = G.quests.filter((q) => q.left > 0);
   if (G.quests.length < before) event("⌛ An opportunity expired.", "info");
+  questBadge();
   $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl" data-ql="${q.id}">⏱ ${questLeft(q)}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
   $$("[data-q]").forEach((b) => b.addEventListener("click", () => { const q = G.quests.find((x) => x.id === b.dataset.q); if (!q) return; G.quests = G.quests.filter((x) => x !== q); q.claim(); ach("seize"); Sound.play("potion"); ops(`<span class="ok">${q.icon} claimed</span> ${esc(q.title)} · ${esc(q.reward)}`); hud(); renderQuests(); renderOrders(); }));
 }
@@ -1743,7 +1748,7 @@ function rivalCard(f) {
 }
 // now and then, someone pipes up on their own
 function sayTick(now) {
-  if (!G || G.over || G.modal || sayOn || cardFor || now - sayLast < 38000 || !G.fac.size) return;
+  if (!G || G.over || G.modal || sayOn || cardFor || now - sayLast < 75000 || !G.fac.size) return;
   const f = anyOf([...G.fac.values()]); say(f, rivalLine(f, "ambient"));
 }
 function planIntents() {
@@ -2581,7 +2586,11 @@ $("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
 $("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
 $("#share-btn").addEventListener("click", openShare);
 $("#xray-btn").addEventListener("click", () => (Drawer.mode === "xray" ? Drawer.close() : Drawer.open("xray")));
-$("#slot-brain").addEventListener("click", () => Drawer.open("xray"));
+// closed panels open on click; the brain opens the X-ray once it's open
+$("#slot-brain").addEventListener("click", (e) => { const sec = $("#slot-brain"); if (!sec.classList.contains("open")) { sec.classList.add("open"); return; } if (e.target.closest(".stitle")) { sec.classList.remove("open"); return; } Drawer.open("xray"); });
+$("#council .chead").addEventListener("click", (e) => { if (e.target.closest("#trends-btn")) return; $("#council").classList.toggle("open"); });
+$("#council-more").addEventListener("click", () => $("#council").classList.toggle("open"));
+$("#goalbar").addEventListener("click", () => $("#goalbar").classList.toggle("open"));
 // on desktop the world clock sits at the top of the right column, above the radar; phones keep it top centre
 function placeClock() { const c = $("#clock"), side = $("#mapside"), mw = $("#mapwrap"); if (!c || !side || !mw) return; if (innerWidth > 900) { if (c.parentElement !== side) side.prepend(c); } else if (c.parentElement !== mw) mw.appendChild(c); }
 placeClock(); addEventListener("resize", placeClock);

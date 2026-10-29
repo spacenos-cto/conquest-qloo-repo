@@ -1434,6 +1434,42 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 .goalbar em{display:block;font-style:normal;font-size:11px;color:var(--ash);margin-top:6px}
 .dym{margin:0 0 10px;font-size:15px;color:var(--mist)}.dym b{color:#e1bdff;font-weight:600}
 #hook .hk-cap.brand{font-family:var(--sans);font-style:normal;font-weight:800;letter-spacing:.28em;font-size:clamp(30px,4.4vw,60px);background:rgba(28,21,48,.88);color:#fff;padding:12px 30px 12px 40px;box-shadow:0 0 40px rgba(175,80,255,.55)}
+
+/* ===== clean map (Rise of Nations style): panels closed until you click them ===== */
+/* strategist: header + best move; Now / Why, opportunities and simulate open on click */
+#game .council:not(.open) #brief,#game .council:not(.open) #quests,#game .council:not(.open) #simulate{display:none}
+#game .council{width:300px;padding:10px 12px}
+#game .council .chead{cursor:pointer}
+#game .council-do{margin-top:8px}
+.council-more{display:block;width:100%;margin-top:6px;padding:4px 0;background:none;border:0;color:var(--ash);font:600 11.5px var(--sans);text-align:center;cursor:pointer}
+.council-more:hover{color:#e1bdff}
+#game .council.open .council-more{margin-bottom:4px}
+/* goal bar: one slim line; the details open on click */
+.goalbar{padding:7px 14px 8px;cursor:pointer;width:min(460px,calc(100% - 760px))}
+.goalbar b{font-size:16px}
+.goalbar:not(.open) span,.goalbar:not(.open) em{display:none}
+.goalbar i{margin-top:6px;height:4px}
+/* right column: radar stays as the minimap; brain and live calls are small closed buttons */
+#game .mapside{width:200px}
+#game .mapside .s-radar{height:150px}
+#game .mapside .s-brain:not(.open){padding:0;height:auto;background:none;border:0;backdrop-filter:none}
+#game .mapside .s-brain:not(.open) .bwrap,#game .mapside .s-brain:not(.open) .bnote{display:none}
+#game .mapside .s-brain:not(.open) .stitle,#mapside .ops.collapsed .opshead .stitle{position:static;transform:none;display:block;width:100%;text-align:left;padding:8px 12px;border-radius:10px;background:rgba(12,10,18,.9);border:1px solid rgba(225,189,255,.22);cursor:pointer}
+#mapside .ops.collapsed{background:none;border:0}
+#mapside .ops.collapsed .opshead{padding:0}
+#mapside .ops.collapsed .opshead .note,#mapside .ops.collapsed .opshead .chev{display:none}
+#game .mapside{gap:8px}
+/* rival faces: smaller, so the map breathes */
+#game .rivalstrip{right:224px;gap:10px}
+#game .rv{width:44px;height:44px}
+#game .rv .lv{font-size:7.5px;padding:0 4px;bottom:-7px}
+.say{right:290px}
+/* clock buttons: lavender line icons */
+#game .clock .clk{width:32px;height:32px;padding:0;display:grid;place-items:center;color:#e1bdff;border-radius:8px}
+#game .clock .clk:hover{background:rgba(175,80,255,.15)}
+#game .clock .cdial{width:30px;height:30px;flex:none}
+#mapside .clock{gap:6px;padding:6px 8px}#mapside .clock b{font-size:13.5px}#mapside .clock small{font-size:9px}#game #mapside .clock .cdial{width:22px;height:22px}#game #mapside .clock .clk{width:28px;height:28px}#mapside .clock>span:nth-child(2){min-width:0;flex:1}
+#game .council .chead span{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1663,13 +1699,14 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
   <div class="stage">
     <div class="mapwrap" id="mapwrap">
       <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
-      <div class="clock" id="clock" title="One game week (about 90 seconds) stands for one real week of your career. Spend buzz on moves during the week; at Sunday midnight rivals attack and gold comes in."><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn" id="cpause" title="Pause or play the world clock">⏸</button><button class="icobtn" id="cfast" title="Fast-forward">⏩</button></div>
+      <div class="clock" id="clock" title="One game week (about 90 seconds) stands for one real week of your career. Spend buzz on moves during the week; at Sunday midnight rivals attack and gold comes in."><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn clk" id="cpause" title="Pause or play the world clock" aria-label="Pause"></button><button class="icobtn clk" id="cfast" title="Fast-forward" aria-label="Fast-forward"></button></div>
       <div class="goalbar" id="goalbar"></div>
       <div class="events" id="events" aria-live="polite"></div>
       <aside class="council frame" id="council">
         <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>Your AI strategist</b><span>Picks your best move</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
         <div class="brief" id="brief"></div>
         <button class="go council-do" id="council-do"></button>
+        <button class="lnk council-more" id="council-more">Why · more ▾</button>
         <div class="quests" id="quests"></div>
         <button class="ghostbtn" id="simulate">▶ Simulate my whole plan</button>
       </aside>
@@ -1707,6 +1744,6 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=232"></script>
+<script src="app.js?v=242"></script>
 </body>
 </html>
