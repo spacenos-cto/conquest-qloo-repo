@@ -154,6 +154,97 @@ export async function partnerReport(name: string, kind = "people", location?: st
   return { status: "ok", audience: fp.audience, kind, location: location ?? null, partners, receipts: receiptsFor(runId) };
 }
 
+/**
+ * The Director — a taste-grounded agent. Given a goal, it runs the tools in a
+ * loop (read the audience → test the content → diagnose → find a growth lever),
+ * decides from the real results (code owns the decisions), and returns a ranked
+ * plan with receipts. The trace is the "agentic" part: every step names the
+ * tool it called and what it observed.
+ */
+export async function directorReport(name: string, goal = "grow this audience's reach") {
+  const reh: any = await rehearseReport(name);
+  if (reh.status !== "ok") return { status: reh.status, coverage: reh.coverage };
+  const part: any = await partnerReport(name, "people");
+
+  const agg = reh.aggregate;
+  const split = reh.split;
+  const tribe = reh.tribe;
+  const topMetro = agg.byMetro?.[0]?.metro ?? "—";
+  const weakMetro = split?.bottom?.metro ?? "—";
+  const deadZones = tribe.deadZones.length;
+  const topPartner = part.status === "ok" ? part.partners[0] : null;
+
+  const steps = [
+    {
+      n: 1,
+      action: "Read the audience",
+      tool: "fingerprint",
+      observed: `${reh.audience.name}: strongest in ${topMetro}; ${agg.n.toLocaleString()} synthetic respondents.`,
+    },
+    {
+      n: 2,
+      action: "Test the content",
+      tool: "rehearse",
+      observed: `"${reh.stimulus.label}" scored ${agg.mean.toFixed(1)}/5 (${agg.pct45}% rated 4–5).`,
+      decided: split ? `Reach is capped in ${weakMetro} (${split.bottom.mean.toFixed(1)}), the soft room.` : undefined,
+    },
+    {
+      n: 3,
+      action: "Diagnose",
+      tool: "tribe + panel",
+      observed:
+        (deadZones ? `Brain response sags in ${deadZones} stretch(es) before the punch. ` : "Attention holds through. ") +
+        (split ? `${weakMetro} trails ${split.top.metro} by ${(split.top.mean - split.bottom.mean).toFixed(1)}.` : ""),
+      decided: "Two levers: tighten the weak segment, and bring a new crowd in.",
+    },
+    {
+      n: 4,
+      action: "Find a growth lever",
+      tool: "find_partners",
+      observed: topPartner
+        ? `Top partner: ${topPartner.name} — ${Math.round(topPartner.netnew * 100)}% of their crowd is new to you, and they convert (${topPartner.convert}).`
+        : "No strong partner cleared the bar.",
+      decided: "Recommend an edit and a barter, ranked.",
+    },
+  ];
+
+  const plan: { lever: "edit" | "grow"; title: string; detail: string; receipt: string }[] = [];
+  if (deadZones) {
+    plan.push({
+      lever: "edit",
+      title: "Tighten the setup",
+      detail: `The brain disengages before the punch in ${deadZones} stretch(es). Cut the slow mid-section — it's costing you the room that's already with you.`,
+      receipt: "TRIBE v2 perception strip",
+    });
+  }
+  if (topPartner) {
+    plan.push({
+      lever: "grow",
+      title: `Co-promote with ${topPartner.name}`,
+      detail: `${topPartner.why} A swap brings a crowd you don't already have${weakMetro !== "—" ? `, useful where you're soft (${weakMetro})` : ""}.`,
+      receipt: "Qloo recommend + tag overlap",
+    });
+  }
+  if (split) {
+    plan.push({
+      lever: "grow",
+      title: `Program for ${weakMetro}`,
+      detail: `${weakMetro} is your softest room. Re-test a version tuned to its taste, or book the barter there first.`,
+      receipt: "Qloo where_popular + panel split",
+    });
+  }
+
+  return {
+    status: "ok",
+    audience: reh.audience,
+    goal,
+    baseline: { score: agg.mean, pct: agg.pct45, split },
+    diagnosis: { topMetro, weakMetro, deadZones, topPartner },
+    steps,
+    plan,
+  };
+}
+
 /** Scene 5: the real-world YouTube backtest, as last run from the CLI (the server never spends quota). */
 export async function youtubeBacktestReport() {
   const r = await loadResult();

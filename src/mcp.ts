@@ -5,6 +5,7 @@ import {
   ablationReport,
   backtestReport,
   partnerReport,
+  directorReport,
   youtubeBacktestReport,
   trendsCheckReport,
   serverInfo,
@@ -61,6 +62,19 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "direct",
+    description:
+      "Run the Director agent: given an audience and a goal, it reads the audience, tests the content, diagnoses the weak spot and finds a growth lever, then returns a ranked plan (edits + barters) with receipts.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        audience: { type: "string", description: "Audience name" },
+        goal: { type: "string", description: "What to optimise for (default: grow reach)" },
+      },
+      required: ["audience"],
+    },
+  },
+  {
     name: "find_partners",
     description:
       "Grow by barter: for an audience, rank partners (people / venues / brands) to cross-promote with. Scores each on a Goldilocks overlap — enough shared taste to convert, enough difference to bring NEW followers.",
@@ -108,6 +122,8 @@ async function callTool(name: string, args: any) {
       return asText(backtestReport());
     case "find_partners":
       return asText(await partnerReport(String(args?.audience ?? ""), String(args?.kind ?? "people"), args?.location ? String(args.location) : undefined));
+    case "direct":
+      return asText(await directorReport(String(args?.audience ?? ""), args?.goal ? String(args.goal) : undefined));
     case "backtest_youtube":
       return asText(await youtubeBacktestReport());
     case "trends_metro_check":
