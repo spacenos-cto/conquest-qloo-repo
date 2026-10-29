@@ -355,7 +355,8 @@ export async function campaignReport(name: string, who: Who = {}) {
     status: "ok",
     audience: fp.audience,
     stimulus: reh.stimulus,
-    aggregate: { mean: reh.aggregate.mean, pct45: reh.aggregate.pct45, n: reh.aggregate.n },
+    // quotes let the game's fans speak in their own (simulated) words
+    aggregate: { mean: reh.aggregate.mean, pct45: reh.aggregate.pct45, n: reh.aggregate.n, quotes: (reh.aggregate.quotes ?? []).slice(0, 12) },
     tribe: reh.tribe,
     split: reh.split,
     narrative: reh.narrative,

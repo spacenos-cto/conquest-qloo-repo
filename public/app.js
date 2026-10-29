@@ -668,6 +668,7 @@ const Clock = (() => {
   let last = 0, speed = 1, paused = false, shown = "";
   const pad = (n) => String(n).padStart(2, "0");
   const fmt = (h) => `${DAYS[Math.floor(h / 24) % 7]} ${pad(Math.floor(h % 24))}:${pad(Math.floor(((h % 1) * 60) / 15) * 15)}`;
+  const hourLab = (h) => `${DAYS[Math.floor(h / 24) % 7]} ${pad(Math.floor(h % 24))}:00`;
   const lonOfX = (x) => -125 + (x / MW) * 58;
   function nightAt(x) {
     if (!G) return 0;
@@ -681,10 +682,10 @@ const Clock = (() => {
     if (!G || G.over) return;
     if (!paused && !G.busy && !G.simulating && !G.modal && !G.coach) {
       G.hour += dt * RATE * speed;
-      questTick();
+      questTick(dt);
       if (G.hour >= 168) { G.hour = 168; speed = 1; $("#cfast").textContent = "⏩"; endWeek(); }
     }
-    const lab = fmt(Math.min(G.hour, 167.99));
+    const lab = hourLab(Math.min(G.hour, 167.99));
     if (lab !== shown) { shown = lab; $("#ctime").textContent = lab.toUpperCase() + " ET"; $("#cday").textContent = `WEEK ${G.week} OF ${WEEKS}`; $("#cdial").style.setProperty("--k", `${((G.hour % 24) / 24) * 100}%`); if (lab.endsWith(":00")) renderQuests(); }
   }
   return {
@@ -1033,10 +1034,11 @@ function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null
 // ---------------------------------------------------------------- opportunities (timed quests)
 // Built from live data: trends, your best-reacting cities, the brands your
 // fans love, partners who are around. Claim before the world clock runs out.
-function questTick() {
+function questTick(dt = 0) {
+  if (G.quests.length && dt) { let gone = false; for (const q of G.quests) { q.left -= dt; if (q.left <= 0) gone = true; } if (gone) renderQuests(); else questClock(); }
   if (G.hour < G.nextQuest) return;
   G.nextQuest = G.hour + 34 + G.rng() * 14;
-  G.quests = G.quests.filter((q) => q.until > G.hour);
+  G.quests = G.quests.filter((q) => q.left > 0);
   if (G.quests.length >= 2) return;
   const pool = [];
   const pot = G.potions.find((p) => !p.used && !G.quests.some((q) => q.ref === p.title));
@@ -1048,19 +1050,21 @@ function questTick() {
   const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally" && !G.quests.some((q) => q.ref === f.name));
   if (pal) pool.push({ ref: pal.name, icon: "🕊️", title: `${pal.name} is booking an opener`, text: `${pal.plan.city ? `Show in ${pal.plan.city}. ` : ""}Shared taste, new crowd. Parley now.`, reward: "alliance chance", claim: () => parley({ name: pal.name, f: pal, barter: pal.plan.barter + 15, netnew: pal.plan.netnew, convert: pal.plan.convert, city: pal.plan.city }) });
   if (!pool.length) return;
-  const q = pool[Math.floor(G.rng() * pool.length)]; q.id = "q" + Math.round(G.hour * 10) + "w" + G.week; q.until = G.hour + 72;
+  const q = pool[Math.floor(G.rng() * pool.length)]; q.id = "q" + Math.round(G.hour * 10) + "w" + G.week; q.left = 180; // real seconds the clock runs
   G.quests.push(q); Sound.play("tick"); event(`${q.icon} Opportunity: ${q.title}`, "good"); renderQuests();
 }
 // a calm countdown: days while there's time, hours near the end
 function questLeft(q) {
-  const h = Math.max(0, q.until - G.hour), at = q.until >= 168 ? "next week" : Clock.fmt(q.until);
-  return h >= 24 ? `${Math.floor(h / 24)}d ${Math.round(h % 24)}h left · until ${at}` : `${Math.max(1, Math.round(h))}h left · until ${at}`;
+  const m = Math.ceil(Math.max(0, q.left) / 60);
+  return q.left < 60 ? "under a minute left" : `about ${m} min left`;
 }
+// only touch the countdown text, so the cards don't re-render every frame
+function questClock() { for (const q of G.quests) { const el = $(`[data-ql="${q.id}"]`), t = "⏱ " + questLeft(q); if (el && el.textContent !== t) el.textContent = t; } }
 function renderQuests() {
   if (!G) return;
-  const before = G.quests.length; G.quests = G.quests.filter((q) => q.until > G.hour);
+  const before = G.quests.length; G.quests = G.quests.filter((q) => q.left > 0);
   if (G.quests.length < before) event("⌛ An opportunity expired.", "info");
-  $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl">⏱ ${questLeft(q)}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
+  $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl" data-ql="${q.id}">⏱ ${questLeft(q)}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
   $$("[data-q]").forEach((b) => b.addEventListener("click", () => { const q = G.quests.find((x) => x.id === b.dataset.q); if (!q) return; G.quests = G.quests.filter((x) => x !== q); q.claim(); ach("seize"); Sound.play("potion"); ops(`<span class="ok">${q.icon} claimed</span> ${esc(q.title)} · ${esc(q.reward)}`); hud(); renderQuests(); renderOrders(); }));
 }
 
@@ -1420,13 +1424,15 @@ function drawArmy(ctx, toS, bez, at, d, s, now) {
 function unitAt(sx, sy, d) { let best = null, bd = 18 * d; for (const u of G.army.values()) { if (!u._s) continue; const q = Math.hypot(u._s[0] - sx, u._s[1] - sy); if (q < bd) { bd = q; best = u; } } return best; }
 
 // ---------------------------------------------------------------- selection (the Rise of Nations bottom-right panel)
-function select(sel) { G.selected = sel; renderSel(); renderAgents(); renderRivalStrip(); }
+function select(sel) {
+  if (sel?.type === "rival") { const f = G.fac.get(sel.id); G.selected = sel; renderRivalStrip(); if (f) rivalCard(f); return; }
+  G.selected = sel; renderSel(); renderAgents(); renderRivalStrip();
+}
 function renderSel() {
   if (!G) return;
   const s = G.selected, t = $("#sel-title");
   if (s?.type === "unit" && G.army.has(s.id)) { t.textContent = "Selected unit"; return unitPanel(G.army.get(s.id)); }
   if (s?.type === "city") { const c = G.cities.find((x) => x.name === s.name); if (c) { t.textContent = "City"; return cityDeck(c); } }
-  if (s?.type === "rival" && G.fac.has(s.id)) { t.textContent = "Rival"; return rivalPanel(G.fac.get(s.id)); }
   t.textContent = "Next move"; renderPrimary();
 }
 function unitPanel(u) {
@@ -1468,8 +1474,8 @@ function rivalPanel(f) {
 // rival portraits down the right edge of the map, and the scoreboard (Rise of Nations style)
 function renderRivalStrip() {
   if (!G) return;
-  $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" || lv === "SIEGE" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: threat ${lv}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${lv}</span></button>`; }).join("");
-  $$("[data-rv]").forEach((b) => b.addEventListener("click", () => { select({ type: "rival", id: b.dataset.rv }); const f = G.fac.get(b.dataset.rv); if (f && !sayOn) say(f, rivalLine(f, "ambient")); }));
+  $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" || lv === "SIEGE" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: ${LV_LABEL[lv]}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${LV_LABEL[lv]}</span></button>`; }).join("");
+  $$("[data-rv]").forEach((b) => b.addEventListener("click", () => { if (cardFor === b.dataset.rv) { $("#say .say-x")?.click(); return; } select({ type: "rival", id: b.dataset.rv }); }));
   const rows = [{ name: G.player.name, col: COL.you, age: ageOf(G.conquest)[1], pct: G.conquest, sc: score() }]
     .concat([...G.fac.values()].map((f) => { const n = G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, pct = Math.round((n / Math.max(1, ground())) * 100), fm = G.fame.get(f.name); return { name: f.name, col: f.allied ? COL.allied : f.col, age: ageOf(pct)[1], pct, sc: Math.round(pct * 100 + (fm?.views ?? 0) / 20) }; }))
     .sort((a, b) => b.sc - a.sc);
@@ -1581,25 +1587,66 @@ function rivalLine(f, kind, x = {}) {
   if (k === "intent" && !x.city && it) return rivalLine(f, "intent", { city: it.city });
   return anyOf(L[k] ?? L.calm);
 }
-const ROLE = (f) => f.allied ? "Ally" : f.strategy === "compete" ? "Nemesis" : f.strategy === "ally" ? "Could be an ally" : "Rival";
-let sayQ = [], sayOn = false, sayT = 0, sayLast = 0;
+const ROLE = (f) => f.role ? f.role : f.allied ? "Ally" : f.strategy === "compete" ? "Nemesis" : f.strategy === "ally" ? "Could be an ally" : "Rival";
+let sayQ = [], sayOn = false, sayT = 0, sayLast = 0, cardFor = null;
 function say(f, text) { if (!G || !f || !text) return; if (sayQ.length > 2) sayQ.shift(); sayQ.push({ f, text }); if (!sayOn) sayNext(); }
 function sayNext() {
+  if (cardFor) return; // an open rival card owns the box; chatter waits
   const box = $("#say"); const n = sayQ.shift(); if (!n || !box) { sayOn = false; if (box) box.hidden = true; return; }
   sayOn = true; sayLast = performance.now();
-  const { f, text } = n, col = f.allied ? COL.allied : f.col;
+  const { f, text } = n, col = f.col ?? (f.allied ? COL.allied : "#af50ff");
   box.style.setProperty("--c", col);
-  box.innerHTML = `<div class="sp">${avatar(f.img, f.name)}</div><div><div class="sn"><b>${esc(f.name)}</b><small>${ROLE(f)}</small></div><p class="st"></p></div>`;
+  box.classList.remove("card");
+  box.innerHTML = `<div class="sp">${f.emoji ? `<div class="ph emo" style="font-size:40px">${f.emoji}</div>` : avatar(f.img, f.name)}</div><div><div class="sn"><b>${esc(f.name)}</b><small>${ROLE(f)}</small></div><p class="st"></p>${f.allied || f.role ? "" : `<button class="say-more" data-card="${esc(f.id)}">Answer them ›</button>`}</div>`;
+  box.querySelector("[data-card]")?.addEventListener("click", (e) => { e.stopPropagation(); rivalCard(f); });
   const btn = $(`[data-rv="${f.id}"]`), mw = $("#mapwrap");
   if (btn && mw) { const r = btn.getBoundingClientRect(), m = mw.getBoundingClientRect(); box.style.top = Math.max(14, r.top - m.top - 8) + "px"; box.style.setProperty("--ty", "26px"); }
   box.hidden = false; box.classList.add("typing"); Sound.play("select");
   const st = box.querySelector(".st"); let i = 0; clearInterval(sayT);
   sayT = setInterval(() => { i += 2; st.textContent = text.slice(0, i); if (i % 12 === 0) Sound.play("tick"); if (i >= text.length) { clearInterval(sayT); box.classList.remove("typing"); sayT = setTimeout(sayNext, 2600 + text.length * 35); } }, 28);
 }
-$("#say")?.addEventListener("click", () => { clearInterval(sayT); clearTimeout(sayT); sayNext(); });
+$("#say")?.addEventListener("click", (e) => { if (cardFor || e.target.closest("button")) return; clearInterval(sayT); clearTimeout(sayT); sayNext(); });
+// The rival card: who they are, what they're doing this week, what happens if
+// you do nothing, and your three answers. Opens from their face or the radar.
+function placeSay(box, f) {
+  const btn = $(`[data-rv="${f.id}"]`), mw = $("#mapwrap");
+  if (btn && mw) { const r = btn.getBoundingClientRect(), m = mw.getBoundingClientRect(); box.style.top = Math.max(14, Math.min(m.height - box.offsetHeight - 14, r.top - m.top - 8)) + "px"; }
+}
+// your simulated fans speak too: real lines from the 1,000-fan panel, by city
+function fanSay(city) {
+  const qs2 = G.c?.aggregate?.quotes ?? []; if (!qs2.length) return;
+  const q = qs2.find((x) => x.persona?.includes(city)) ?? anyOf(qs2), who = (q.persona ?? "").split(" · ").slice(1, 3).join(", ");
+  say({ id: "fan", name: `A fan in ${city}`, role: who ? `Your fan · ${who}` : "Your fan", emoji: anyOf(["🧑", "👩", "🧔", "👱‍♀️", "🧑‍🦱"]), col: "#3dff9a" }, q.text.replace(/\s*\(\d\/5\)\s*$/, ""));
+}
+function rivalCard(f) {
+  const box = $("#say"); if (!box || !G || !f) return;
+  clearInterval(sayT); clearTimeout(sayT); sayQ = []; cardFor = f.id; sayOn = true;
+  const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id), fm = G.fame.get(f.name), sc = strikeCity(f);
+  const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name), cityOf = (n) => G.cities.find((c) => c.name === n);
+  const now = f.allied ? "Allied: fights at your side." : sg ? `Besieging your ${sg.city}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""}.` : it ? `Marching on ${it.city}${G.forts.has(it.city) ? ", but your walls are up" : ": arrives Sunday midnight"}.` : "No attack planned this week.";
+  const risk = sg ? `You lose ${sg.city} (−${pts(cityOf(sg.city))}%).` : it && !G.forts.has(it.city) ? `A 2-week siege starts (${pts(cityOf(it.city))}% at stake).` : "Nothing, for now.";
+  const di = sg ? G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city) : -1;
+  box.style.setProperty("--c", f.allied ? COL.allied : f.col); box.classList.add("card");
+  box.innerHTML = `<div class="sp">${avatar(f.img, f.name)}</div><div style="min-width:0">
+    <div class="sn"><b>${esc(f.name)}</b><small>${ROLE(f)}</small><small class="lvx ${lv}">${LV_LABEL[lv]}</small><button class="say-x" title="Close">✕</button></div>
+    <p class="st"></p>
+    <div class="say-chips">${fm?.views ? `<span>${kfmt(fm.views)} views/30d ${fm.momentum >= 0 ? "▲" : "▼"}${Math.abs(fm.momentum)}%</span>` : ""}<span>${held.length ? "holds " + esc(held.slice(0, 2).join(", ")) : "no cities yet"}</span></div>
+    <dl class="say-dl"><dt>This week</dt><dd>${esc(now)}</dd><dt>If you wait</dt><dd class="${sg ? "bad" : it && !G.forts.has(it.city) ? "warn" : ""}">${esc(risk)}</dd></dl>
+    ${f.allied ? "" : `<div class="say-act">${di >= 0 ? `<button class="go" data-sa="def">🛡 Defend · ⚡${COST.defend}</button>` : ""}${it && !G.forts.has(it.city) ? `<button class="ghostbtn" data-sa="fort" ${G.gold >= 80 ? "" : "disabled"}>🛡 Walls · 🪙80</button>` : ""}<button class="${di >= 0 ? "ghostbtn" : "go"}" data-sa="strike" ${sc && G.buzz >= 4 ? "" : "disabled"} title="${sc ? "Strike first in " + esc(sc.name) : "They hold no city to hit yet"}">⚔ Strike · ⚡4</button><button class="ghostbtn" data-sa="parley">🕊 Deal</button></div>`}
+  </div>`;
+  box.hidden = false; placeSay(box, f); Sound.play("select");
+  const close = () => { cardFor = null; sayOn = false; box.hidden = true; box.classList.remove("card"); if (G.selected?.type === "rival") { G.selected = null; renderRivalStrip(); } sayNext(); };
+  box.querySelector(".say-x").onclick = (e) => { e.stopPropagation(); close(); };
+  box.querySelector('[data-sa="def"]')?.addEventListener("click", () => { close(); execute(di); });
+  box.querySelector('[data-sa="fort"]')?.addEventListener("click", () => { fortify(it.city); rivalCard(f); });
+  box.querySelector('[data-sa="strike"]')?.addEventListener("click", () => { close(); strike(f.id); });
+  box.querySelector('[data-sa="parley"]')?.addEventListener("click", () => { close(); parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); });
+  const st = box.querySelector(".st"), text = rivalLine(f, "ambient"); let i = 0; box.classList.add("typing");
+  sayT = setInterval(() => { i += 2; st.textContent = text.slice(0, i); if (i >= text.length) { clearInterval(sayT); box.classList.remove("typing"); } }, 26);
+}
 // now and then, someone pipes up on their own
 function sayTick(now) {
-  if (!G || G.over || G.modal || sayOn || now - sayLast < 38000 || !G.fac.size) return;
+  if (!G || G.over || G.modal || sayOn || cardFor || now - sayLast < 38000 || !G.fac.size) return;
   const f = anyOf([...G.fac.values()]); say(f, rivalLine(f, "ambient"));
 }
 function planIntents() {
@@ -2298,6 +2345,7 @@ async function execute(i) {
     title = "Material sharpened"; sub += " · the brain lights up, hype up"; event("✍️ Material sharpened: every city hits harder.", "you"); Sound.play("conquer");
     for (const c of G.cities.filter((c) => sideOf(c) === "you")) G.fx.push({ p: c.p, ring: true, r: 60, col: COL.you, t0: performance.now() + Math.random() * 500, dur: 1100 });
   }
+  if (ct && gain > 0) setTimeout(() => fanSay(ct.name), 2400);
   G.doneLog.push(o); addReal(o); G.last = title; ops(`<span class="ok">order</span> ${esc(o.title)} <span class="ok">${gain ? `+${gain}%` : "done"}</span>${paid ? "" : ` · ⚡${cost}`}`);
   const p = ct?.p ?? capP();
   MapView.flip(p); if (p) { boom(p, o.kind === "alliance" || o.kind === "ally" ? COL.allied : COL.you); if (gain) float(p, `+${gain}%`); }
@@ -2363,7 +2411,7 @@ async function endWeek() {
   ops(`<span class="ok">income</span> +🪙${gold} (${G.cities.filter((c) => sideOf(c) === "you").length} cities × 15${G.sponsors.length ? ` + ${G.sponsors.length} sponsor${G.sponsors.length > 1 ? "s" : ""}` : ""}) · +⚡${gain}`);
   G.week++; G.hour = 9; G.forts.clear();
   // the clock restarts at Monday 09:00: open opportunities keep their remaining time
-  for (const q of G.quests) q.until -= 159; G.nextQuest = Math.max(12, G.nextQuest - 159);
+  G.nextQuest = Math.max(12, G.nextQuest - 159);
   G.busy = false;
   if (G.week > WEEKS) { G.week = WEEKS; hud(); renderOrders(); setTimeout(victory, 600); return; }
   planIntents();

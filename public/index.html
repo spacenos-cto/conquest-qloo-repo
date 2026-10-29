@@ -1350,7 +1350,24 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 .say .st::after{content:"▼";display:inline-block;margin-left:6px;font-size:9px;color:var(--c,#af50ff);animation:blinkv 1s steps(2) infinite}
 .say.typing .st::after{content:"▍";animation:none}
 @keyframes blinkv{50%{opacity:0}}
-@media (max-width:1180px){.say{right:80px;top:auto;bottom:70px;width:min(380px,calc(100% - 100px))}.say::after{display:none}}
+@media (max-width:1180px){.say,.say.card{right:80px;width:min(400px,calc(100% - 100px))}.say::after{display:none}}
+
+/* ===== rival card (merged), achievements clear of the clock ===== */
+.achs{top:142px}
+.say .say-more{margin-top:6px;padding:5px 10px;font:600 12px var(--sans);border-radius:999px;border:1px solid var(--c,#af50ff);background:color-mix(in srgb,var(--c,#af50ff) 16%,transparent);color:#fff;cursor:pointer}
+.say.card{width:min(420px,calc(100% - 360px));cursor:default}
+.say.card .st{min-height:0;font-style:italic;color:#e6e7ea}
+.say .say-x{margin-left:auto;width:26px;height:26px;padding:0;border-radius:6px;border:1px solid var(--hair);background:transparent;color:var(--mist);cursor:pointer}
+.say .lvx{background:#2a3446!important}
+.say .lvx.SIEGE{background:#ff4d6d!important;color:#000!important}.say .lvx.HIGH,.say .lvx.MED{background:#ff9f43!important;color:#000!important}.say .lvx.ALLY{background:#2fd3a5!important;color:#000!important}
+.say-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.say-chips span{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--hair);color:var(--mist);font-variant-numeric:tabular-nums}
+.say-dl{display:grid;grid-template-columns:78px 1fr;gap:4px 8px;margin:8px 0 0;font-size:12.5px}
+.say-dl dt{font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ash);padding-top:2px}
+.say-dl dd{margin:0;color:#e6e7ea}.say-dl dd.bad{color:#ff8fa5}.say-dl dd.warn{color:#ffc27a}
+.say-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.say-act button{width:auto;margin:0;padding:7px 10px;font-size:12px;min-height:0}
+.rv .lv{white-space:nowrap;font-size:8px;letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -1621,6 +1638,6 @@ a.btn-dark{display:inline-flex;align-items:center;text-decoration:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=171"></script>
+<script src="app.js?v=181"></script>
 </body>
 </html>
