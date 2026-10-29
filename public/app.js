@@ -1993,6 +1993,7 @@ function playHook() {
   el.hidden = false; document.body.classList.add("hooked");
   const cap = $("#hook-cap"), lines = [[300, "POV: you and your next 1,000 fans"], [2300, "…both too shy to make the first move."], [4300, "Conquest makes it."]];
   const t = lines.map(([ms, text]) => setTimeout(() => { cap.classList.remove("in"); void cap.offsetWidth; cap.textContent = text; cap.classList.add("in"); }, ms));
+  t.push(setTimeout(() => el.classList.add("you"), 1200), setTimeout(() => el.classList.add("fans"), 2400));
   t.push(setTimeout(() => { el.classList.add("touch"); try { Sound.play("conquer"); } catch {} }, 4300));
   const end = () => { t.forEach(clearTimeout); el.classList.add("out"); document.body.classList.remove("hooked"); try { sessionStorage.setItem("conquest-hook", "1"); } catch {} setTimeout(() => el.remove(), 900); };
   t.push(setTimeout(end, 6200));
