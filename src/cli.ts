@@ -6,7 +6,7 @@ import { samplePanel } from "./panel/sampler.js";
 import { runPanel, type RespondentMode } from "./panel/respondent.js";
 import { aggregate, citySplit } from "./panel/aggregate.js";
 import { checkClaims } from "./panel/claimcheck.js";
-import { DEMO_STIMULI, neutralStimulus } from "./panel/stimuli.js";
+import { pickStimulus } from "./panel/stimuli.js";
 import { ablation } from "./proof/ablation.js";
 import { runBacktest } from "./proof/backtest.js";
 import { YouTubeClient } from "./proof/youtube/client.js";
@@ -190,11 +190,7 @@ function printYouTube(r: YouTubeBacktest) {
 }
 
 function getStimulus(fp: Fingerprint): Stimulus {
-  const slug = fp.audience.id.replace(/^mock:/, "");
-  return (
-    DEMO_STIMULI[slug] ??
-    neutralStimulus("A short generic promo for this audience, no regional references.")
-  );
+  return pickStimulus(fp.audience);
 }
 
 async function rehearse(fp: Fingerprint) {

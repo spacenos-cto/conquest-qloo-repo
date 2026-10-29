@@ -13,16 +13,20 @@ export const DEMO_STIMULI: Record<string, Stimulus> = {
       "So my auntie's church has a parking ministry now. Forty minutes to tell you " +
       "about the parking ministry. Deacon with a whistle. And the punch, when it " +
       "finally lands, is about the collection plate.",
-    appeals: ["Church humor", "Southern culture", "Soul food", "Family comedy"],
+    // appeals cover both the mock tags and the real Qloo tags for Cedric
+    appeals: [
+      "Church humor", "Southern culture", "Soul food", "Family comedy",
+      "African American", "Stand Up Comedian", "Family Relationships",
+      "Child-Oriented", "Uncensored", "Sitcom",
+    ],
+    // the reference lands in Black South/Midwest metros, less on the coasts —
+    // covers whichever metros the live footprint populates
     regionalLift: {
-      Atlanta: 0.9,
-      Memphis: 0.7,
-      Houston: 0.5,
-      Charlotte: 0.5,
-      Chicago: 0.3,
-      Seattle: -1.1,
-      Portland: -0.9,
-      "San Francisco": -0.7,
+      Atlanta: 0.9, Memphis: 0.9, "New Orleans": 0.8, Houston: 0.6, Charlotte: 0.6,
+      Chicago: 0.6, Detroit: 0.6, Philadelphia: 0.5, Washington: 0.5, Dallas: 0.4,
+      Baltimore: 0.5, Nashville: 0.3, "St. Louis": 0.4,
+      Seattle: -1.1, Portland: -1.0, "Salt Lake City": -1.0, "San Francisco": -0.8,
+      Denver: -0.5, Boston: -0.4, Minneapolis: -0.4,
     },
     voices: {
       love: [
@@ -126,11 +130,17 @@ export function neutralStimulus(text: string): Stimulus {
   };
 }
 
-/** Pick the demo stimulus for an audience, or a neutral one. */
-export function pickStimulus(audienceId: string): Stimulus {
-  const slug = audienceId.replace(/^mock:/, "");
+/** Pick the demo stimulus for an audience by name (works for mock ids and live
+ *  UUIDs alike), or a neutral one. */
+export function pickStimulus(audience: string | { name: string }): Stimulus {
+  const name = (typeof audience === "string" ? audience : audience.name).toLowerCase();
+  const slug =
+    name.includes("cedric") ? "cedric"
+    : name.includes("week in startups") || name.includes("twist") || name.includes("calacanis") ? "twist"
+    : name.includes("dodger") ? "dodgers"
+    : null;
   return (
-    DEMO_STIMULI[slug] ??
+    (slug && DEMO_STIMULI[slug]) ||
     neutralStimulus("A short, friendly promo for this audience, with no regional references.")
   );
 }

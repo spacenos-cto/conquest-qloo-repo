@@ -96,7 +96,7 @@ export async function rehearseReport(name: string) {
   const { fp, runId } = res;
   if (!fp.coverage.ok) return { status: "refused", coverage: fp.coverage };
 
-  const stimulus = pickStimulus(fp.audience.id);
+  const stimulus = pickStimulus(fp.audience);
   const { personas } = samplePanel(fp, PANEL_N, 42);
   const replies = await runPanel(personas, stimulus, respMode, 7);
   const agg = aggregate(personas, replies);
@@ -132,7 +132,7 @@ export async function ablationReport(name: string) {
   if (res.empty || res.candidates) return { status: "unavailable" };
   const { fp } = res;
   if (!fp.coverage.ok) return { status: "refused", coverage: fp.coverage };
-  const stimulus = pickStimulus(fp.audience.id);
+  const stimulus = pickStimulus(fp.audience);
   const ab = await ablation(fp, stimulus, PANEL_N, 42);
   return { status: "ok", ...ab };
 }
