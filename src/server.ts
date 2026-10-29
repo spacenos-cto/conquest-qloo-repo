@@ -220,7 +220,13 @@ async function xray(name: string, who: { ids?: string; text?: string }, yt: stri
       const r: any = await rehearseReport(name, { ids: who.ids, text: `${v.title}. ${v.description}` });
       if (r.status !== "ok") return { status: r.status, channel, coverage: r.coverage };
       const dz = r.tribe?.deadZones ?? [];
-      videos.push({ ...v, mean: Math.round(r.aggregate.mean * 10) / 10, pct45: r.aggregate.pct45, top: r.split?.top ? { city: r.split.top.metro, mean: Math.round(r.split.top.mean * 10) / 10 } : null, bottom: r.split?.bottom ? { city: r.split.bottom.metro, mean: Math.round(r.split.bottom.mean * 10) / 10 } : null, appeals: r.stimulus?.appeals ?? [], deadZones: dz.length, firstDead: dz[0] ? Math.round((dz[0].start / Math.max(1, (r.tribe?.points?.length ?? 25) - 1)) * 100) : null, brain: r.tribe?.points ?? [] });
+      // how the brain model and the panel reacted, compact enough to draw per video
+      const lit = (a: number[] = []) => { const k = (x: number) => Math.max(0, Math.min(100, Math.round(((x - 22) / 70) * 100))); return a.length ? { avg: k(a.reduce((s, x) => s + x, 0) / a.length), peak: k(Math.max(...a)) } : { avg: 0, peak: 0 }; };
+      const regions = Object.fromEntries(Object.entries(r.tribe?.regions ?? {}).map(([k, a]) => [k, lit(a as number[])]));
+      const scores: number[] = (r.reactions ?? []).map((x: [string, number]) => x[1]);
+      const hist = [1, 2, 3, 4, 5].map((s) => Math.round((scores.filter((x) => Math.round(x) === s).length / Math.max(1, scores.length)) * 100));
+      const quote = r.aggregate.quotes?.[0] ?? null, why = (r.aggregate.reasons ?? []).filter((x: any) => x.element !== "overall").slice(0, 2);
+      videos.push({ ...v, regions, hist, quote, why,mean: Math.round(r.aggregate.mean * 10) / 10, pct45: r.aggregate.pct45, top: r.split?.top ? { city: r.split.top.metro, mean: Math.round(r.split.top.mean * 10) / 10 } : null, bottom: r.split?.bottom ? { city: r.split.bottom.metro, mean: Math.round(r.split.bottom.mean * 10) / 10 } : null, appeals: r.stimulus?.appeals ?? [], deadZones: dz.length, firstDead: dz[0] ? Math.round((dz[0].start / Math.max(1, (r.tribe?.points?.length ?? 25) - 1)) * 100) : null, brain: r.tribe?.points ?? [] });
     }
     const avg = videos.reduce((s, v) => s + v.mean, 0) / videos.length;
     // compare against views per day, so a 2-day-old clip is not judged against a 2-week-old episode

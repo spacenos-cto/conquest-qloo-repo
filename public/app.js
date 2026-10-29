@@ -572,7 +572,9 @@ const MapView = (() => {
   });
   // ownership changed: snapshot the old layer for the flood animation, draw the new one
   function flip(p) { const old = G.layer; relayer(); if (old && p) G.anim = { old, p, t0: performance.now() }; }
-  return { frame, flip, relayer, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
+  // for drags that start outside the map: which city is under this viewport point?
+  const pick = (cx, cy) => { const r = cv.getBoundingClientRect(), x = cx - r.left, y = cy - r.top; if (!G || x < 0 || y < 0 || x > r.width || y > r.height) return null; return { city: hit([x, y]), pt: [x * d, y * d] }; };
+  return { frame, flip, relayer, pick, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
 })();
 
 // the city an order marches from: your nearest held city, else the capital
@@ -823,7 +825,43 @@ const Radar = (() => {
   return { frame };
 })();
 // every rival: what they hold, what they're doing this week, and what happens if you do nothing
+const LV_LABEL = { SIEGE: "Under siege", HIGH: "Attacking", MED: "Attacking", LOW: "Calm", ALLY: "Ally" };
 function threatReport() {
+  const RANK = { SIEGE: 0, HIGH: 1, MED: 2, LOW: 3, ALLY: 4 };
+  const fs = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]);
+  const cards = fs.map((f) => {
+    const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id);
+    const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name);
+    const mo = G.fame.get(f.name)?.momentum, at = strikeCity(f), cityOf = (n) => G.cities.find((c) => c.name === n);
+    let now, risk, rc = "";
+    if (f.allied) { now = "Allied: they fight at your side."; risk = "No risk."; }
+    else if (sg) { now = `Besieging your ${sg.city}. It falls in ${sg.left} week${sg.left > 1 ? "s" : ""}.`; risk = `You lose ${sg.city} and ${pts(cityOf(sg.city))}% conquest.`; rc = "bad"; }
+    else if (it && !G.forts.has(it.city)) { now = `Marching on your ${it.city}. Arrives Sunday.`; risk = `A 2-week siege starts: ${pts(cityOf(it.city))}% conquest at stake.`; rc = "warn"; }
+    else if (it) { now = `Marching on ${it.city}, but your walls are up.`; risk = "Their attack bounces off."; }
+    else { now = "No attack planned this week."; risk = "Nothing, for now."; }
+    const acts = [];
+    if (sg) { const i = G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city); if (i >= 0) acts.push(`<button class="go" data-tdef="${i}">🛡 Defend ${esc(sg.city)} · ⚡${COST.defend}</button>`); }
+    if (it && !G.forts.has(it.city)) acts.push(`<button class="ghostbtn" data-fort="${esc(it.city)}" ${G.gold >= 80 ? "" : "disabled"}>🛡 Build walls in ${esc(it.city)} · 🪙80</button>`);
+    if (!f.allied) {
+      acts.push(`<button class="ghostbtn" data-strike="${esc(f.id)}" ${at && G.buzz >= 4 ? "" : "disabled"}>⚔ ${at ? "Strike their " + esc(at.name) + " · ⚡4" : "Strike (they hold no city yet)"}</button>`);
+      acts.push(`<button class="ghostbtn" data-parley="${esc(f.id)}">🕊 Offer a deal</button>`);
+    }
+    return `<div class="trc ${lv}" style="--c:${f.allied ? COL.allied : f.col}">
+      <div class="trc-h">${avatar(f.img, f.name, "fp")}<div><b>${esc(f.name)}</b><small>${held.length ? "Holds " + esc(held.slice(0, 3).join(", ")) : "Holds no cities yet"}${mo != null ? ` · fame ${mo >= 0 ? "▲" : "▼"}${Math.abs(mo)}%` : ""}</small></div><span class="lv2">${LV_LABEL[lv]}</span></div>
+      <dl><dt>This week</dt><dd>${esc(now)}</dd><dt>If you do nothing</dt><dd class="${rc}">${esc(risk)}</dd></dl>
+      ${acts.length ? `<div class="trc-a">${acts.join("")}</div>` : ""}</div>`;
+  }).join("");
+  const hot = fs.filter((f) => ["SIEGE", "HIGH", "MED"].includes(threatLevel(f)));
+  const head = hot.length ? `<div class="tr-sum bad"><b>${hot.length} rival${hot.length > 1 ? "s" : ""} coming for you</b><span>Act before Sunday midnight, when attacks land.</span></div>` : `<div class="tr-sum"><b>All quiet this week</b><span>No rival is attacking you. A good week to strike first.</span></div>`;
+  return head + cards + `<p class="note" style="margin-top:12px">Rivals are real performers your fans also follow (from Qloo). Their moves are simulated from their real fan footprints and Wikipedia momentum.</p>`;
+}
+function bindThreats() {
+  $$("#drawer-b [data-tdef]").forEach((b) => b.addEventListener("click", () => { execute(+b.dataset.tdef); Drawer.render(); }));
+  $$("#drawer-b [data-fort]").forEach((b) => b.addEventListener("click", () => { fortify(b.dataset.fort); Drawer.render(); }));
+  $$("#drawer-b [data-strike]").forEach((b) => b.addEventListener("click", () => strike(b.dataset.strike)));
+  $$("#drawer-b [data-parley]").forEach((b) => b.addEventListener("click", () => { const f = G.fac.get(b.dataset.parley); if (f) parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); }));
+}
+function threatReportOld() {
   const rows = [...G.fac.values()].map((f) => {
     const it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id), ct = it && G.cities.find((c) => c.name === it.city);
     const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name);
@@ -836,13 +874,16 @@ function threatReport() {
 }
 function threatLevel(f) {
   if (f.allied) return "ALLY";
+  if (G.sieges.some((x) => x.fid === f.id)) return "SIEGE";
   const it = G.intents.find((x) => x.fid === f.id);
   if (it && !G.forts.has(it.city)) return f.strategy === "compete" || (G.fame.get(f.name)?.momentum ?? 0) > 10 ? "HIGH" : "MED";
   return "LOW";
 }
 function renderThreats() {
-  if (!G || !$("#threats")) return;
-  const RANK = { HIGH: 0, MED: 1, LOW: 2, ALLY: 3 };
+  if (!G) return;
+  if (typeof Drawer !== "undefined" && Drawer.mode === "radar") { $("#drawer-b").innerHTML = threatReport(); bindThreats(); }
+  if (!$("#threats")) return;
+  const RANK = { SIEGE: 0, HIGH: 1, MED: 2, LOW: 3, ALLY: 4 };
   $("#threats").innerHTML = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]).map((f) => {
     const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), mo = G.fame.get(f.name)?.momentum;
     const strikeAt = strikeCity(f);
@@ -851,7 +892,7 @@ function renderThreats() {
       (it ? '<button data-fort="' + esc(it.city) + '" ' + (G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled") + ' title="Fortify ' + esc(it.city) + ' (80 gold): their attack bounces">🛡</button>' : "") +
       '<button data-strike="' + esc(f.id) + '" ' + (strikeAt && G.buzz >= 4 ? "" : "disabled") + ' title="' + (strikeAt ? "Strike first in " + esc(strikeAt.name) + " (4 buzz)" : "They hold no city to hit") + '">⚔</button>' +
       '<button data-parley="' + esc(f.id) + '" title="Parley: offer a partnership">🕊</button></div>';
-    return '<div class="threat' + (lv === "HIGH" ? " hi" : "") + '" style="--c:' + (f.allied ? COL.allied : f.col) + '"><span class="lv ' + lv + '">' + lv + '</span><div class="th">' + avatar(f.img, f.name, "fp") + '<span class="nmx">' + esc(f.name) + (mo != null ? ' <small style="color:var(--ash)">' + (mo >= 0 ? "▲" : "▼") + Math.abs(mo) + "%</small>" : "") + "</span></div><p>" + esc(why) + "</p>" + btns + "</div>";
+    return '<div class="threat' + (lv === "HIGH" || lv === "SIEGE" ? " hi" : "") + '" style="--c:' + (f.allied ? COL.allied : f.col) + '"><span class="lv ' + lv + '">' + lv + '</span><div class="th">' + avatar(f.img, f.name, "fp") + '<span class="nmx">' + esc(f.name) + (mo != null ? ' <small style="color:var(--ash)">' + (mo >= 0 ? "▲" : "▼") + Math.abs(mo) + "%</small>" : "") + "</span></div><p>" + esc(why) + "</p>" + btns + "</div>";
   }).join("");
   $$("[data-fort]").forEach((b) => b.addEventListener("click", () => fortify(b.dataset.fort)));
   $$("[data-strike]").forEach((b) => b.addEventListener("click", () => strike(b.dataset.strike)));
@@ -1050,15 +1091,49 @@ function renderAgents() {
     const c = G.crew.get(a.id) ?? {}, hk = HOTKEYS[i];
     let cls = "unit2", tag = "", tip = a.name + ": " + a.role + " (" + a.src + ")";
     if (a.locked) { cls += " locked"; tag = "LOCK"; tip += ". Connect your account to unlock."; }
-    else if (!c.recruited) { cls += " hire" + (G.gold >= a.cost ? " can" : ""); tag = "🪙" + a.cost; tip += ". Click to recruit for " + a.cost + " gold."; }
+    else if (!c.recruited) { cls += " hire" + (G.gold >= a.cost ? " can" : ""); tag = "🪙" + a.cost; tip += ". Click to recruit for " + a.cost + " gold, or drag it onto a city to hire and send it."; }
     else if (c.busy) { cls += " busy"; tag = "WORK"; tip += ". Working with live data."; }
     else if (G.army.get(a.id)?.state === "moving") { cls += " busy"; tag = "MOVE"; tip += ". On the march."; }
     else if (c.week === G.week) { cls += " rest"; tag = "WK " + (G.week + 1); tip += ". Back next week."; }
     else { cls += " ready"; tag = G.army.get(a.id)?.state === "stationed" ? "HOLD" : "GO"; tip += ". Click to select, then click a city on the map (or drag this tile onto one)."; }
     return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '" style="' + agentGrad(a.id) + '"><span class="hk">' + hk + '</span><span class="face emo">' + a.icon + '</span><span class="nm2">' + a.name + '</span><span class="pr">' + tag + "</span></button>";
   }).join("");
-  $$("[data-unit]").forEach((b) => { b.addEventListener("click", () => unitAction(b.dataset.unit)); if (G.crew.get(b.dataset.unit)?.recruited) { b.draggable = true; b.addEventListener("dragstart", (e) => { G.dragTile = b.dataset.unit; e.dataTransfer.setData("text/plain", b.dataset.unit); }); b.addEventListener("dragend", () => (G.dragTile = null)); } });
+  $$("[data-unit]").forEach((b) => { b.addEventListener("click", () => { if (!b._dragged) unitAction(b.dataset.unit); }); tileDrag(b); });
   $$("[data-unit]").forEach((b) => b.classList.toggle("sel", G.selected?.type === "unit" && G.selected.id === b.dataset.unit));
+}
+// Drag a tile onto a city: a ghost follows the pointer and the map previews
+// the march. Dropping an agent you haven't hired yet hires it first.
+function tileDrag(b) {
+  b.addEventListener("pointerdown", (e) => {
+    const id = b.dataset.unit, a = AGENTS.find((x) => x.id === id);
+    if (e.button !== 0 || !G || G.over || !a || a.locked) return;
+    const x0 = e.clientX, y0 = e.clientY; let ghost = null, target = null;
+    const move = (ev) => {
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+        ghost = document.createElement("div"); ghost.className = "dragghost"; ghost.style.cssText = agentGrad(id);
+        ghost.innerHTML = `<span class="face emo">${a.icon}</span><span><b>${esc(a.name)}</b><small>Drag onto a city</small></span>`;
+        document.body.appendChild(ghost); document.body.classList.add("dragging-agent"); closeUnitPop?.();
+        if (G.army.has(id)) select({ type: "unit", id });
+      }
+      ghost.style.transform = `translate(${ev.clientX + 14}px, ${ev.clientY + 14}px)`;
+      const pk = MapView.pick(ev.clientX, ev.clientY); target = pk?.city ?? null; G.hoverCity = target;
+      G.drag = pk && G.army.has(id) ? { id, pt: pk.pt, x0: 0, y0: 0, moved: true, tile: true } : null;
+      const hire = !G.crew.get(id)?.recruited;
+      ghost.querySelector("small").textContent = target ? `Send to ${target.name}${hire ? ` · hire for 🪙${a.cost}` : ""}` : pk ? "Drop it on a city" : "Drag onto a city on the map";
+      ghost.classList.toggle("ok", !!target); ghost.classList.toggle("no", !!target && hire && G.gold < a.cost);
+    };
+    const up = () => {
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
+      if (!ghost) return;
+      ghost.remove(); document.body.classList.remove("dragging-agent"); G.drag = null; G.hoverCity = null;
+      b._dragged = true; setTimeout(() => (b._dragged = false), 60);
+      if (!target) return;
+      if (!G.crew.get(id)?.recruited) { if (G.gold < a.cost) return toast(`You need 🪙${a.cost} to hire the ${a.name}.`); recruit(id); }
+      sendUnit(id, target);
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  });
 }
 function unitAction(id) {
   const a = AGENTS.find((x) => x.id === id), c = G.crew.get(id); if (!a || !G || G.over) return;
@@ -1360,7 +1435,7 @@ function rivalPanel(f) {
 // rival portraits down the right edge of the map, and the scoreboard (Rise of Nations style)
 function renderRivalStrip() {
   if (!G) return;
-  $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: threat ${lv}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${lv}</span></button>`; }).join("");
+  $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" || lv === "SIEGE" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: threat ${lv}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${lv}</span></button>`; }).join("");
   $$("[data-rv]").forEach((b) => b.addEventListener("click", () => select({ type: "rival", id: b.dataset.rv })));
   const rows = [{ name: G.player.name, col: COL.you, age: ageOf(G.conquest)[1], pct: G.conquest, sc: score() }]
     .concat([...G.fac.values()].map((f) => { const n = G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, pct = Math.round((n / Math.max(1, ground())) * 100), fm = G.fame.get(f.name); return { name: f.name, col: f.allied ? COL.allied : f.col, age: ageOf(pct)[1], pct, sc: Math.round(pct * 100 + (fm?.views ?? 0) / 20) }; }))
@@ -1705,6 +1780,23 @@ function brainSpark(points, dead) {
   const P = points.map((v, i) => `${(i / n) * W},${H - 3 - ((v - min) / Math.max(1, max - min)) * (H - 8)}`).join(" ");
   return `<svg viewBox="0 0 ${W} ${H}" class="spark" aria-label="Predicted brain response across the video">${(dead ?? []).map((z) => `<rect x="${(z.start / n) * W}" y="0" width="${Math.max(3, ((z.end - z.start) / n) * W)}" height="${H}" fill="rgba(255,92,122,.18)"/>`).join("")}<polyline points="${P}" fill="none" stroke="#e1bdff" stroke-width="1.6"/></svg>`;
 }
+// a side-view brain: each region lights up as strongly as the model predicts
+const BRAIN_AREAS = { attention: "M22 46c-2-16 10-30 28-32 6 0 10 4 10 10l-2 22-20 8z", language: "M40 54l18-8 14 2 6 12-10 8-22-2z", auditory: "M44 66l24 2 14-6 6 10c-6 8-20 10-34 6z", visual: "M78 26c14 2 26 12 26 28 0 8-6 14-14 14l-10-8-4-14z" };
+function brainFig(rg) {
+  const out = "M18 52C12 30 32 10 56 12c26-6 52 8 52 34 0 16-12 24-22 24-6 10-22 14-34 8-18 4-30-8-34-26z";
+  return `<svg viewBox="0 0 120 86" class="bfig" aria-label="Predicted brain response by region"><defs><clipPath id="bclip"><path d="${out}"/></clipPath></defs><path d="${out}" fill="#15121d" stroke="rgba(225,189,255,.35)" stroke-width="1.4"/><g clip-path="url(#bclip)">${Object.entries(BRAIN_AREAS).map(([k, d]) => `<path d="${d}" fill="${REGIONS[k].col}" opacity="${(0.12 + 0.88 * (rg?.[k]?.avg ?? 0) / 100).toFixed(2)}"/>`).join("")}</g><path d="M40 30c8 4 10 12 6 20M62 20c4 8 2 16-4 22M84 30c-2 8 2 14 8 18" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.6"/><path d="M84 70c6 6 16 6 20-2" fill="#15121d" stroke="rgba(225,189,255,.3)" stroke-width="1.2"/></svg>`;
+}
+function reactionHtml(v) {
+  if (!v.regions) return "";
+  const strongest = Object.entries(v.regions).sort((a, b) => b[1].avg - a[1].avg)[0];
+  const bars = Object.entries(REGIONS).map(([k, r]) => { const x = v.regions[k]?.avg ?? 0; return `<div class="rg" style="--c:${r.col}"><span>${r.name}</span><i><u style="width:${x}%"></u></i><b>${x}%</b></div>`; }).join("");
+  const LBL = ["Hate", "Meh", "OK", "Like", "Love"], top = Math.max(1, ...(v.hist ?? [1]));
+  const hist = (v.hist ?? []).map((p, i) => `<div class="hb"><i style="height:${Math.max(4, (p / top) * 100)}%;background:${["#ff5c7a", "#ff9f43", "#8a8d96", "#b27dff", "#2fd3a5"][i]}"></i><b>${p}%</b><span>${LBL[i]}</span></div>`).join("");
+  return `<div class="react">
+    <div class="rc"><div class="rc-t">🧠 How the brain reacted</div><div class="rc-b">${brainFig(v.regions)}<div class="rgs">${bars}</div></div><small>Lights up most: <b>${REGIONS[strongest[0]].name.toLowerCase()}</b>${v.deadZones ? `, with ${v.deadZones} attention dip${v.deadZones > 1 ? "s" : ""} (red in the curve)` : ", no attention dips"}.</small></div>
+    <div class="rc"><div class="rc-t">👥 How 1,000 fans reacted</div><div class="hist">${hist}</div>${v.quote ? `<q>${esc(v.quote.text)}</q><small>— ${esc(v.quote.persona)}</small>` : ""}${v.why?.length ? `<small>What they reacted to: ${v.why.map((w) => esc(w.element)).join(", ")}</small>` : ""}</div>
+  </div>`;
+}
 function verdictFor(v, avg) {
   const d = v.mean - avg;
   const what = d >= 0.05 ? `Above your average: expect it to outperform with your core fans, strongest in ${v.top?.city ?? "your best city"}.` : d <= -0.05 ? `Below your average: likely to underperform${v.bottom ? `; ${v.bottom.city} cools on it` : ""}.` : `In line with your average: a steady performer${v.top ? `, best in ${v.top.city}` : ""}.`;
@@ -1729,6 +1821,7 @@ function xrayHtml() {
     r.videos.map((v, i) => { const vd = verdictFor(v, r.avg); return `<div class="xv">${v.thumb ? `<img src="${esc(v.thumb)}" alt="" loading="lazy">` : ""}<div class="xb"><a href="https://youtube.com/watch?v=${esc(v.videoId)}" target="_blank" rel="noopener">${esc(v.title)}</a>
       <div class="chips"><span>${v.views.toLocaleString()} real views${v.perDay ? ` · ${kfmt(v.perDay)}/day` : ""}</span><span class="g">${v.mean}/5 predicted</span><span>${v.pct45}% love it</span>${v.appeals.slice(0, 2).map((a) => `<span>${esc(a)}</span>`).join("")}</div>
       ${brainSpark(v.brain, v.deadZones ? [{ start: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)), end: Math.round(((v.firstDead ?? 40) / 100) * (v.brain.length - 1)) + 2 }] : [])}
+      ${reactionHtml(v)}
       <p><b>What would happen:</b> ${esc(vd.what)}</p><p><b>Change:</b> ${esc(vd.fix)}.</p>
       <button class="ghostbtn" data-xm="${i}" style="margin:6px 0 0">📋 Make it a real mission</button></div></div>`; }).join("") + `<p class="note">${esc(r.source)}. Predictions are simulated; the view counts are real.</p>` + test;
 }
@@ -1927,7 +2020,7 @@ const Drawer = {
       $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
-    else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); renderThreats(); }
+    else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); bindThreats(); }
     else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); if (!G.xray && !G.xrayBusy && !G.xrayAuto) { G.xrayAuto = true; ensureChannel().then(() => { if (G.xrayHandle) runXray(G.xrayHandle); else this.render(); }); } }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
     else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $$("[data-real]").forEach((x) => x.addEventListener("click", () => markReal(x.dataset.real))); $("#moves-ics").onclick = downloadIcs; $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
