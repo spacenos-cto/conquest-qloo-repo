@@ -143,15 +143,18 @@ export async function liveCall(
       }
 
       case "recommend": {
-        const d = await insights({
+        const q: Record<string, string | number> = {
           "filter.type": "urn:entity:" + String(params.target_type),
           "signal.interests.entities": params.entity,
-          take: 12,
-        });
+          take: Number(params.take ?? 12),
+        };
+        if (params.location) q["filter.location.query"] = String(params.location);
+        const d = await insights(q);
         return ok(
           (d.results?.entities ?? []).map((e: any) => ({
             name: e.name,
             affinity: e.query?.affinity ?? e.popularity ?? 0,
+            id: e.entity_id,
           })),
         );
       }

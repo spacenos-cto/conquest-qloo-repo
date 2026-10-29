@@ -7,6 +7,7 @@ import {
   rehearseReport,
   ablationReport,
   backtestReport,
+  partnerReport,
   youtubeBacktestReport,
   trendsCheckReport,
   serverInfo,
@@ -48,6 +49,18 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await ablationReport(name)));
       case "/api/backtest":
         return send(res, 200, JSON.stringify(backtestReport()));
+      case "/api/partners":
+        return send(
+          res,
+          200,
+          JSON.stringify(
+            await partnerReport(
+              name,
+              url.searchParams.get("kind") ?? "people",
+              url.searchParams.get("location") ?? undefined,
+            ),
+          ),
+        );
       case "/api/backtest-youtube":
         return send(res, 200, JSON.stringify(await youtubeBacktestReport()));
       case "/api/trends-check":

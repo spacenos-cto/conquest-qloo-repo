@@ -8,6 +8,7 @@ import { aggregate, citySplit } from "../panel/aggregate.js";
 import { checkClaims } from "../panel/claimcheck.js";
 import { makeVerdicts } from "../panel/verdict.js";
 import { pickStimulus } from "../panel/stimuli.js";
+import { findPartners } from "../grow/partners.js";
 import { tribeStrip } from "../tribe/strip.js";
 import { ablation } from "../proof/ablation.js";
 import { runBacktest } from "../proof/backtest.js";
@@ -140,6 +141,17 @@ export async function ablationReport(name: string) {
 /** Scene 5: the backtest. */
 export function backtestReport() {
   return { status: "ok", ...runBacktest() };
+}
+
+/** Grow: partners to barter with for new reach (people / venues / brands). */
+export async function partnerReport(name: string, kind = "people", location?: string) {
+  const res: any = await fingerprintFor(name);
+  if (res.candidates) return { status: "needs_input", candidates: res.candidates };
+  if (res.empty) return { status: "empty" };
+  const { fp, runId } = res;
+  if (!fp.coverage.ok) return { status: "refused", coverage: fp.coverage };
+  const partners = await findPartners(gateway, fp, runId, kind, location);
+  return { status: "ok", audience: fp.audience, kind, location: location ?? null, partners, receipts: receiptsFor(runId) };
 }
 
 /** Scene 5: the real-world YouTube backtest, as last run from the CLI (the server never spends quota). */

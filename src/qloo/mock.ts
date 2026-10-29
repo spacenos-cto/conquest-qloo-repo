@@ -213,8 +213,12 @@ export async function mockCall(
         brand: c.brands,
         podcast: c.podcasts,
         movie: c.films,
+        // partner pools for the "grow" action
+        person: ["Anthony Anderson", "Nia Long", "Kym Whitley", "MC Lyte", "Regina King", "Larenz Tate"],
+        place: ["Boogalou Lounge", "Krab Queenz", "Nouveau Bar & Grill", "Harold's Chicken", "The U Bar", "Suite Lounge"],
       };
-      return ok(aff(pick[t] ?? []));
+      const list = pick[t] ?? [];
+      return ok(aff(list).map((r, i) => ({ ...r, id: `mock:cand:${t}:${i}` })));
     }
     case "trends": {
       const c = caseFor(String(params.entity));

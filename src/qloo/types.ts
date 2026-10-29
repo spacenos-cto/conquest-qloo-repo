@@ -30,6 +30,7 @@ export interface Entity {
 export interface Ranked {
   name: string;
   affinity: number;
+  id?: string; // entity id, when the item is a resolvable entity (for partners)
 }
 
 /** The audience fingerprint that feeds persona sampling. */

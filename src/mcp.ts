@@ -4,6 +4,7 @@ import {
   rehearseReport,
   ablationReport,
   backtestReport,
+  partnerReport,
   youtubeBacktestReport,
   trendsCheckReport,
   serverInfo,
@@ -60,6 +61,20 @@ const TOOLS = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "find_partners",
+    description:
+      "Grow by barter: for an audience, rank partners (people / venues / brands) to cross-promote with. Scores each on a Goldilocks overlap — enough shared taste to convert, enough difference to bring NEW followers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        audience: { type: "string", description: "Audience name" },
+        kind: { type: "string", enum: ["people", "venues", "brands"], description: "Partner kind (default people)" },
+        location: { type: "string", description: "Optional metro for venues" },
+      },
+      required: ["audience"],
+    },
+  },
+  {
     name: "backtest_youtube",
     description:
       "Return the real-world backtest: panel predictions sealed before fetching YouTube engagement, then scored against real likes per 1,000 views (Spearman rho, permutation p) and taste echoes in real comments.",
@@ -91,6 +106,8 @@ async function callTool(name: string, args: any) {
       return asText(await ablationReport(String(args?.audience ?? "")));
     case "backtest":
       return asText(backtestReport());
+    case "find_partners":
+      return asText(await partnerReport(String(args?.audience ?? ""), String(args?.kind ?? "people"), args?.location ? String(args.location) : undefined));
     case "backtest_youtube":
       return asText(await youtubeBacktestReport());
     case "trends_metro_check":
