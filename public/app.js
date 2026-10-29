@@ -42,13 +42,15 @@ function countUp(el, to, dec=0, suffix=""){
 }
 
 // ---------- navigation ----------
-const SCENES = ["audience","panel","rehearse","without","proof","receipts"];
+const SCENES = ["director","audience","panel","rehearse","grow","without","proof","receipts"];
 function go(s){
-  if(!SCENES.includes(s)) s="audience";
+  if(!SCENES.includes(s)) s="director";
   document.querySelectorAll(".scene").forEach(x=>x.classList.toggle("active",x.id==="s-"+s));
   document.querySelectorAll(".scene-btn").forEach(b=>b.toggleAttribute("aria-current",b.dataset.s===s));
   try{history.replaceState(null,"","#"+s)}catch(e){}
   window.scrollTo({top:0});
+  if(s==="director") loadDirector();
+  if(s==="grow") loadGrow();
   if(s==="without") loadAblation();
   if(s==="proof") loadProof();
 }
@@ -61,6 +63,7 @@ $("#askform").onsubmit=(e)=>{e.preventDefault();const v=$("#aud").value.trim();i
 
 async function selectAudience(name, btn){
   current = name;
+  directorFor=null; growFor=null; // re-run the agent / partners for the new audience
   document.querySelectorAll(".case").forEach(c=>c.setAttribute("aria-pressed", c===btn ? "true":"false"));
   cache[name] = cache[name] || {};
   $("#aud-body").className=""; $("#aud-body").innerHTML='<div class="loading">Fingerprinting '+esc(name)+'… asking Qloo.</div>';
@@ -115,7 +118,7 @@ function renderPanel(d){
   </defs><rect width="1000" height="600" fill="url(#vg)"/>`;
   // metro halos sized by weight (the "where the crowd is" glow)
   let halos="";
-  Object.entries(d.metros).forEach(([m,w])=>{const co=METROS[m];if(!co)return;const[x,y]=proj(co[0],co[1]);halos+=`<circle cx="${x}" cy="${y}" r="${(12+w*34).toFixed(0)}" fill="var(--accent)" fill-opacity="${(0.03+w*0.05).toFixed(3)}"/>`;});
+  Object.entries(d.metros).forEach(([m,w],i)=>{const co=METROS[m];if(!co)return;const[x,y]=proj(co[0],co[1]);halos+=`<circle class="halo" style="animation-delay:${(i*0.12).toFixed(2)}s" cx="${x}" cy="${y}" r="${(12+w*34).toFixed(0)}" fill="var(--accent)" fill-opacity="${(0.04+w*0.06).toFixed(3)}"/>`;});
   svg.insertAdjacentHTML("beforeend",`<g>${halos}</g>`);
   // the 1,000 respondents
   let dots="";
@@ -170,7 +173,10 @@ function drawStrip(t){
   const my=y(t.mean);
   const pts=t.points.map((p,i)=>`${(i*step).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
   let zones="";t.deadZones.forEach(z=>{zones+=`<rect x="${z.start*step}" y="0" width="${(z.end-z.start)*step}" height="${H}" fill="var(--bad)" fill-opacity=".09"/><text x="${z.start*step+4}" y="13" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--bad)">dead zone</text>`;});
-  svg.innerHTML=grid+zones+`<line x1="0" x2="${W}" y1="${my}" y2="${my}" stroke="var(--faint)" stroke-dasharray="4 4"/><polygon fill="var(--accent)" fill-opacity=".12" points="0,${H} ${pts} ${W},${H}"/><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${pts}"/>`;
+  svg.innerHTML=grid+zones+`<line x1="0" x2="${W}" y1="${my}" y2="${my}" stroke="var(--faint)" stroke-dasharray="4 4"/><polygon fill="var(--accent)" fill-opacity=".12" points="0,${H} ${pts} ${W},${H}"/><polyline id="brainline" fill="none" stroke="var(--accent)" stroke-width="2.5" points="${pts}"/>`;
+  // animate the waveform drawing left→right
+  const line=svg.querySelector("#brainline");
+  if(line&&line.getTotalLength){const L=line.getTotalLength();line.style.strokeDasharray=L;line.style.strokeDashoffset=L;line.getBoundingClientRect();line.style.transition="stroke-dashoffset 1s ease";line.style.strokeDashoffset="0";}
 }
 
 // ---------- scene 4 ----------
@@ -243,6 +249,50 @@ async function realWorldHTML(){
   return h;
 }
 
+// ---------- director (the agent) ----------
+let directorFor=null, growFor=null, growKind="people";
+$("#run-director").onclick=()=>{directorFor=null;loadDirector();};
+async function loadDirector(){
+  if(directorFor===current) return; directorFor=current;
+  const trace=$("#dir-trace"), plan=$("#dir-plan"), base=$("#dir-base");
+  trace.className=""; trace.innerHTML='<div class="loading">The agent is working on '+esc(current)+'…</div>';
+  plan.innerHTML=""; base.textContent="—";
+  const d=await getJSON("/api/director?name="+encodeURIComponent(current)+"&goal="+encodeURIComponent($("#goal").value||""));
+  if(d.status!=="ok"){trace.innerHTML='<div class="card">Agent can\'t run: '+(d.status||"error")+'</div>';return;}
+  base.innerHTML=`${d.audience.name} · baseline <b>${d.baseline.score.toFixed(1)}</b>/5`+(d.baseline.split?` · softest room <b>${esc(d.baseline.split.bottom.metro)}</b>`:"");
+  // stream the steps in, like the agent thinking
+  trace.innerHTML="";
+  d.steps.forEach((st,i)=>setTimeout(()=>{
+    const el=document.createElement("div");el.className="step";
+    el.innerHTML=`<div class="num">${st.n}</div><div><div class="act">${esc(st.action)} <span class="tool">${esc(st.tool||"")}</span></div><div class="obs">${esc(st.observed||"")}</div>${st.decided?`<div class="dec">${esc(st.decided)}</div>`:""}</div>`;
+    trace.appendChild(el);
+    if(i===d.steps.length-1) renderPlan(d.plan);
+  }, i*650));
+}
+function renderPlan(items){
+  const plan=$("#dir-plan");plan.innerHTML="";
+  (items||[]).forEach((p,i)=>setTimeout(()=>{
+    const el=document.createElement("div");el.className="plan-item";
+    el.innerHTML=`<div><span class="lever ${p.lever}">${p.lever==="edit"?"EDIT":"GROW"}</span><b>${esc(p.title)}</b></div><div class="muted" style="font-size:13px;margin-top:4px">${esc(p.detail)}</div><div class="rc">receipt · ${esc(p.receipt)}</div>`;
+    plan.appendChild(el);
+  }, i*200));
+}
+
+// ---------- grow (partners) ----------
+document.querySelectorAll(".kind").forEach(b=>b.onclick=()=>{growKind=b.dataset.kind;document.querySelectorAll(".kind").forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));growFor=null;loadGrow();});
+$("#run-grow").onclick=()=>{growFor=null;loadGrow();};
+async function loadGrow(){
+  const loc=$("#grow-loc").value.trim();
+  const sig=current+"|"+growKind+"|"+loc;
+  if(growFor===sig) return; growFor=sig;
+  const body=$("#grow-body");body.className="";body.innerHTML='<div class="loading">Scanning Qloo for '+esc(growKind)+' to barter with…</div>';
+  const d=await getJSON("/api/partners?name="+encodeURIComponent(current)+"&kind="+growKind+(loc?"&location="+encodeURIComponent(loc):""));
+  if(d.status!=="ok"){body.innerHTML='<div class="card">'+(d.status==="refused"?"Coverage too thin — Rehearsal won't guess.":"Unavailable.")+'</div>';return;}
+  const pbar=(label,v,col)=>`<div class="pbar"><span class="muted">${label}</span><div class="t"><i style="width:${Math.round(v*100)}%;background:${col}"></i></div><span class="mono">${Math.round(v*100)}%</span></div>`;
+  body.innerHTML=`<p class="muted" style="font-size:13px;margin:0 0 12px">Ranked by <b>barter score</b> — convert × new-reach, peaking at partial overlap. ${d.partners.length} candidates from Qloo.</p>`+
+    d.partners.map(p=>`<div class="partner"><div><div class="b">${p.barter}</div><div class="bl">BARTER</div></div><div><b>${esc(p.name)}</b><div class="pbars">${pbar("convert",p.convert,"var(--info)")}${pbar("overlap",p.overlap,"var(--warn)")}${pbar("new reach",p.netnew,"var(--accent)")}</div><div class="muted" style="font-size:12px;margin-top:6px">${esc(p.why)}</div></div></div>`).join("");
+}
+
 // ---------- receipts ----------
 function renderReceipts(rows){
   $("#rtable").innerHTML=(rows||[]).map(r=>`<tr><td class="mono">${esc(r.ref)}</td><td>${esc(r.workflow)}</td><td class="mono" style="font-size:12px">${esc(r.endpoint)}</td><td><span class="tag ${r.cached?"flat":"fit"}">${r.cached?"cache":"live"}</span></td></tr>`).join("");
@@ -252,5 +302,5 @@ function renderReceipts(rows){
 (async function(){
   try{const h=await getJSON("/api/health");const note=$("#srvnote");note.textContent=`Taste graph: Qloo · ${h.panelN.toLocaleString()}-respondent panel`+(h.qlooMode==="mock"?" · demo dataset":" · live");note.title=`Qloo=${h.qlooMode} · respondents=${h.respondentMode}`;}catch(e){}
   await selectAudience("Cedric the Entertainer", document.querySelector(".case"));
-  go((location.hash||"#audience").slice(1));
+  go((location.hash||"#director").slice(1));
 })();
