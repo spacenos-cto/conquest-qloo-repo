@@ -83,10 +83,46 @@ function stimulusFor(fp: Fingerprint, who: Who) {
 }
 
 /** "Who are you?" — real candidates from Qloo with photo, bio and social handles. */
+// how alike two names are, 0..1 (edit distance, case-insensitive)
+function nameSim(a: string, b: string): number {
+  const x = a.toLowerCase().trim(), y = b.toLowerCase().trim();
+  if (!x || !y) return 0;
+  const d = Array.from({ length: y.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= x.length; i++) {
+    let prev = d[0]!; d[0] = i;
+    for (let j = 1; j <= y.length; j++) { const t = d[j]!; d[j] = Math.min(d[j]! + 1, d[j - 1]! + 1, prev + (x[i - 1] === y[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return 1 - d[y.length]! / Math.max(x.length, y.length);
+}
+const PERFORMER = /person|artist|podcast|tv_show|brand/;
+
+/**
+ * Who-are-you search. Qloo's search matches prefixes, not typos, so when no
+ * result is close to what was typed we also search shorter forms of the
+ * longest word ("calacanus" -> "calacan"). Results are ranked by how close
+ * the name is, then popularity, preferring people, artists, shows and teams
+ * over albums and places. The top pick comes back as didYouMean when it
+ * isn't what was typed.
+ */
 export async function profileReport(name: string) {
   const runId = "profile_" + Date.now();
   const env = await gateway.call("profile", { name }, runId);
-  return { status: env.status === "ok" ? "ok" : env.status, candidates: env.results ?? [] };
+  if (env.status !== "ok") return { status: env.status, candidates: [] };
+  const seen = new Map<string, any>();
+  const add = (list: any[] = []) => { for (const c of list) if (c?.entity_id && !seen.has(c.entity_id)) seen.set(c.entity_id, c); };
+  add(env.results as any[]);
+  if (Math.max(0, ...[...seen.values()].map((c) => nameSim(name, c.name))) < 0.9) {
+    const words = name.trim().split(/\s+/), i = words.reduce((b, w, k) => (w.length > words[b]!.length ? k : b), 0), w = words[i]!;
+    const forms = w.length >= 5 ? [w.length - 2, w.length - 3].map((n) => words.map((x, k) => (k === i ? w.slice(0, n) : x)).join(" ")) : [];
+    for (const f of forms) { const e = await gateway.call("profile", { name: f }, runId); if (e.status === "ok") add(e.results as any[]); }
+  }
+  const score = (c: any) => {
+    const s = nameSim(name, c.name), perf = PERFORMER.test(String(c.type));
+    return (perf || s >= 0.95 ? 0 : -1) + 0.55 * s + 0.25 * (Number(c.popularity) || 0) + (perf ? 0.15 : 0) + (c.socials?.length ? 0.05 : 0);
+  };
+  const ranked = [...seen.values()].sort((a, b) => score(b) - score(a)).slice(0, 6);
+  const top = ranked[0];
+  return { status: "ok", candidates: ranked, didYouMean: top && top.name.toLowerCase() !== name.trim().toLowerCase() ? top.name : null };
 }
 
 function receiptsFor(runId: string) {

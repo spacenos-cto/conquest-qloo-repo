@@ -2897,11 +2897,13 @@ async function findMe(e) {
     const r = await api(`/api/profile?name=${encodeURIComponent(q)}`);
     const list = (r.candidates || []).slice(0, 4);
     if (!list.length) { $("#cands").innerHTML = `<p class="muted">Not on Qloo yet. <button class="ghost" id="to-custom2">Build your own →</button></p>`; $("#to-custom2").onclick = toCustom; return; }
-    $("#cands").innerHTML = list.map(candHtml).join("");
+    $("#cands").innerHTML = (r.didYouMean ? `<p class="dym">Did you mean <b>${esc(r.didYouMean)}</b>?</p>` : "") + list.map(candHtml).join("");
     $$("[data-me]").forEach((b) => b.addEventListener("click", () => {
       const i = +b.dataset.me, c = list[i];
       // the top hit is what the engine resolves by name (and what's prewarmed); others go by id
-      player = { name: c.name, image: c.image, bio: c.bio || TYPE(c.type), socials: c.socials, q: i === 0 ? { name: c.name } : { name: c.name, ids: c.entity_id } };
+      // an exact name match goes by name (what the engine resolves and prewarms); everything else by id
+      const exact = c.name.toLowerCase() === q.trim().toLowerCase() && i === 0;
+      player = { name: c.name, image: c.image, bio: c.bio || TYPE(c.type), socials: c.socials, q: exact ? { name: c.name } : { name: c.name, ids: c.entity_id } };
       $("#who").hidden = true; scan();
     }));
   } catch { $("#cands").innerHTML = `<p class="muted">Search failed. Try again.</p>`; }

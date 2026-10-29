@@ -39,7 +39,8 @@ export class QlooGateway {
     params: Record<string, unknown>,
     runId: string,
   ): Promise<EnvelopeT> {
-    const key = hash(workflow + "|" + stable(params));
+    // mock answers get their own keys, so a mock run can never poison the live cache
+    const key = hash((this.mode === "mock" ? "mock|" : "") + workflow + "|" + stable(params));
 
     const cachedRaw = this.ledger.cacheGet(key);
     if (cachedRaw) {
