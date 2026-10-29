@@ -1409,19 +1409,27 @@ function downloadIcs() {
 function intro() {
   return new Promise((resolve) => {
     const c = G.c, best = c.split?.top, tags = (G.player.aud?.tags ?? []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
-    const bestCity = best && G.cities.find((x) => x.name === best.metro);
-    if (bestCity) G.prep.add(bestCity.name);
-    const powers = [
-      best ? [`Power of ${best.metro}`, `Fans there rate you ${best.mean.toFixed(1)}/5, your best city. It starts prepared: battles there +30%.`] : null,
-      tags.length ? [`Power of your crowd`, `Your fans over-index on ${tags.join(" and ")} (Qloo). Your Copywriter and Scout lean on it.`] : null,
-      [`Treasury`, `8 buzz, 300 gold, 8 weeks on the clock. Cities pay 15 gold a week; stationed agents and caravans pay more.`],
-    ].filter(Boolean);
-    $("#intro-body").innerHTML = `<div class="ibanner">Starting new campaign</div>
-      <div class="igrid"><div><div class="itl">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span>${esc(ageOf(G.conquest)[2])} · ${G.conquest}% of your ground</span></div>
-        <ul class="pow">${powers.map(([h, t]) => `<li><b>${esc(h)}</b>${esc(t)}</li>`).join("")}</ul></div>
-        <div><div class="isub">Other players</div>${[...G.fac.values()].map((f) => `<div class="iop" style="--c:${f.col}">${avatar(f.img, f.name, "fp")}<span><b>${esc(f.name)}</b><small>${f.strategy === "compete" ? "Nemesis: same fans, same taste" : "Shares your crowd: could be an ally"}</small></span></div>`).join("")}
-        <div class="isub" style="margin-top:12px">How you win, for real</div><p class="itip">Every order you execute becomes a real mission for this week. Do it, tick it off, and the game pays you. Your agents' finds (venues, sponsors, podcasts, show nights) land in “This week's moves”.</p></div></div>
-      <button class="go ibegin" id="intro-go">Begin campaign</button>`;
+    const bestCity = best && G.cities.find((x) => x.name === best.metro); if (bestCity) G.prep.add(bestCity.name);
+    const facs = [...G.fac.values()], nem = facs.find((f) => f.strategy === "compete") ?? facs[0], pals = facs.filter((f) => f !== nem);
+    const [, an, aname] = ageOf(G.conquest), goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1);
+    const card = (e, k, h, t) => `<div class="bp"><span class="bp-i emo">${e}</span><div><small>${k}</small><b>${esc(h)}</b><p>${esc(t)}</p></div></div>`;
+    $("#intro-body").innerHTML = `<div class="br">
+      <div class="br-k">CAMPAIGN BRIEFING · ${WEEKS} WEEKS ON THE CLOCK</div>
+      <div class="br-vs">
+        <div class="br-side you">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><small>Age ${an} · ${esc(aname)} · ${G.conquest}%</small></div>
+        <div class="br-x">vs</div>
+        ${nem ? `<div class="br-side foe" style="--c:${nem.col}">${avatar(nem.img, nem.name)}<b>${esc(nem.name)}</b><small>Nemesis · same fans, same taste</small></div>` : "<div></div>"}
+      </div>
+      ${pals.length ? `<div class="br-pals"><small>Could be allies</small>${pals.map((f) => `<span style="--c:${f.col}">${avatar(f.img, f.name, "fp")}${esc(f.name)}</span>`).join("")}</div>` : ""}
+      <div class="br-goal"><div><small>Objective</small><b>Reach ${esc(goal[2])} (${goal[0]}%) before week ${WEEKS}</b></div><div class="xpbar"><i style="width:${Math.min(100, (G.conquest / goal[0]) * 100)}%"></i></div><span>${G.conquest}% → ${goal[0]}%</span></div>
+      <div class="br-pow">
+        ${best ? card("🏙️", "HOME TURF", best.metro, `Fans rate you ${best.mean.toFixed(1)}/5 here, your best city. It starts prepared: battles +30%.`) : ""}
+        ${tags.length ? card("🎯", "YOUR CROWD LOVES", tags.join(" · "), "From Qloo's taste graph. Your Copywriter and Scout lean on it.") : ""}
+        ${card("💰", "TREASURY", "⚡8 buzz · 🪙300 gold", "Cities pay 15 gold a week. Stationed agents and caravans pay more.")}
+      </div>
+      <div class="br-how"><span><b>1</b>Execute orders</span><i>→</i><span><b>2</b>Each becomes a real mission</span><i>→</i><span><b>3</b>Do it for real, tick it, get paid</span></div>
+      <button class="go ibegin" id="intro-go">Begin campaign</button>
+    </div>`;
     $("#intro").hidden = false; G.modal = true;
     $("#intro-go").onclick = () => { $("#intro").hidden = true; G.modal = false; Sound.play("ageup"); resolve(); };
   });
@@ -1663,6 +1671,16 @@ async function runTour() {
 // itself against the videos' real view counts. Instagram, TikTok and X need
 // your account connected, so they're honest "connect" slots.
 const YT_DEFAULT = { "jason calacanis": "@allin" };
+// find the creator's channel automatically (Qloo socials first, then a channel search by name)
+async function ensureChannel() {
+  if (G.xrayHandle || G.ytFound) return;
+  const s = (G.player.socials || []).find((x) => x.network === "youtube"), dflt = YT_DEFAULT[G.player.name.toLowerCase()];
+  if (s || dflt) { G.xrayHandle = s ? "@" + s.handle.replace(/^@/, "") : dflt; return; }
+  const r = await api(`/api/ytfind?name=${encodeURIComponent(G.player.name)}`).catch(() => null);
+  G.ytFound = r?.status === "ok" ? r : { status: "none" };
+  if (r?.status === "ok") G.xrayHandle = r.channels[r.best].handle;
+}
+const handleOf = (net) => { const s = (G.player.socials || []).find((x) => x.network === net); return s ? "@" + String(s.handle).replace(/^@/, "") : null; };
 function ytHandle() {
   const s = (G.player.socials || []).find((x) => x.network === "youtube");
   return G.xrayHandle ?? (s ? "@" + s.handle.replace(/^@/, "") : YT_DEFAULT[G.player.name.toLowerCase()] ?? "");
@@ -1684,7 +1702,9 @@ function verdictFor(v, avg) {
 }
 function xrayHtml() {
   const r = G.xray, h = ytHandle();
-  const plat = `<div class="xp-plat"><span class="on">▶ YouTube <b>live</b></span><span data-lock="Instagram's API needs your account connected (Meta login). Connect to X-ray your Reels.">Instagram · connect</span><span data-lock="TikTok's API needs your account connected. Connect to X-ray your TikToks.">TikTok · connect</span><span data-lock="X's API is paid. Connect your X account to X-ray your posts.">X · connect</span></div>`;
+  const ig = handleOf("instagram"), tt = handleOf("tiktok"), xh = handleOf("twitter");
+  const alts = (G.ytFound?.channels ?? []).filter((c) => c.handle !== h).slice(0, 3);
+  const plat = `<div class="xp-plat"><span class="on">▶ YouTube ${h ? esc(h) : ""} <b>live</b></span><span data-lock="Instagram's API needs your account connected (Meta login). Connect to X-ray your Reels.">Instagram ${ig ? esc(ig) + " " : ""}· connect</span><span data-lock="TikTok's API needs your account connected. Connect to X-ray your TikToks.">TikTok ${tt ? esc(tt) + " " : ""}· connect</span><span data-lock="X's API is paid. Connect your X account to X-ray your posts.">X ${xh ? esc(xh) + " " : ""}· connect</span></div>` + (alts.length ? `<div class="xp-alt">Not your channel? ${alts.map((c) => `<button data-alt="${esc(c.handle)}">${esc(c.title)} <small>${esc(c.handle)}</small></button>`).join("")}</div>` : "");
   const form = `<form class="xp-form" id="xp-form"><input id="xp-h" value="${esc(h)}" placeholder="YouTube @handle or channel URL" aria-label="YouTube channel"><button class="go" type="submit" style="width:auto;margin:0">X-ray my last 6 videos</button></form>`;
   const test = `<div class="dgroup">TEST YOUR NEXT POST BEFORE YOU PUBLISH</div><form class="xp-form col" id="xp-test"><textarea id="xp-t" rows="3" placeholder="Paste a title, caption or script"></textarea><button class="ghostbtn" type="submit" style="margin:0">Predict it</button></form><div id="xp-tr"></div>`;
   if (G.xrayBusy) return plat + form + `<p class="note" style="margin-top:12px">Reading your channel and playing each video to 1,000 simulated fans…</p>` + test;
@@ -1716,6 +1736,7 @@ async function testPost(text) {
   ops(`<span class="ag">🎬 X-ray</span> tested a new post · ${v.mean}/5 predicted`);
 }
 function bindXray() {
+  $$("[data-alt]").forEach((b) => b.addEventListener("click", () => runXray(b.dataset.alt)));
   $("#xp-form")?.addEventListener("submit", (e) => { e.preventDefault(); const h = $("#xp-h").value.trim(); if (h) runXray(h); });
   $("#xp-test")?.addEventListener("submit", (e) => { e.preventDefault(); const t = $("#xp-t").value.trim(); if (t) testPost(t); });
   $$("#drawer-b [data-lock]").forEach((b) => b.addEventListener("click", () => toast(b.dataset.lock)));
@@ -1893,7 +1914,7 @@ const Drawer = {
       $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
     } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
     else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); renderThreats(); }
-    else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); }
+    else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); if (!G.xray && !G.xrayBusy && !G.xrayAuto) { G.xrayAuto = true; ensureChannel().then(() => { if (G.xrayHandle) runXray(G.xrayHandle); else this.render(); }); } }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
     else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $$("[data-real]").forEach((x) => x.addEventListener("click", () => markReal(x.dataset.real))); $("#moves-ics").onclick = downloadIcs; $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
   },
@@ -2486,7 +2507,7 @@ const qs = (o) => new URLSearchParams(o).toString();
 async function scan() {
   $("#site").hidden = true; $("#scan").hidden = false; Field.setMode("scan"); scrollTo(0, 0); Neuro.reset();
   $("#scan-who").innerHTML = `${avatar(player.image, player.name)}<div><div class="label">Commander</div><div style="font-size:22px">${esc(player.name)}</div></div>`;
-  const socials = (player.socials || []).filter((s) => s.network !== "imdb");
+  const socials = (player.socials || []).filter((s) => ["instagram", "twitter", "youtube", "tiktok"].includes(s.network));
   const S = [
     { t: "Found you", s: socials.length ? "Linked your channels." : player.custom ? "Built your audience from the acts you picked." : "Found you on Qloo.", src: [["Qloo", 1], ...socials.map((x) => [`${x.network} @${x.handle}`, 1])] },
     { t: "Reading your audience", s: "Who your fans are and what else they love." },
@@ -2497,7 +2518,7 @@ async function scan() {
     { t: "Planning your campaign", s: "Ranking the orders that grow you fastest." },
   ];
   $("#ssteps").innerHTML = S.map((x, i) => `<div class="sstep" id="ss${i}"><i></i><div><b>${esc(x.t)}</b><span>${esc(x.s)}</span>${x.src ? `<div class="src">${x.src.map(([n, live]) => `<em class="${live ? "live" : ""}">${esc(n)}</em>`).join("")}</div>` : ""}</div></div>`).join("") + `<p class="note" style="margin-top:12px">A new name takes about 30 seconds: around 100 live Qloo calls.</p>`;
-  const set = (i, cls, text) => { const el = $("#ss" + i); el.className = "sstep " + cls; if (cls === "done") el.querySelector("i").textContent = "✓"; if (cls === "wait") el.querySelector("i").textContent = "!"; if (text) el.querySelector("span").textContent = text; Sound.play("tick"); $("#scanbar").style.width = Math.round(($$(".sstep.done,.sstep.wait").length / S.length) * 100) + "%"; };
+  const set = (i, cls, text) => { const el = $("#ss" + i); el.className = "sstep " + cls; if (cls === "done") el.querySelector("i").textContent = "✓"; if (cls === "wait") el.querySelector("i").textContent = "!"; if (text) el.querySelector("span").textContent = text; Sound.play("tick"); const pc = Math.round(($$(".sstep.done,.sstep.wait").length / S.length) * 100); $("#scanbar").style.width = pc + "%"; $("#scan-pct").textContent = pc + "%"; };
   const q = qs(player.q);
   const audP = api(`/api/audience?${q}`).catch(() => null);
   const campP = api(`/api/campaign?${q}`).catch((e) => ({ status: "error", error: String(e) }));

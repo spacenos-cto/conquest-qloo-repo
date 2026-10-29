@@ -72,6 +72,8 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await weather(Number(q.get("lat")), Number(q.get("lon")))));
       case "/api/fame":
         return send(res, 200, JSON.stringify(await fame((q.get("names") ?? "").split("|").filter(Boolean).slice(0, 6))));
+      case "/api/ytfind":
+        return send(res, 200, JSON.stringify(await ytFind(name)));
       case "/api/xray":
         return send(res, 200, JSON.stringify(await xray(name, who, q.get("yt") ?? "")));
       case "/api/img":
@@ -173,6 +175,26 @@ async function channelId(yt: string): Promise<string | null> {
     const id = html.match(/"externalId":"(UC[A-Za-z0-9_-]{22})"/)?.[1] ?? html.match(/channel_id=(UC[A-Za-z0-9_-]{22})/)?.[1];
     return id ? { status: "ok", id } : { status: "not_found" };
   }).then((r: any) => r?.id ?? null);
+}
+// Find a creator's YouTube channel from their name (YouTube's public channel
+// search). The best match is the one whose title carries the name; the rest
+// come back as alternatives to pick from.
+async function ytFind(name: string) {
+  const q = name.trim(); if (!q) return { status: "error", error: "no name" };
+  return cached(`ytfind:${q.toLowerCase()}`, 7 * 864e5, async () => {
+    try {
+      const html = await (await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAg%253D%253D`, { headers: { "user-agent": UA, "accept-language": "en-US" }, signal: AbortSignal.timeout(10000) })).text();
+      const re = /"channelRenderer":\{"channelId":"(UC[\w-]{22})","title":\{"simpleText":"([^"]+)"\}[\s\S]{0,6000}?"canonicalBaseUrl":"\/@([^"]+)"/g;
+      const channels: { id: string; title: string; handle: string }[] = [];
+      for (let m; (m = re.exec(html)) && channels.length < 4; ) channels.push({ id: m[1]!, title: m[2]!.replace(/\\u0026/g, "&"), handle: "@" + m[3]! });
+      if (!channels.length) return { status: "not_found" };
+      const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const best = Math.max(0, channels.findIndex((c) => norm(c.title).includes(norm(q)) || norm(c.handle).includes(norm(q))));
+      return { status: "ok", best, channels };
+    } catch (e: any) {
+      return { status: "unavailable", error: String(e?.message ?? e) };
+    }
+  });
 }
 function spearman(a: number[], b: number[]) {
   const rank = (v: number[]) => { const o = v.map((x, i) => [x, i] as const).sort((p, q) => p[0] - q[0]); const r = new Array(v.length); o.forEach(([, i], k) => (r[i] = k)); return r as number[]; };
