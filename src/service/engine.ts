@@ -408,3 +408,37 @@ export async function campaignReport(name: string, who: Who = {}) {
     receipts: receiptsFor(runId),
   };
 }
+
+/**
+ * One Qloo call per city for the Tour Planner and City Brief: the places in a
+ * city whose crowd your fans over-index on (crowd fit = Qloo affinity), with
+ * the receipt rows for that call. Cached like every other Qloo call.
+ */
+export async function venuesIn(name: string, who: Who, city: string) {
+  const res: any = await fingerprintFor(name, who);
+  if (res.candidates || res.empty) return { status: "unavailable", venues: [], receipts: [] };
+  const runId = `venues_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const env = await gateway.call("recommend", { entity: res.fp.audience.id, target_type: "place", take: 12, location: city }, runId);
+  const venues = (env.results ?? []).filter((v: any) => v?.name && !String(v.id ?? "").startsWith("mock:"))
+    .map((v: any) => ({ name: v.name, id: v.id, fit: Math.round(Math.max(0, Math.min(1, v.affinity ?? 0)) * 100), address: v.address ?? null, phone: v.phone ?? null, website: v.website ?? null, tags: v.tags ?? [] }))
+    .filter((v: any) => !ADULT.test(v.name + " " + v.tags.join(" ")))
+    .sort((a: any, b: any) => stageScore(b) - stageScore(a));
+  return { status: env.status, venues, receipts: receiptsFor(runId) };
+}
+
+// Qloo's places include restaurants, hotels and the odd adult club: never suggest the last,
+// and rank rooms where a show can happen above places that only serve food.
+const ADULT = /adult entertainment|strip club|gentlemen'?s club|topless|exotic danc|cabaret club|\b(club onyx|covergirls|fantasy island|pink slip|scores|spearmint rhino|d[eé]j[aà] vu|rick'?s cabaret|sapphire|penthouse club|hustler club|tootsie'?s|king of diamonds|magic city|platinum plus|pink pony|follies|cheetah|the gold club)\b/i;
+const STAGE = /comedy|improv|club|lounge|\bbar\b|bar area|live music|music venue|theat(er|re)|hall|ballroom|event|nightclub|jazz|brewery|pub|tavern|stage/i;
+const NOT_STAGE = /coffee|ice cream|bakery|salon|\bspa\b|nail|dental|hotel|motel|\binn\b|suites|pharmacy|grocery|market|gas station|car wash|school|church/i;
+const stageScore = (v: any) => { const t = v.name + " " + (v.tags ?? []).join(" "); return v.fit + (STAGE.test(t) ? 8 : 0) - (NOT_STAGE.test(t) ? 40 : 0); };
+
+/** Brands / people / podcasts etc. your fans in a city love (one Qloo call), for the City Brief. */
+export async function lovedIn(name: string, who: Who, city: string, target: string, take = 4) {
+  const res: any = await fingerprintFor(name, who);
+  if (res.candidates || res.empty) return { status: "unavailable", items: [], receipts: [] };
+  const runId = `loved_${target}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const env = await gateway.call("recommend", { entity: res.fp.audience.id, target_type: target, take, location: city }, runId);
+  const items = (env.results ?? []).filter((v: any) => v?.name && !String(v.id ?? "").startsWith("mock:")).map((v: any) => ({ name: v.name, affinity: Math.round((v.affinity ?? 0) * 100) }));
+  return { status: env.status, items, receipts: receiptsFor(runId) };
+}

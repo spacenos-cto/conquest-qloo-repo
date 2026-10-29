@@ -187,6 +187,11 @@ export async function liveCall(
             name: e.name,
             affinity: e.query?.affinity ?? e.popularity ?? 0,
             id: e.entity_id,
+            // places carry contact details the City Brief can show
+            ...(e.properties?.address ? { address: e.properties.address } : {}),
+            ...(e.properties?.phone ? { phone: e.properties.phone } : {}),
+            ...(e.properties?.website ? { website: e.properties.website } : {}),
+            ...(Array.isArray(e.tags) && e.tags.length ? { tags: e.tags.slice(0, 14).map((t: any) => t.name).filter(Boolean) } : {}),
           })),
         );
       }

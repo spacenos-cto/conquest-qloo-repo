@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test",
     "backtest-youtube": "tsx src/cli.ts backtest-youtube",
-    "trends-check": "tsx src/cli.ts trends-check"
+    "trends-check": "tsx src/cli.ts trends-check",
+    "mail:preview": "node --env-file-if-exists=.env --import tsx src/conquest/mail-preview.ts"
   },
   "devDependencies": {
     "@types/node": "22.10.5",

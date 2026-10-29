@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Denver brief · Cedric the Entertainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{--ink:#16131d;--mute:#5d5868;--line:#e4e0ea;--lav:#7b2cff;--bg:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:#f4f2f7;color:var(--ink);font:13px/1.45 "Inter Tight",Inter,system-ui,sans-serif}
+.page{max-width:820px;margin:24px auto;background:var(--bg);padding:34px 40px;border-radius:12px;box-shadow:0 8px 30px rgba(40,20,80,.08)}
+h1{font:italic 400 34px/1.05 "Instrument Serif",Georgia,serif;margin:0}h2{font:700 10.5px/1 "Inter Tight",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--lav);margin:16px 0 6px}
+.meta{color:var(--mute);margin-top:4px}.big{font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px}.chip small{color:var(--mute)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.none{color:var(--mute);font-style:italic}.cols{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+ul.moves{list-style:none;padding:0;margin:0}ul.moves li{padding:3px 0}ul.moves li::before{content:"☐ ";color:var(--lav)}
+.foot{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--mute);font-size:10.5px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:0 auto 10px;max-width:820px}.bar a,.bar button{font:600 12.5px "Inter Tight",sans-serif;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;cursor:pointer}.bar .p{background:var(--lav);color:#fff;border-color:var(--lav)}
+.conf{font-size:11px;color:var(--mute)}
+@media print{html,body{background:#fff}.page{margin:0;box-shadow:none;border-radius:0;padding:0}.bar{display:none}@page{margin:12mm}}
+</style></head><body><div class="bar"><button class="p" onclick="print()">Download PDF / print</button></div>
+<div class="page">
+  <h1>Denver, CO</h1>
+  <div class="meta">Cedric the Entertainer · City Brief · <date> · <span class="big">Fans here: 1,240 (Qloo E4)</span></div>
+  <h2 id="loves">What they also love</h2>
+  <div class="chips"><span class="chip">Top brand <small>Brand · 91%</small></span><span class="chip">Top tv_show <small>TV · 80%</small></span><span class="chip">Top artist <small>Music · 80%</small></span><span class="chip">Top podcast <small>Podcast · 80%</small></span><span class="chip">Top movie <small>Film · 80%</small></span></div>
+  <h2 id="rooms">Rooms</h2>
+  <table><tr><th>Venue</th><th>Size (guess)</th><th>Crowd fit</th><th>Contact</th></tr><tr><td>Comedy Works<br><small>1226 15th St, Denver</small></td><td>50–150</td><td>88%</td><td>+13035955969<br><a href="https://comedyworks.com">website</a></td></tr><tr><td>Paramount Theatre</td><td>150–400</td><td>80%</td><td><small>not listed</small></td></tr></table>
+  <div class="cols">
+    <div><h2 id="allies">Allies</h2><p><b>Local Comic</b> <small>· Performer · 70% of your fans here</small><br>“Hey Local, our crowds overlap in Denver. Want to share a bill when I come through?”</p><p><b>Top podcast</b> <small>· Podcast · 80% of your fans here</small><br>“Hi! 80% of my fans in Denver listen to you. I&#39;d love to come on when I&#39;m in town.”</p></div>
+    <div><h2 id="sponsor">Sponsor</h2><p><b>Top brand</b> <small>· 91% affinity (Qloo)</small><br>Subject: <i>Cedric the Entertainer × Top brand: 1,240 fans in Denver love you both</i></p>
+      <h2 id="timing">Timing</h2><p>Saturday, Nov 7: 5% chance of rain, the driest weekend night in the next 16 days. Trending in CO now: “Broncos”.</p></div>
+  </div>
+  <h2 id="watch">Watch out</h2><p>Bert Kreischer holds Denver and is up 12% in searches this month (Wikipedia).</p>
+  <h2 id="moves">Three moves</h2><ul class="moves"><li>Email Comedy Works about a date around Saturday, Nov 7.</li><li>Post a bit about Top brand to your Denver fans.</li><li>Send the Top brand pitch.</li></ul>
+  <div class="foot">Sources: Qloo recommendations (5 cross-domain affinities for fans in Denver, <ts>) · Qloo places (2 rooms in Denver, crowd fit = Qloo affinity, <ts>) · Qloo recommendations (local performers and podcasts your fans follow, <ts>) · Open-Meteo (16-day forecast for Denver, <ts>) · Google Trends daily RSS (US-CO, <ts>) · Wikipedia pageviews (Bert Kreischer, <ts>). Fan counts and affinities are Qloo's; room sizes are guessed from the venue name.</div>
+</div></body></html>
