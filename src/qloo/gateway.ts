@@ -62,7 +62,7 @@ export class QlooGateway {
         env.error?.retryable &&
         attempt < this.maxRetries
       ) {
-        await sleep(200 * (attempt + 1));
+        await sleep(1000 * (attempt + 1)); // 429s need real breathing room
         continue;
       }
       break;

@@ -153,26 +153,35 @@ export async function liveCall(
         // discriminate, but how many cells light up does.
         // run the per-metro heatmap calls concurrently (in bounded batches, to
         // stay friendly with rate limits) so the first load is seconds, not ~30s
+        // A metro that hits Qloo's rate limit is retried with backoff; if it still fails, the whole
+        // answer is an error (never cached), so a partial map can't stand in for the real one.
         const counts: { name: string; n: number }[] = [];
-        const BATCH = 8;
+        const BATCH = 4;
+        let failed = 0;
         for (let i = 0; i < METROS.length; i += BATCH) {
           const slice = METROS.slice(i, i + BATCH);
           const got = await Promise.all(
             slice.map(async (m) => {
-              try {
-                const d = await insights({
-                  "filter.type": "urn:heatmap",
-                  "filter.location.query": m,
-                  "signal.interests.entities": params.entity,
-                });
-                return { name: m, n: (d.results?.heatmap ?? []).length };
-              } catch {
-                return { name: m, n: 0 };
+              for (let attempt = 0; ; attempt++) {
+                try {
+                  const d = await insights({
+                    "filter.type": "urn:heatmap",
+                    "filter.location.query": m,
+                    "signal.interests.entities": params.entity,
+                  });
+                  return { name: m, n: (d.results?.heatmap ?? []).length };
+                } catch (e: any) {
+                  const busy = e?.httpStatus === 429 || e?.httpStatus >= 500;
+                  if (busy && attempt < 4) { await new Promise((r) => setTimeout(r, 700 * 2 ** attempt)); continue; }
+                  if (e?.httpStatus) failed++;
+                  return { name: m, n: 0 };
+                }
               }
             }),
           );
           counts.push(...got);
         }
+        if (failed) return errEnv(`where_popular: ${failed} of ${METROS.length} metros failed (rate limit)`, true);
         const max = Math.max(1, ...counts.map((c) => c.n));
         // affinity = share of this audience's own footprint; count = raw cells,
         // comparable across performers (used to see who owns each city)
