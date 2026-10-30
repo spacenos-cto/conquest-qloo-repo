@@ -13,14 +13,14 @@ import {
 } from "./service/engine.js";
 
 /**
- * Rehearsal MCP server — "your agent can rehearse too."
+ * Conquest MCP server — "your agent can rehearse too."
  *
  * A minimal, dependency-free MCP stdio server (newline-delimited JSON-RPC 2.0).
  * Exposes the same engine the web app uses as agent tools. stdout carries ONLY
  * protocol messages; anything else goes to stderr.
  *
  * Connect from any MCP client:
- *   { "mcpServers": { "rehearsal": { "command": "npm", "args": ["run","mcp"] } } }
+ *   { "mcpServers": { "conquest": { "command": "npm", "args": ["run","mcp"] } } }
  */
 
 const PROTOCOL = "2024-11-05";
@@ -153,7 +153,7 @@ async function handle(msg: any) {
       return reply(id, {
         protocolVersion: PROTOCOL,
         capabilities: { tools: {} },
-        serverInfo: { name: "rehearsal", version: "0.1.0", ...serverInfo() },
+        serverInfo: { name: "conquest", version: "0.1.0", ...serverInfo() },
       });
     case "ping":
       return reply(id, {});
@@ -172,7 +172,7 @@ async function handle(msg: any) {
   }
 }
 
-process.stderr.write(`[rehearsal mcp] ready (${JSON.stringify(serverInfo())})\n`);
+process.stderr.write(`[conquest mcp] ready (${JSON.stringify(serverInfo())})\n`);
 const rl = createInterface({ input: process.stdin });
 rl.on("line", (line) => {
   const t = line.trim();

@@ -89,7 +89,7 @@ async function main() {
     console.log(
       fp.coverage.ok
         ? green(`● Coverage: strong · ${fp.calls} Qloo calls`)
-        : red(`● Coverage: INSUFFICIENT — Rehearsal won't guess`),
+        : red(`● Coverage: INSUFFICIENT — Conquest won't guess`),
     );
     if (!fp.coverage.ok) {
       fp.coverage.reasons.forEach((l) => console.log("   " + l));
@@ -104,7 +104,7 @@ async function main() {
 
   if (cmd === "ablation") {
     if (!fp.coverage.ok) {
-      console.log(red("Coverage insufficient — Rehearsal won't guess.\n"));
+      console.log(red("Coverage insufficient — Conquest won't guess.\n"));
       return;
     }
     const ab = await ablation(fp, getStimulus(fp));
@@ -263,7 +263,7 @@ function printFingerprint(fp: Fingerprint) {
   console.log(
     c.ok
       ? green(`● Coverage: strong · ${fp.calls} Qloo calls`)
-      : red(`● Coverage: INSUFFICIENT — Rehearsal won't guess · ${fp.calls} Qloo calls`),
+      : red(`● Coverage: INSUFFICIENT — Conquest won't guess · ${fp.calls} Qloo calls`),
   );
   c.reasons.forEach((line) => console.log("   " + line));
   console.log();

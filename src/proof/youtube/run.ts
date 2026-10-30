@@ -55,7 +55,7 @@ export async function runYouTubeBacktest(
     const c = opts.channel ? { ...base, channel: opts.channel } : base;
     const fp = fps.get(c.slug)!;
     if (!fp.coverage.ok) {
-      cases.push({ slug: c.slug, audience: c.audience, error: "Qloo coverage too thin — Rehearsal won't guess" });
+      cases.push({ slug: c.slug, audience: c.audience, error: "Qloo coverage too thin — Conquest won't guess" });
       continue;
     }
     try {

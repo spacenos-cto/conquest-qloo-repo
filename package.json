@@ -1,10 +1,10 @@
 {
-  "name": "rehearsal",
+  "name": "conquest",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "A focus group of a thousand, in thirty seconds. Grounded in Qloo.",
+  "description": "Your fans are out there. Go find them. A strategy game where your real audience (Qloo) is the map and five agents do the legwork.",
   "scripts": {
     "start": "node --env-file-if-exists=.env --import tsx src/server.ts",
     "fingerprint": "tsx src/cli.ts fingerprint",
@@ -32,5 +32,18 @@
   },
   "engines": {
     "node": ">=22.13"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spacenos-cto/conquest-qloo-repo.git"
+  },
+  "keywords": [
+    "qloo",
+    "taste-graph",
+    "agents",
+    "strategy-game",
+    "creators",
+    "comedy",
+    "hackathon"
+  ]
 }

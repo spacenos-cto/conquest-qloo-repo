@@ -1,4 +1,4 @@
-# Rehearsal — Submission
+# Conquest — Submission
 
 Following the Qloo kit's submission guide (`docs/SUBMISSION.md` in the kit).
 
@@ -6,7 +6,7 @@ Following the Qloo kit's submission guide (`docs/SUBMISSION.md` in the kit).
 
 Every creative decision — a joke, a sponsor read, a trailer, a promo poster, a
 menu — is made blind and tested on the real audience, late and expensively. A
-real focus group costs tens of thousands of dollars and weeks. Rehearsal is a
+real focus group costs tens of thousands of dollars and weeks. Conquest is a
 focus group of a thousand in thirty seconds: name an audience and something to
 test, and a panel sampled from Qloo's taste graph reacts, with the vote split by
 city and age, the reasons, and receipts for every number. It refuses to simulate
@@ -16,7 +16,7 @@ audiences Qloo can't see.
 
 All live Qloo calls go through the official harness (`qloo exec` / `qloo mcp`).
 
-| Workflow / tool | Why Rehearsal needs it |
+| Workflow / tool | Why Conquest needs it |
 |---|---|
 | `describe` / `find_tags` | resolve the audience to a Qloo entity; confirm chips on `needs_input` |
 | `audience_demographics` | age × gender over-index → how personas are drawn by age/gender |
@@ -71,7 +71,7 @@ Node host (Render / Railway / a VM) — see README.
 ## 5. Setup from a clean environment
 
 ```bash
-git clone <repo> && cd Rehearsal_Qloo
+git clone https://github.com/spacenos-cto/conquest-qloo-repo.git && cd conquest-qloo-repo
 npm install
 npm test            # 20 tests
 npm run serve       # http://localhost:5173

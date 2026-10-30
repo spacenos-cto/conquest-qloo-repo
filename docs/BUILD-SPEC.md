@@ -1,3 +1,5 @@
+> **Note:** this is the original build spec, from when the product was called *Rehearsal* (a 1,000-fan focus group). It grew into **Conquest**; the panel described here now powers the Room reader and battles. See `README.md` and `docs/FEATURES.md` for what's built today.
+
 # REHEARSAL — build spec v1
 
 *A focus group of a thousand, in thirty seconds. Grounded in Qloo. Heard by a brain (TRIBE v2).*

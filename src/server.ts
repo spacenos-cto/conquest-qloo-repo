@@ -24,7 +24,7 @@ import { strategist, writeFor, adviseVideo, Board, WriteReq, type Deps } from ".
 import { makeRoutes } from "./conquest/routes.js";
 
 /**
- * Rehearsal's HTTP server. Serves the single-page UI from public/ and a small
+ * Conquest's HTTP server. Serves the single-page UI from public/ and a small
  * JSON API over the engine. No framework — node:http only. Deployable on any
  * Node host (Render, Railway, a VM); the browser never calls Qloo directly.
  */
