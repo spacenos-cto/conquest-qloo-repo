@@ -1426,7 +1426,7 @@ const SRC = {
     G.sponsors.push({ name: b.name, perWeek, city: city.name, aff }); ach("paid"); G.gold += perWeek;
     const pitch = { brand: b.name, city: city.name, text: `Hi ${b.name} team, I'm ${G.player.name}. ${aff}% of my fans over-index on you (Qloo). I'm playing ${city.name} soon: a sponsored post and a night with your name on it?` };
     G.sponsorPitches.push(pitch);
-    aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: aff, audience: (G.player.aud?.tags ?? []).slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { pitch.text = mail; ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> rewritten`); } });
+    aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: aff, audience: sayTags().slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { pitch.text = mail; ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> rewritten`); } });
     return { intel: `💼 Sponsor: ${b.name} (+${perWeek} gold a week).`, loot: {
       fact: `<b>${esc(b.name)}</b> signs on: ${aff}% affinity with your fans. First payment in, pitch email drafted.${vs ? `<br>${vs}` : ""}`, receipts: ["Qloo brands your fans love", ...(vs ? [`Qloo · ${city.name} overall, no artist signal`] : [])], gold: perWeek, xp: 50, brand: b.name, brand: b.name,
       mapChange: `sponsor badge on ${city.name} · income +${perWeek}/wk`, questChange: objIs("sponsor") ? `sponsor ${G.sponsors.length} of 3` : null,
@@ -1499,7 +1499,7 @@ const SRC = {
     return { intel: `📈 Trending around ${city.name}: ${got.map((x) => x.title).join(", ")}.`, loot: { fact: `Rising around ${esc(city.name)}: <b>${got.map((x) => esc(x.title)).join(", ")}</b>.`, receipts: [`Google Trends · ${stc ?? "US"}`], xp: 30, mapChange: `trend badge on ${city.name}`, questChange: "a Trend wave offer next week", realMove: { title: `Post on “${p.title}”`, detail: `Trending in ${city.name} right now.` } } };
   },
   async scribe(city) {
-    const tags = (G.player.aud?.tags || []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
+    const tags = sayTags().slice(0, 2);
     const tr = G.potions.find((p) => !p.used && p.where === city.name) ?? G.potions.find((p) => !p.used);
     const draft = `${city.name}: if you grew up on ${tags[0] || "great comedy"}${tags[1] ? ` and ${tags[1]}` : ""}, this one's for you. ${tr ? `Got thoughts on ${tr.title}. ` : ""}New set, one night only.`;
     const text = await aiWrite("caption", { name: G.player.name, city: city.name, tastes: tags, trend: tr?.title }, draft);
@@ -1816,6 +1816,10 @@ function preyOf(f) {
 // to their face on the rival strip. Lines come from what they're really doing
 // this week (intents, sieges, battles, fame momentum from Wikipedia).
 const anyOf = (a) => a[Math.floor(Math.random() * a.length)];
+// Taste tags safe to say out loud. Qloo also tags identity (race, religion,
+// orientation) and odd media tags; a rival, a caption or a tip never names those.
+const SAY_SKIP = /african|black|latin|hispanic|asian|race|ethnic|jewish|muslim|christian|catholic|religio|gay|lgbt|queer|white|indian|arab|protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic|child|oriented/i;
+function sayTags() { return (G?.player?.aud?.tags ?? []).filter((t) => !SAY_SKIP.test(t)); }
 function rivalLine(f, kind, x = {}) {
   const me = G.player.name.split(" ")[0], mo = G.fame.get(f.name)?.momentum, city = x.city ?? "";
   const it = G.intents.find((i) => i.fid === f.id), sg = G.sieges.find((i) => i.fid === f.id);
@@ -1830,7 +1834,7 @@ function rivalLine(f, kind, x = {}) {
     hot: [`My Wikipedia's up ${Math.abs(mo ?? 0)}% this month. Keep up.`, `Everyone's searching my name this month. Just saying.`],
     cold: [`Slow month for me. Don't get comfortable.`, `Quiet week. I'm writing.`],
     calm: [`Nice map, ${me}. Shame if someone took it.`, `Watching your ground. Always watching.`],
-    retreat: [`Fine. Keep your ${(G.player.aud?.tags ?? []).find((t) => t.length < 18 && !/protagonist|fiction|animated/i.test(t)) ?? "home"} crowd. I'm bringing ${x.next ?? "a bigger set"} next time.`],
+    retreat: [`Fine. Keep your ${G.capital ?? "home"} crowd. I'm bringing ${x.next ?? "a bigger set"} next time.`],
   };
   let k = kind;
   if (k === "ambient") k = f.allied ? "allied" : sg ? "siege" : it ? "intent" : f.strategy === "ally" ? "ally" : mo > 10 ? "hot" : mo < 0 ? "cold" : "calm";
@@ -2271,7 +2275,7 @@ function verdictFor(v, avg) {
   const what = d >= 0.05 ? `Above your average: expect it to outperform with your core fans, strongest in ${v.top?.city ?? "your best city"}.` : d <= -0.05 ? `Below your average: likely to underperform${v.bottom ? `; ${v.bottom.city} cools on it` : ""}.` : `In line with your average: a steady performer${v.top ? `, best in ${v.top.city}` : ""}.`;
   const fix = [];
   if (v.deadZones) fix.push(`attention sags ${v.deadZones}×${v.firstDead != null ? ` (first about ${v.firstDead}% in)` : ""}: tighten that stretch`);
-  if (!v.appeals.length) { const t = (G.player.aud?.tags ?? [])[0]; if (t) fix.push(`name what your fans love: lead with ${t}`); }
+  if (!v.appeals.length) { const t = sayTags()[0]; if (t) fix.push(`name what your fans love: lead with ${t}`); }
   if (v.top) fix.push(`push it to ${v.top.city} first`);
   return { what, fix: fix.length ? fix.join("; ") : "keep the format: it fits your crowd" };
 }
@@ -3208,7 +3212,7 @@ async function scan() {
   const aud = await audP; player.aud = aud;
   if (aud?.status === "ok") {
     const up = (aud.demographics || []).filter(([, v]) => v > 0.2).map(([k]) => k);
-    set(1, "done", `${up.length ? `Over-indexes ${up.slice(0, 3).join(", ")}. ` : ""}Into ${(aud.tags || []).slice(0, 3).join(", ")}.`);
+    set(1, "done", `${up.length ? `Over-indexes ${up.slice(0, 3).join(", ")}. ` : ""}Into ${(aud.tags || []).filter((t) => !SAY_SKIP.test(t)).slice(0, 3).join(", ")}.`);
   } else set(1, "done");
   set(2, "on"); await sleep(800); set(2, "done");
   for (let i = 3; i < S.length; i++) set(i, "on");
