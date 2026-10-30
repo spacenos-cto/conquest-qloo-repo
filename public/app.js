@@ -2605,7 +2605,7 @@ const Show = (() => {
   function loot(L) { const html = lootCard(L), w = $("#ws-wait"); if (w) w.insertAdjacentHTML("beforebegin", html); else $("#ws-cards").insertAdjacentHTML("beforeend", html); }
   async function battle(B) {
     if (B.loot) { loot(B.loot); Sound.play("conquer"); await wait(400); return; }
-    const r = B.res, f = r.f, host = $("#ws-left"), id = "bc" + host.children.length;
+    const r = B.res, f = r.f, host = $("#ws-left"), id = "wsb" + host.children.length;
     host.insertAdjacentHTML("beforeend", `<section class="bcard" id="${id}"><div class="bh"><h2>${esc(B.title)}</h2><span class="wstamp ${B.good ? "good" : "bad"}">${esc(B.stamp)}</span></div>
       <div class="bvs"><div class="bface" style="--fc:#af50ff">${avatar(G.player.image, G.player.name)}</div><div class="bmeter"><div class="t"><span>The crowd · 1,000 fans in the room</span><b class="pc">50% yours</b></div><div class="bar"><i></i></div></div><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div></div>
       <ol class="brounds">${r.rounds.map((x, i) => `<li><span><i>Round ${i + 1} · ${esc(x.k)}</i> · ${esc(x.say)}</span><span class="${x.s >= 0.5 ? "w" : "l"}">${x.s >= 0.5 ? "you" : esc(lastName(f.name))} +${Math.max(1, Math.round(Math.abs(x.s - 0.5) * 40))}</span></li>`).join("")}</ol>
