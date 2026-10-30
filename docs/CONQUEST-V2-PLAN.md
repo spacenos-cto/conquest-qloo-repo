@@ -88,7 +88,7 @@ venues: [],                                          // collected venues §10.4 
 
 | id | title | blurb | you get (win pack) | army text | win rule (`winWhen(G)`) |
 |---|---|---|---|---|---|
-| `tour` | Book a tour | 6 nights in the cities where your fans already are, in a route you can drive. | rooms, nights, calendar, venue emails | Scout → cities, Booker → rooms, Weather oracle → nights, Diplomat → an opener each. Spy keeps the nemesis off your dates. | 6 held cities each with a booked room (`G.nights` entry with `venue`) |
+| `tour` | Book a tour | 6 nights in the cities where your fans already are, in a route you can drive. | rooms, nights, calendar, venue emails | Scout → cities (and keeps the nemesis off your dates), Booker → rooms and dry nights, Diplomat → an opener each. | 6 held cities each with a booked room (`G.nights` entry with `venue`) |
 | `sponsor` | Land sponsors | Brands your fans over-index on, with a pitch written for each. | 3 sponsor pitches + weekly gold | Sponsor scout in every held city, Room reader to prove the audience, Copywriter for the post. | `G.sponsors.length >= 3` and one `G.reactions` ≥ 4 on a sponsored post |
 | `city` | Break into a new city | Pick a city you've never played and make it yours. | a room, a local ally, a podcast slot there | Scout lifts fog, Herald finds the podcast, Diplomat the local act, Booker the room, then the battle. | `objCity` is `sideOf === "you"` and has a night and (ally or guest spot) |
 | `collab` | Fill my calendar | Guest spots, collabs and co-headlines with acts whose fans would like you. | 5 DMs ready to send + a podcast list | Diplomat and Herald do the work; Spy tells you who's rising. | 5 parleys offered, 3 accepted (`G.allies + guestSpots >= 3`) |
@@ -141,7 +141,7 @@ Header `YOUR ARMY` (Cinzel, saffron) + hint `Click a unit, then where to send it
 
 **Order box** appears under the selected unit: `Send <Unit> to:` + 3 target chips (§6.3). Chip click = order (toggles). When `ordersLeft === 0` chips are disabled with the tooltip "No orders left — press END WEEK".
 
-**Locked line:** `Herald, Weather oracle, Trend hunter, Copywriter, Showrunner unlock at Lv III · Theater Tour` (and `Listener: connect Reddit`).
+**Locked line:** `Lv III · Theater Tour: every agent gets its second power` (no locked units).
 
 **END WEEK** button (violet, Cinzel, 60 px, glow) pinned at the rail's bottom with the line under it: `No clock. Nothing moves until you press this. Then your army marches, reports back, and the rival makes his move.` Button label changes to `END WEEK · {n} orders queued`. If `orderQueue` is empty, a confirm toast: "Send nobody? Your rivals still move." with `End anyway`.
 
@@ -153,26 +153,21 @@ Delete from the default view (keep code behind Full view where it still works): 
 
 ## 6. The army
 
-### 6.1 Units (P0: the first six; the rest unlock at Lv III)
+### 6.1 Units: five agents (merged from twelve, Oct 30)
 
-Every unit has **Does** (the real call), **Brings back** (what the player gets), a **map change**, an **XP** value, and a **real move** it creates. Copy below is final.
+The army is **five agents**, one per outcome a player can name: *know a city, book a show, get paid, make a friend, test the material*. The old twelve were merged by outcome, so no real data call is lost: each merged agent runs its old jobs together and returns one loot card. All five are **pre-hired** at the start, so there's no shop. **Lv III adds no new units. It gives every agent its second power** (the column on the right). Progression still feels like unlocking, and the rail stays at five rows plus **You** (§6.7).
 
-| id | name | Does (real call) | Brings back | Map change on arrival | XP | Real move created |
-|---|---|---|---|---|---|---|
-| `scout` | Scout | learns what your fans in a city love (Qloo brands × city) | lifts the fog, +intel, the city costs 1 less to take | `state: uncharted → open/beachhead`; intel line pinned; ripe ring if beachhead | 40 | "Mention <brand 1>, <brand 2> in your next <city> post" |
-| `booker` | Booker | finds the room whose crowd fits yours (Qloo places × city) | a booked venue = a tour stop, venue email drafted | city gets a venue badge; tour route extends; quest slot fills | 60 | "Email <venue> about <night>" (+ .ics) |
-| `sponsor` | Sponsor scout | finds a brand your fans over-index on (Qloo brands) | gold every week + a pitch email | sponsor badge on the city; income +20–70/wk | 50 | "Send the <brand> pitch" |
-| `diplomat` | Diplomat | finds a performer whose fans would like you (Qloo overlap) | an ally (their cities count for your quest) + a DM | opens the parley overlay (existing) | 50 | "DM <name>" |
-| `reader` | Room reader | 1,000 simulated fans in that city react to your bit | battle odds up there, a fan quote | city prepared (+30% in battle), fan strip updates | 40 | "Open with the <bit> in <city>" |
-| `spy` | Spy | watches rivals' fame (Wikipedia pageviews) | see the next attack 2 weeks early, walls on your capital | attack arrows for 2 weeks ahead; walls badge | 30 | — |
-| *Lv III* `herald` | Herald | podcasts your fans listen to (Qloo podcasts) | a guest spot (= a collab slot) | podcast badge | 50 | "Pitch <podcast>" |
-| *Lv III* `oracle` | Weather oracle | 7-day forecast (Open-Meteo) | the best dry show night (+ calendar entry) | night pinned to the city | 30 | — (feeds the .ics) |
-| *Lv III* `trend` | Trend hunter | what's trending in that state (Google Trends) | a Trend wave offer: +1 order next week if you post on it | trend badge | 30 | "Post on <topic>" |
-| *Lv III* `scribe` | Copywriter | writes the post for that city (Qloo tags + trend) | a ready caption, +1 order | — | 30 | "Post it" |
-| *Lv III* `showrunner` | Showrunner | plans a festival night in a city you hold | +200 gold, +1 tour stop with a line-up | festival badge | 100 | "Book the line-up" |
-| `listener` | Listener | Reddit | locked: "Connect Reddit" | — | — | — |
+| id | name | Does (real calls) | Brings back | Map change on arrival | XP | Real move created | Lv III power (was) |
+|---|---|---|---|---|---|---|---|
+| `scout` | Scout | what your fans in a city love (Qloo brands × city) + what's trending in that state (Google Trends) + which rival is heading there (Wikipedia fame) | fog lifted, intel, the city costs 1 less to take, attack arrows on that city 2 weeks ahead | `uncharted → open/beachhead`; intel pinned; rival arrow if any | 40 | "Mention <brand> in your next <city> post" | **Trend wave**: +1 order next week if you post on the trend (was Trend hunter). Spy is folded in from Lv I |
+| `booker` | Booker | the room whose crowd fits yours (Qloo places × city) + the best dry night that week (Open-Meteo) | a booked venue = a tour stop, a venue email, a dated show night (.ics) | venue badge; tour route extends; quest slot fills | 60 | "Email <venue> about <night>" (+ .ics) | **Festival night**: in a held city with a venue, +200 gold and +1 tour stop with a line-up (was Showrunner). Weather is folded in from Lv I |
+| `sponsor` | Sponsor scout | a brand your fans over-index on (Qloo brands) | gold every week + a pitch email | sponsor badge; income +20–70/wk | 50 | "Send the <brand> pitch" | **Double deal**: 2 brands per city, the second as a backup pitch |
+| `diplomat` | Diplomat | a performer whose fans would like you (Qloo overlap) | an ally (their cities count for your quest) + a DM | parley overlay (existing) | 50 | "DM <name>" | **Podcast tour**: a podcast your fans listen to (Qloo podcasts) → guest spot = a collab slot (was Herald) |
+| `reader` | Room reader | 1,000 simulated fans in that city react to your bit | battle odds up there, a fan quote | city prepared (+30% in battle) | 40 | "Open with the <bit> in <city>" | **Copywriter**: also writes the post for that city (Qloo tags + trend), ready caption, +1 order (was Copywriter) |
 
-Hiring: units cost gold as today (`AGENTS[].cost`). In P0 the **first six are pre-hired** for new campaigns so the first week has no shop step; hiring remains for Lv III units. `simpleView()`'s "three cheapest" logic goes.
+**Removed:** `spy` (into Scout), `trend` (Scout Lv III), `oracle` (into Booker), `showrunner` (Booker Lv III), `herald` (Diplomat Lv III), `scribe` (Reader Lv III), `listener` (Reddit stub; deleted, and the "connect Reddit" chip stays on the landing page's live-sources strip only).
+
+Code: `AGENTS` has 5 entries; each merged unit's `AGENT_JOBS` entry calls the old jobs and merges their `loot` into one card (one `fact` line per data source, all `receipts` listed). Lv III power = `G.level >= 3` check inside the job. Saves: `migrateSave()` maps old unit ids to their new owner (`spy→scout`, `trend→scout`, `oracle→booker`, `showrunner→booker`, `herald→diplomat`, `scribe→reader`, `listener→drop`) and keeps the higher `unitXp`. All "12 agents" copy becomes "5 agents" (landing, FEATURES.md, Devpost). `simpleView()`'s "three cheapest" logic goes.
 
 ### 6.2 Jobs (`AGENT_JOBS`) stay; their return shape grows
 
@@ -194,8 +189,8 @@ For the selected unit, rank cities and return 3 chips `{ city, label, get }`:
 - **sponsor:** held cities without a sponsor, biggest fans first.
 - **diplomat:** candidate allies (existing `strategy === "ally"` factions and `c.allies`) → label is the **person**, not the city: `"Regina King (Atlanta)"`.
 - **reader:** the next battle target (`c.territory.target`, any `defend` order's city, the ripe city) → `"Chicago (before the fight)"`.
-- **spy:** rival names → `"Anthony Anderson"`; chip means "watch him".
-- Lv III units: herald/oracle/trend/scribe = held cities; showrunner = held cities with a venue.
+- Scout chips flag a rival heading to that city: `"Atlanta (Anderson is coming)"`.
+- Lv III powers reuse the same chips: Booker's festival night only on held cities with a venue; Diplomat's podcast chips are podcast names.
 
 Each chip also shows `get` on hover (the Brings-back line specialised: "fills stop 3", "+60 gold/wk").
 
@@ -210,7 +205,7 @@ When the AI layer is on (`aiCheck()`), `aiPlan()`'s first three steps **re-rank*
 
 ### 6.5 Unit progression (stars)
 
-`unitXp` per unit: ★ at 0, ★★ at 100, ★★★ at 250. Effects: ★★ = +10% on the unit's numbers (scout: 4 brands instead of 3; booker: 3 rooms; sponsor: +10 gold/wk; reader: +5% odds; spy: sees 3 weeks ahead), ★★★ = the job also runs in the **adjacent** held city for free. Star-up is announced in the show as loot ("Scout ★★ → ★★★").
+`unitXp` per unit: ★ at 0, ★★ at 100, ★★★ at 250. Effects: ★★ = +10% on the unit's numbers (scout: 4 brands instead of 3; booker: 3 rooms; sponsor: +10 gold/wk; reader: +5% odds; scout: sees rivals 3 weeks ahead), ★★★ = the job also runs in the **adjacent** held city for free. Star-up is announced in the show as loot ("Scout ★★ → ★★★").
 
 ### 6.6 Tour Planner and X-ray become outcomes, not buttons
 
@@ -328,7 +323,7 @@ At `week > 8`: win if `winWhen(G)`; otherwise "CAMPAIGN COMPLETE" with the pack 
 |---|---|---|---|
 | I | Open Mic | 0 | the six base units |
 | II | Club Circuit | 300 | +1 target chip per unit (4), rival trash talk |
-| III | Theater Tour | 800 | Herald, Weather oracle, Trend hunter, Copywriter, Showrunner; +1 order/week |
+| III | Theater Tour | 800 | every agent's second power (§6.1); +1 order/week |
 | IV | Arena Headliner | 1600 | 2 campaigns side by side (P2), gambles at better odds |
 | V | Legend | 3000 | leaderboard crown |
 
@@ -336,7 +331,7 @@ New campaigns start at **Lv II with 0 XP shown as "380 XP to Theater Tour"** if 
 
 ### 9.4 Gold
 
-Unchanged sources (15/city/week + sponsors + stationed yields now **per week**, not per day: multiply `YIELD` by 7 and apply at END WEEK). Spent on: hiring Lv III units, walls (80), gambles (§10.1).
+Unchanged sources (15/city/week + sponsors + stationed yields now **per week**, not per day: multiply `YIELD` by 7 and apply at END WEEK). Spent on: walls (80), gambles (§10.1).
 
 ---
 
@@ -349,7 +344,7 @@ Some target chips carry a second, riskier option: `Safe · 1 order · +1 stop` v
 On screen 0, under "Who's in your way", a **"Change nemesis"** link lists the 3 rivals Qloo found with overlap %, fame and cities. Picking a bigger name = harder (attacks 2 of 3 weeks) but their cities are worth +50% XP and the headline says "giant slayer". Data exists in `c.rivals`.
 
 ### 10.3 Random events (P1)
-Once a week, 40% chance, injected into the show between loot and battle, built from live data so they're never fake: **"A trend broke in <state>"** (Trends; +1 free order if you send the Trend hunter), **"<Rival>'s views spiked +N%"** (Wikipedia; their next attack is 2 cities instead of 1), **"Rain all weekend in <city>"** (Open-Meteo; that stop's night moves), **"A fan started a thread about you"** (panel quote; +0.1 material), **"<Brand> dropped a competitor"** (Qloo; sponsor pitch at +20 odds). Each is a card with a choice of 2 responses (both free), so events are decisions, not notifications.
+Once a week, 40% chance, injected into the show between loot and battle, built from live data so they're never fake: **"A trend broke in <state>"** (Trends; +1 free order if you send the Scout there), **"<Rival>'s views spiked +N%"** (Wikipedia; their next attack is 2 cities instead of 1), **"Rain all weekend in <city>"** (Open-Meteo; that stop's night moves), **"A fan started a thread about you"** (panel quote; +0.1 material), **"<Brand> dropped a competitor"** (Qloo; sponsor pitch at +20 odds). Each is a card with a choice of 2 responses (both free), so events are decisions, not notifications.
 
 ### 10.4 Venue collection (P2)
 Every booked room becomes a **venue card** (name, city, size, fit %, the night you played, the fan quote). A "Rooms" sheet shows the collection; 10 rooms = "Circuit" badge, 25 = "Theater" badge. The share card shows your 3 best rooms.
@@ -388,7 +383,7 @@ Also reachable mid-game as a **preview** ("Peek: what winning looks like" in the
 
 1. **Type:** Inter Tight for UI (13/14/15/17 px), Cinzel only for: level names, section headers (15–16 px, tracking 0.1em), END WEEK, headlines, stamps. IBM Plex Mono for every number that changes (gold, orders, fans, XP, odds).
 2. **Colour tokens** (already in the mockup): bg `#0b0d14`, panel `#141827`, panel-2 `#0f1220`, border `#262c40`, text `#e9e7f2`, muted `#9a9db3` (never lighter than this on panels: 4.5:1), you `#af50ff`, nemesis `#ff5c7a`, saffron `#f0c46a`, good `#3dff9a`, open `#4a4e58`. One violet CTA per screen.
-3. **Icons:** inline SVG from `PATHS`, 2 px stroke, never emoji. Add missing keys: `scout` (magnifier), `booker` (ticket), `sponsor` (briefcase), `diplomat` (dove), `reader` (masks), `spy` (eye), `herald` (mic), `oracle` (cloud-sun), `trend` (trend-up), `scribe` (pen), `showrunner` (tent), `walls` (shield), `route` (path), `crown`, `xp` (star).
+3. **Icons:** inline SVG from `PATHS`, 2 px stroke, never emoji. Add missing keys: `scout` (magnifier), `booker` (ticket), `sponsor` (briefcase), `diplomat` (dove), `reader` (masks), `walls` (shield), `route` (path), `crown`, `xp` (star).
 4. **Spacing:** 8-px grid; cards 12–14 px radius, 14–16 px padding; rail gap 10 px; top bar 12 px vertical.
 5. **States for every control:** default / hover (+6% lightness) / selected (violet border + `#1e1535`) / disabled (40% opacity + tooltip saying why) / busy (shimmer on the icon tile, never a spinner over text).
 6. **Motion:** 200 ms ease-out for state changes, 400 ms for cards entering, 600 ms for map changes (fog lift, route draw), 1.5 s for the crowd meter. Nothing loops except the END WEEK glow (3 s breathe) and the march lines' dash offset. Respect `REDUCED`.
