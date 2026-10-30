@@ -2731,7 +2731,7 @@ async function endWeek() {
     Show.rival(nem, line, nit ? `Marching on ${nit.city} · hits next END WEEK` : `${lastName(nem.name)} retreats to ${strikeCity(nem)?.name ?? "home ground"}`, `${nem.name.toUpperCase()} · NEXT WEEK`);
   }
   const stopL = R.loot.filter((L) => L.stopN).at(-1), spL = R.loot.find((L) => L.unit === "sponsor" && L.brand);
-  const top = stripTags(R.loot.find((L) => !L.empty)?.fact ?? "").replace(/\.$/, "");
+  const top = stripTags((R.loot.find((L) => !L.empty)?.fact ?? "").split(/<br\s*\/?>|<\/p>|<\/div>|\n/)[0]).trim().replace(/\.$/, ""); // first line only: facts stack several lines
   R.headline = headlineFor({ you: shortName(), giant: G.giant && R.battle?.won && R.battle.rival === lastName(nemesis()?.name ?? ""), battle: R.battle?.rival === "nobody" ? null : R.battle, held: R.held, lost: R.lost, stop: stopL && q1.have > have0 ? { city: stopL.city, n: q1.have, m: q1.need } : null, sponsor: spL ? { brand: spL.brand, gold: spL.gold } : null, levelUp: R.xp.levelUp ? lv1.name : null, topFact: top ? (top.length > 80 ? top.slice(0, 79) + "…" : top) : null });
   G.headline = R.headline;
   G.report = JSON.parse(JSON.stringify({ ...R, battles: R.battles.filter((b) => b.res).map((b) => ({ city: b.res.city, rival: b.res.f.name, stamp: b.stamp, odds: Math.round(b.res.odds.p * 100), xp: b.xp })) }));
