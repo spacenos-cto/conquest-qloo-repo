@@ -1076,12 +1076,12 @@ const AGENTS = [
 // brings back one loot card. All five march from week 1; Lv III gives each a
 // second power. You give orders all week; nothing moves until END WEEK.
 const UNITS = [
-  { id: "you", ic: "flag", does: "fight for a city with your material", brings: "the city (and its tour stop)" },
-  { id: "scout", ic: "mag", xp: 40, does: "what your fans in a city love (Qloo brands) + what's trending there (Google Trends) + which rival is heading there (Wikipedia)", brings: "fog lifted, intel, the city costs 1 less to take, the attack before it lands", power: "Trend wave: +1 order next week if you post on the trend" },
-  { id: "booker", ic: "ticket", xp: 60, does: "the room whose crowd fits yours (Qloo places) + the dry nights that week (Open-Meteo)", brings: "a booked venue = a tour stop, the venue email, a dated show night", power: "Festival night: a second room in a held city becomes a festival, +200 gold" },
-  { id: "sponsor", ic: "case", xp: 50, does: "a brand your fans over-index on (Qloo brands)", brings: "gold every week + a pitch email", power: "Double deal: a second brand per city as a backup pitch" },
-  { id: "diplomat", ic: "dove", xp: 50, does: "a performer whose fans would like you (Qloo overlap)", brings: "an ally (their cities count for your quest) + a DM", power: "Podcast tour: a podcast your fans listen to, a guest spot (Qloo podcasts)" },
-  { id: "reader", ic: "masks", xp: 40, does: "1,000 simulated fans in that city react to your bit", brings: "battle odds up there, a fan quote", power: "Copywriter: writes the post for that city, +1 order next week" },
+  { id: "you", ic: "flag", does: "Fight for a city with your material", brings: "The city + its tour stop" },
+  { id: "scout", ic: "mag", xp: 40, does: "Reads a city — fans' loves (Qloo) · trends (Google) · incoming rival (Wikipedia)", brings: "Fog lifted · costs 1 less order to take · early warning", power: "Trend wave: +1 order if you post the trend" },
+  { id: "booker", ic: "ticket", xp: 60, does: "Finds the room that fits your crowd (Qloo) · dry nights (Open-Meteo)", brings: "Booked venue = tour stop · venue email · show date", power: "Festival night: a 2nd room in a held city → festival, +200 gold" },
+  { id: "sponsor", ic: "case", xp: 50, does: "Finds a brand your fans over-index on (Qloo)", brings: "Gold every week · pitch email", power: "Double deal: a 2nd backup brand per city" },
+  { id: "diplomat", ic: "dove", xp: 50, does: "Finds a performer whose fans overlap yours (Qloo)", brings: "An ally (their cities join your quest) · a DM", power: "Podcast tour: guest spot on a show your fans hear (Qloo)" },
+  { id: "reader", ic: "masks", xp: 40, does: "1,000 simulated fans react to your bit", brings: "Better battle odds · a fan quote", power: "Copywriter: writes the city's post, +1 order" },
 ];
 const BASE6 = ["scout", "booker", "sponsor", "diplomat", "reader"];
 const HOTKEYS = "1234567";
@@ -2582,29 +2582,56 @@ function receiptLine(L) {
 const Show = (() => {
   let fast = false;
   const wait = (ms) => (fast || REDUCED ? Promise.resolve() : sleep(ms));
+  // one fact → one line; a multi-part fact (joined by <br>) → scannable bullets
+  const factBullets = (html) => {
+    const parts = String(html ?? "").split(/<br\s*\/?>/i).map((s) => s.trim()).filter(Boolean);
+    return parts.length > 1 ? `<ul class="factl">${parts.map((p) => `<li>${p}</li>`).join("")}</ul>` : `<div class="fact">${parts[0] ?? ""}</div>`;
+  };
   const lootCard = (L) => {
     const u = unitOf(L.unit), col = AG_COL[L.unit]?.[0] ?? (L.unit === "you" ? "#af50ff" : "#f0c46a");
     const right = L.unit === "sponsor" && L.gold ? `+${L.gold} gold${L.starUp ? " · " + L.starUp : ""}` : L.xp ? `+${L.xp} XP${L.starUp ? " · " + L.starUp : ""}` : L.gold ? `+${L.gold} gold` : "";
     const title = L.title ?? `${unitName(L.unit)} came back from ${L.city}`;
+    const chg = [];
+    if (L.mapChange && L.mapChange !== "nothing changed") chg.push(`<div class="lchg"><i>Map</i>${esc(L.mapChange)}</div>`);
+    if (L.questChange) chg.push(`<div class="lchg q"><i>Unlocked</i>${esc(L.questChange)}</div>`);
+    const rc = receiptLine(L);
     return `<div class="lcard${L.empty ? " empty" : ""}" style="--lc:${L.empty ? "#3a4060" : col}"><span class="utile" style="--g1:${col}">${I(u?.ic ?? "star")}</span><div class="lb"><div class="l1"><strong>${esc(title)}</strong><span>${esc(right)}</span></div>
-      <div class="fact">${L.fact} <span class="lrc" data-rc="${esc(L.unit)}|${esc(L.city)}" title="Show the live call">(${esc(L.receipts.join(" · "))})</span></div>
-      ${receiptLine(L)}${L.mapChange ? `<div class="chg${L.mapChange === "nothing changed" ? " none" : ""}">Map: ${esc(L.mapChange)}</div>` : ""}${L.questChange ? `<div class="chg">Quest: ${esc(L.questChange)}</div>` : ""}${L.realMove ? `<div class="mv">Real move: ${esc(L.realMove.title)}</div>` : ""}${L.action ? `<button class="act" data-act="${L.action.run}">${esc(L.action.label)}</button>` : ""}</div></div>`;
+      ${factBullets(L.fact)}
+      ${chg.join("")}
+      ${L.realMove ? `<div class="mv"><i>Do next</i> ${esc(L.realMove.title)}</div>` : ""}${L.action ? `<button class="act" data-act="${L.action.run}">${esc(L.action.label)}</button>` : ""}
+      <details class="lwhy"><summary>Show the live data</summary><div class="lrc" data-rc="${esc(L.unit)}|${esc(L.city)}" title="Show the live call">${esc(L.receipts.join(" · "))}</div>${rc}</details></div></div>`;
   };
   function open(week) {
     fast = false;
     $("#ws-in").innerHTML = `<header class="ws-hd"><div class="k">Sunday night · Week ${week} of ${WEEKS}</div><h1 id="ws-h"></h1><div class="s">Your weekly headline, written from what actually happened.</div></header>
-      <div class="ws-body"><section class="ws-left" id="ws-left"></section>
-        <section class="ws-right"><div class="ws-sec"><h2>YOUR ARMY REPORTS BACK</h2><span>each one real data, each one changes the map</span></div><div id="ws-cards" style="display:flex;flex-direction:column;gap:12px"></div><div class="wstrip" id="ws-strip"></div><div class="woffers" id="ws-offers"></div></section></div>
+      <div class="ws-top" id="ws-top" hidden><div class="ws-outcome" id="ws-outcome"></div><div class="wstrip" id="ws-strip"></div><div class="ws-next" id="ws-next"></div></div>
+      <nav class="ws-tabs" id="ws-tabs">
+        <button class="ws-tab active" data-tab="reports" type="button">Army reports <b id="ws-tc-reports">0</b></button>
+        <button class="ws-tab" data-tab="battles" type="button">Battles &amp; rivals <b id="ws-tc-battles">0</b></button>
+        <button class="ws-tab" data-tab="next" type="button">Next week <b id="ws-tc-next">0</b></button>
+      </nav>
+      <div class="ws-panels" id="ws-panels">
+        <section class="ws-panel active" data-panel="reports"><div class="ws-sec"><h2>YOUR ARMY REPORTS BACK</h2><span>each one real data, each one changes the map</span></div><div id="ws-cards" style="display:flex;flex-direction:column;gap:12px"></div></section>
+        <section class="ws-panel" data-panel="battles"><div class="ws-sec"><h2>WHAT HAPPENED</h2><span>battles &amp; your rivals' moves</span></div><div class="ws-left" id="ws-left"></div></section>
+        <section class="ws-panel" data-panel="next"><div class="ws-sec"><h2>NEXT WEEK</h2><span>offers &amp; moves to make before you give orders</span></div><div class="woffers" id="ws-offers"></div></section>
+      </div>
       <footer class="ws-ft" id="ws-ft"><div class="ws-skip" style="flex:1">Click anywhere to skip ahead</div></footer>`;
     const w = $("#weekshow"); w.hidden = false; w.scrollTop = 0;
-    w.onclick = (e) => { if (!e.target.closest("button,.rc")) fast = true; };
+    $$("#ws-tabs .ws-tab").forEach((b) => (b.onclick = () => activate(b.dataset.tab)));
+    w.onclick = (e) => { if (!e.target.closest("button,.rc,.ws-tab")) fast = true; };
     // receipts open the live call behind them
     $("#ws-in").onclick = (e) => { const r = e.target.closest("[data-rc]"); if (!r) return; const [id, city] = r.dataset.rc.split("|"), a = agentOf(id); const line = [...$$("#ops > div")].find((x) => x.textContent.includes(city) && (!a || x.textContent.includes(a.name))); if (line && !r.nextElementSibling?.classList?.contains("opsline")) r.insertAdjacentHTML("afterend", `<div class="lrc opsline" style="display:block;text-decoration:none">${esc(line.textContent)}</div>`); };
   }
+  // show one tab's panel; called on click and auto-called as each section reveals so the action stays on screen
+  function activate(tab) {
+    $$("#ws-panels .ws-panel").forEach((p) => p.classList.toggle("active", p.dataset.panel === tab));
+    $$("#ws-tabs .ws-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  }
   function waiting(on) { const c = $("#ws-cards"), w = $("#ws-wait"); if (on && !w) c.insertAdjacentHTML("beforeend", `<div class="lwait" id="ws-wait">Your army is working: live calls to Qloo, Wikipedia, Open-Meteo and the fan panel…</div>`); else if (!on) w?.remove(); }
-  function loot(L) { const html = lootCard(L), w = $("#ws-wait"); if (w) w.insertAdjacentHTML("beforebegin", html); else $("#ws-cards").insertAdjacentHTML("beforeend", html); }
+  function loot(L) { activate("reports"); const html = lootCard(L), w = $("#ws-wait"); if (w) w.insertAdjacentHTML("beforebegin", html); else $("#ws-cards").insertAdjacentHTML("beforeend", html); }
   async function battle(B) {
     if (B.loot) { loot(B.loot); Sound.play("conquer"); await wait(400); return; }
+    activate("battles");
     const r = B.res, f = r.f, host = $("#ws-left"), id = "wsb" + host.children.length;
     host.insertAdjacentHTML("beforeend", `<section class="bcard" id="${id}"><div class="bh"><h2>${esc(B.title)}</h2><span class="wstamp ${B.good ? "good" : "bad"}">${esc(B.stamp)}</span></div>
       <div class="bvs"><div class="bface" style="--fc:#af50ff">${avatar(G.player.image, G.player.name)}</div><div class="bmeter"><div class="t"><span>The crowd · 1,000 fans in the room</span><b class="pc">50% yours</b></div><div class="bar"><i></i></div></div><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div></div>
@@ -2616,9 +2643,10 @@ const Show = (() => {
     if (fast || REDUCED) el.querySelectorAll(".brounds li").forEach((li) => li.classList.add("on"));
     await wait(300); el.querySelector(".wstamp").classList.add("on"); Sound.play(B.good ? "conquer" : "lost"); await wait(400);
   }
-  function lost(city, f, fought) { $("#ws-left").insertAdjacentHTML("beforeend", `<section class="bcard"><div class="bh"><h2>BATTLE FOR ${esc(city.toUpperCase())}</h2><span class="wstamp bad on">LOST</span></div><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(rivalLine(f, "won", { city }))}”<div>${fought ? "You fought and lost, and the siege ran out." : "You sent nobody."} ${esc(f.name)} takes ${esc(city)} and its tour stop.</div></div></div></section>`); Sound.play("lost"); }
-  function rival(f, line, status, title) { $("#ws-left").insertAdjacentHTML("beforeend", `<section class="rcard"><h2>${esc(title)}</h2><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(line)}”<div>${esc(status)}</div></div></div></section>`); }
+  function lost(city, f, fought) { activate("battles"); $("#ws-left").insertAdjacentHTML("beforeend", `<section class="bcard"><div class="bh"><h2>BATTLE FOR ${esc(city.toUpperCase())}</h2><span class="wstamp bad on">LOST</span></div><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(rivalLine(f, "won", { city }))}”<div>${fought ? "You fought and lost, and the siege ran out." : "You sent nobody."} ${esc(f.name)} takes ${esc(city)} and its tour stop.</div></div></div></section>`); Sound.play("lost"); }
+  function rival(f, line, status, title) { activate("battles"); $("#ws-left").insertAdjacentHTML("beforeend", `<section class="rcard"><h2>${esc(title)}</h2><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(line)}”<div>${esc(status)}</div></div></div></section>`); }
   function event(ev, R) {
+    activate("battles");
     $("#ws-left").insertAdjacentHTML("beforeend", `<section class="rcard ecard"><h2 style="color:#f0c46a">EVENT · ${esc(ev.title.toUpperCase())}</h2><div class="tx">${esc(ev.text)}</div><div class="chips2">${[ev.a, ev.b].map((x, i) => `<button class="chip2" data-ev="${i}">${esc(x[0])} <small>${esc(x[1])}</small></button>`).join("")}</div><div class="evnote">Both answers are free. Pick one before you give orders.</div></section>`);
     const card = $("#ws-left .ecard:last-of-type"); Sound.play("threat");
     const choose = (i) => { if (card.dataset.done) return; card.dataset.done = "1"; pending = null; const x = i ? ev.b : ev.a; x[2](); R.event.choice = x[0]; if (G.report) G.report.event = R.event; card.querySelectorAll("[data-ev]").forEach((b) => { b.disabled = true; b.classList.toggle("on", +b.dataset.ev === i); }); card.querySelector(".evnote").textContent = `You chose: ${x[0]} (${x[1]}).`; ops(`<span class="ok">event</span> ${esc(ev.title)} → ${esc(x[0])}`); hud(); };
@@ -2626,11 +2654,27 @@ const Show = (() => {
     pending = () => choose(0);
   }
   let pending = null;
-  function banner(html) { $("#ws-left").insertAdjacentHTML("beforeend", `<div class="lvup">${html}</div>`); Sound.play("ageup"); }
+  function banner(html) { activate("battles"); $("#ws-left").insertAdjacentHTML("beforeend", `<div class="lvup">${html}</div>`); Sound.play("ageup"); }
   function strip(R) {
     const L = levelOf(G.xp), q = quest(), ripe = G.cities.filter((c) => !isHeld(c) && (c.state === "beachhead" || (c.state === "rival" && G.prep.has(c.name)))).length;
     $("#ws-strip").innerHTML = `<div><b>+<span data-to="${R.income.gold}">0</span></b><small>gold</small></div><div><b>+<span data-to="${R.xp.gained}">0</span></b><small>XP${L.next ? ` · ${L.toNext} to Lv ${L.next.roman}` : ""}</small></div><div><b class="ok">${q.have} / ${q.need}</b><small>${esc(q.unit)}</small></div><div><b class="vi">${ripe}</b><small>cit${ripe === 1 ? "y" : "ies"} ripe to take</small></div>`;
     $$("#ws-strip [data-to]").forEach((b) => (REDUCED || fast ? (b.textContent = (+b.dataset.to).toLocaleString()) : countTo(b, +b.dataset.to)));
+  }
+  // the one-glance summary at the top: what changed on the map, and the single next move
+  function top(R) {
+    const el = $("#ws-top"); if (!el) return;
+    const diffs = R.mapDiff || [];
+    const gained = diffs.filter((d) => d.to === "you").map((d) => d.city);
+    const lost = diffs.filter((d) => d.from === "you" && d.to !== "you").map((d) => d.city);
+    const parts = [];
+    if (gained.length) parts.push(`<b class="ok">Took ${esc(gained.join(", "))}</b>`);
+    if (R.held) parts.push(`<b class="ok">Held ${esc(R.held.city)}</b>`);
+    if (lost.length) parts.push(`<b class="bad">Lost ${esc(lost.join(", "))}</b>`);
+    if (!parts.length) parts.push(`<b>No cities changed hands</b>`);
+    const o = $("#ws-outcome"); if (o) o.innerHTML = `<span class="ws-tag">This week</span>${parts.join(" · ")}`;
+    const nx = R.realMoves?.[0]?.title, n = $("#ws-next");
+    if (n) n.innerHTML = nx ? `<span class="ws-tag">Do next</span>${esc(nx)}` : "";
+    el.hidden = false;
   }
   function offers(list) {
     const el = $("#ws-offers"); if (!el) return;
@@ -2639,6 +2683,11 @@ const Show = (() => {
   }
   function footer() {
     const moves = G.real.filter((m) => !m.done).slice(-3), over = G.week > WEEKS;
+    // tab counts + land on the most useful tab now the week has finished revealing
+    const nR = $("#ws-cards")?.querySelectorAll(".lcard").length ?? 0, nB = $("#ws-left")?.querySelectorAll(".bcard,.rcard,.lvup").length ?? 0, nN = $("#ws-offers")?.querySelectorAll(".offer2").length ?? 0;
+    const setc = (id, n) => { const e = $(id); if (e) { e.textContent = n; e.closest(".ws-tab")?.classList.toggle("off", !n); } };
+    setc("#ws-tc-reports", nR); setc("#ws-tc-battles", nB); setc("#ws-tc-next", nN);
+    activate(pending ? "battles" : nR ? "reports" : nB ? "battles" : "next");
     $("#ws-ft").innerHTML = `<div class="rm"><div>Do it for real this week (unlocks +200 XP when ticked)</div>${moves.length ? moves.map((m, i) => `<div class="rmv" data-rm="${m.id}"><button title="I did this for real" aria-label="Mark done"></button><span>${i + 1}. ${esc(m.text)}</span></div>`).join("") : `<div class="rmv"><span>Nothing new: send a unit and its report becomes a real move.</span></div>`}</div>
       <div class="bt"><button class="ghost2" id="ws-peek">Peek: what winning looks like</button><button class="bigcta" id="ws-go">${over ? "SEE YOUR TOUR PACK" : `WEEK ${G.week} · GIVE ORDERS`}</button></div>`;
     $$("#ws-ft [data-rm]").forEach((r) => (r.querySelector("button").onclick = () => { markReal(r.dataset.rm); r.classList.add("done"); r.querySelector("button").textContent = "✓"; }));
@@ -2648,7 +2697,7 @@ const Show = (() => {
     Coach.loot?.(null);
   }
   function close() { if (pending) { pending(); pending = null; toast("Event: we picked the first answer for you."); } $("#weekshow").hidden = true; renderPrimary(); }
-  return { open, wait, waiting, loot, battle, lost, rival, banner, event, strip, offers, footer, close, headline: (t) => typeInto($("#ws-h"), t) };
+  return { open, wait, waiting, loot, battle, lost, rival, banner, event, strip, top, offers, footer, close, headline: (t) => typeInto($("#ws-h"), t) };
 })();
 
 // END WEEK: everything you ordered happens, in this order: marches → jobs →
@@ -2735,7 +2784,7 @@ async function endWeek() {
   R.headline = headlineFor({ you: shortName(), giant: G.giant && R.battle?.won && R.battle.rival === lastName(nemesis()?.name ?? ""), battle: R.battle?.rival === "nobody" ? null : R.battle, held: R.held, lost: R.lost, stop: stopL && q1.have > have0 ? { city: stopL.city, n: q1.have, m: q1.need } : null, sponsor: spL ? { brand: spL.brand, gold: spL.gold } : null, levelUp: R.xp.levelUp ? lv1.name : null, topFact: top ? (top.length > 80 ? top.slice(0, 79) + "…" : top) : null });
   G.headline = R.headline;
   G.report = JSON.parse(JSON.stringify({ ...R, battles: R.battles.filter((b) => b.res).map((b) => ({ city: b.res.city, rival: b.res.f.name, stamp: b.stamp, odds: Math.round(b.res.odds.p * 100), xp: b.xp })) }));
-  Show.strip(R); await Show.wait(300); Show.headline(R.headline); Show.offers(G.offers); Show.footer();
+  Show.top(R); Show.strip(R); await Show.wait(300); Show.headline(R.headline); Show.offers(G.offers); Show.footer();
   aiHeadline(R.headline, R);
   G.busy = false; hud(); renderAgents(); saveGame();
   if (G.week <= WEEKS) aiPlan();
