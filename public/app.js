@@ -1162,25 +1162,25 @@ function chipsFor(id, all = false) {
     if (weak) { const ch = youChip(weak); add(weak, ch.label, ch.get, ch); }
     for (const c of byCap(G.cities.filter((c) => !isHeld(c) && c.state !== "uncharted"))) { const ch = youChip(c); add(c, ch.label, ch.get, ch); }
   } else if (id === "scout") {
-    for (const it of G.intents) { const c = cityOf(it.city), f = G.fac.get(it.fid); if (c && f && !f.allied) add(c, `${c.name} (${lastName(f.name)} is coming)`, `what ${lastName(f.name)} is up to (Wikipedia) and what your fans there love`); }
-    for (const c of byCap(G.cities.filter((c) => c.state === "uncharted"))) add(c, `${c.name} (uncharted)`, "lifts the fog and shows what they love");
-    if (G.objCity && !G.scouted.has(G.objCity)) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "what your fans there love; lifts the fog");
-    for (const c of G.cities.filter((c) => !G.scouted.has(c.name) && c.state !== "uncharted" && !isHeld(c)).sort((a, b) => b.you - a.you)) add(c, c.name, c.state === "rival" ? "+intel, and a strike there takes 1 order, not 2" : "+intel, the city costs 1 less to take");
+    for (const it of G.intents) { const c = cityOf(it.city), f = G.fac.get(it.fid); if (c && f && !f.allied) add(c, `${c.name} (${lastName(f.name)} is coming)`, `${lastName(f.name)}'s plan (Wikipedia) + your fans' loves`); }
+    for (const c of byCap(G.cities.filter((c) => c.state === "uncharted"))) add(c, `${c.name} (uncharted)`, "lifts the fog · shows their loves");
+    if (G.objCity && !G.scouted.has(G.objCity)) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "your fans' loves · lifts the fog");
+    for (const c of G.cities.filter((c) => !G.scouted.has(c.name) && c.state !== "uncharted" && !isHeld(c)).sort((a, b) => b.you - a.you)) add(c, c.name, c.state === "rival" ? "+intel · strike costs 1 order, not 2" : "+intel · costs 1 less to take");
     for (const c of mine.filter((c) => !G.scouted.has(c.name))) add(c, c.name, "+intel for your posts there");
   } else if (id === "booker") {
-    for (const s of q.slots.filter((s) => s.city && !s.on)) { const c = cityOf(s.city); add(c, `${c.name} (fills stop ${stopOf(c.name) + 1})`, `a booked room = tour stop ${stopOf(c.name) + 1}, venue email drafted`); }
-    for (const c of mine.filter((c) => !roomOf(c.name))) add(c, c.name, "a booked room, a stop while you hold it");
-    if (G.objCity) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "a room in the city you're breaking into");
+    for (const s of q.slots.filter((s) => s.city && !s.on)) { const c = cityOf(s.city); add(c, `${c.name} (fills stop ${stopOf(c.name) + 1})`, `tour stop ${stopOf(c.name) + 1} booked · venue email`); }
+    for (const c of mine.filter((c) => !roomOf(c.name))) add(c, c.name, "a room · a stop while you hold it");
+    if (G.objCity) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "a room in your new city");
     for (const c of mine.filter((c) => roomOf(c.name))) add(c, `${c.name} (backup room)`, "a better room in a city you hold");
-    for (const c of G.cities.filter((c) => c.state === "beachhead" && !isHeld(c))) add(c, `${c.name} (book ahead)`, "a room on hold: take the city to make it a stop");
+    for (const c of G.cities.filter((c) => c.state === "beachhead" && !isHeld(c))) add(c, `${c.name} (book ahead)`, "room on hold · take the city to lock it in");
   } else if (id === "sponsor") {
     const have = new Set(G.sponsors.map((s) => s.city));
-    for (const c of mine.filter((c) => !have.has(c.name))) add(c, c.name, "+20 to 70 gold a week and a pitch email");
-    for (const c of mine) add(c, `${c.name} (second brand)`, "another brand, more gold a week");
+    for (const c of mine.filter((c) => !have.has(c.name))) add(c, c.name, "+20–70 gold/wk · pitch email");
+    for (const c of mine) add(c, `${c.name} (second brand)`, "another brand · more gold/wk");
   } else if (id === "diplomat") {
     const facs = [...G.fac.values()].filter((f) => !f.allied && !G.parleyed.has(f.name)).sort((a, b) => (b.strategy === "ally") - (a.strategy === "ally") || b.plan.barter - a.plan.barter);
-    for (const f of facs) { const c = cityOf(f.plan.city) ?? cityOf(f.plan.holds?.[0]) ?? cap; add(c, `${f.name} (${c.name})`, `${f.strategy === "ally" ? "an ally" : "a truce with a rival"} + a DM ready to send`, { ally: f.name }); }
-    for (const a of (G.c.allies || []).filter((a) => !G.parleyed.has(a.name) && !facByName(a.name))) add(cap, `${a.name} (${cap.name})`, "an ally + a DM ready to send", { ally: a.name });
+    for (const f of facs) { const c = cityOf(f.plan.city) ?? cityOf(f.plan.holds?.[0]) ?? cap; add(c, `${f.name} (${c.name})`, `${f.strategy === "ally" ? "an ally" : "a truce"} · DM ready`, { ally: f.name }); }
+    for (const a of (G.c.allies || []).filter((a) => !G.parleyed.has(a.name) && !facByName(a.name))) add(cap, `${a.name} (${cap.name})`, "an ally · DM ready", { ally: a.name });
   } else if (id === "reader") {
     for (const sg of G.sieges) add(cityOf(sg.city), `${sg.city} (before the fight)`, "+30% odds there, a fan quote");
     for (const o of G.orderQueue.filter((o) => o.unitId === "you")) add(cityOf(o.city), `${o.city} (before the fight)`, "+30% odds there, a fan quote");
@@ -2011,9 +2011,9 @@ function welcomeBack(s) {
       <div class="wb-rep"><div class="wb-k">📰 Your war report <span>week ${s.week} · live from Qloo, Google Trends and your map</span></div>
         <div class="wb-cols"><div class="wb-col"><h4>What changed</h4><ul id="wb-changes"><li class="none wb-load">Reading the map…</li></ul></div>
         <div class="wb-col"><h4>Your 3 moves</h4><div id="wb-moves" style="display:grid;gap:6px"><span class="wb-load">Asking your strategist…</span></div></div></div>
-        <div class="wb-chips"><span class="wb-chip">${s.over ? "🏁 Finished: start a new one, your open missions come with you" : `⏳ Your agents held their posts${days >= 6 ? " · a real week passed, rivals moved" : ""}`}</span><span class="wb-chip${days >= 0.5 ? " good" : ""}">🎁 ${bonus}</span><span id="wb-tour"></span></div>
+        <div class="wb-chips"><span class="wb-chip">${s.over ? "🏁 Finished · start a new one, missions carry over" : `⏳ Agents held their posts${days >= 6 ? " · a week passed, rivals moved" : ""}`}</span><span class="wb-chip${days >= 0.5 ? " good" : ""}">🎁 ${bonus}</span><span id="wb-tour"></span></div>
       </div>
-      <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +200 XP</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Execute orders in the game and each one becomes a real mission for your week.</p>`}</div>
+      <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +200 XP</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Send a unit — each order becomes a real move.</p>`}</div>
       <div class="wb-act">${s.over ? "" : `<button class="go ibegin" id="wb-go">▶ Continue campaign</button>`}<button class="ghostbtn" id="wb-new">New campaign</button></div>
     </div>`;
     $("#intro").hidden = false;
@@ -2604,7 +2604,8 @@ const Show = (() => {
   function open(week) {
     fast = false;
     $("#ws-in").innerHTML = `<header class="ws-hd"><div class="k">Sunday night · Week ${week} of ${WEEKS}</div><h1 id="ws-h"></h1><div class="s">Your weekly headline, written from what actually happened.</div></header>
-      <div class="ws-top" id="ws-top" hidden><div class="ws-outcome" id="ws-outcome"></div><div class="wstrip" id="ws-strip"></div><div class="ws-next" id="ws-next"></div></div>
+      <div class="ws-top" id="ws-top" hidden><div class="ws-outcome" id="ws-outcome"></div><div class="wstrip" id="ws-strip"></div></div>
+      <div class="ws-todo" id="ws-todo" hidden></div>
       <nav class="ws-tabs" id="ws-tabs">
         <button class="ws-tab active" data-tab="reports" type="button">Army reports <b id="ws-tc-reports">0</b></button>
         <button class="ws-tab" data-tab="battles" type="button">Battles &amp; rivals <b id="ws-tc-battles">0</b></button>
@@ -2672,8 +2673,6 @@ const Show = (() => {
     if (lost.length) parts.push(`<b class="bad">Lost ${esc(lost.join(", "))}</b>`);
     if (!parts.length) parts.push(`<b>No cities changed hands</b>`);
     const o = $("#ws-outcome"); if (o) o.innerHTML = `<span class="ws-tag">This week</span>${parts.join(" · ")}`;
-    const nx = R.realMoves?.[0]?.title, n = $("#ws-next");
-    if (n) n.innerHTML = nx ? `<span class="ws-tag">Do next</span>${esc(nx)}` : "";
     el.hidden = false;
   }
   function offers(list) {
@@ -2682,15 +2681,22 @@ const Show = (() => {
     $$("#ws-offers [data-wclaim]").forEach((b) => (b.onclick = () => claimOffer(b.dataset.wclaim)));
   }
   function footer() {
-    const moves = G.real.filter((m) => !m.done).slice(-3), over = G.week > WEEKS;
+    const moves = G.real.filter((m) => !m.done).slice(-4), over = G.week > WEEKS;
     // tab counts + land on the most useful tab now the week has finished revealing
     const nR = $("#ws-cards")?.querySelectorAll(".lcard").length ?? 0, nB = $("#ws-left")?.querySelectorAll(".bcard,.rcard,.lvup").length ?? 0, nN = $("#ws-offers")?.querySelectorAll(".offer2").length ?? 0;
     const setc = (id, n) => { const e = $(id); if (e) { e.textContent = n; e.closest(".ws-tab")?.classList.toggle("off", !n); } };
     setc("#ws-tc-reports", nR); setc("#ws-tc-battles", nB); setc("#ws-tc-next", nN);
     activate(pending ? "battles" : nR ? "reports" : nB ? "battles" : "next");
-    $("#ws-ft").innerHTML = `<div class="rm"><div>Do it for real this week (unlocks +200 XP when ticked)</div>${moves.length ? moves.map((m, i) => `<div class="rmv" data-rm="${m.id}"><button title="I did this for real" aria-label="Mark done"></button><span>${i + 1}. ${esc(m.text)}</span></div>`).join("") : `<div class="rmv"><span>Nothing new: send a unit and its report becomes a real move.</span></div>`}</div>
+    // the 'do it for real' list is now its own card up top, next to the summary — not tucked in the footer
+    const td = $("#ws-todo");
+    if (td) {
+      td.innerHTML = `<div class="ws-todo-h"><span>✓ Do it for real this week</span><em>each tick → +200 XP</em></div>
+        <div class="ws-todo-list">${moves.length ? moves.map((m) => `<div class="rmv" data-rm="${m.id}"><button type="button" title="I did this for real" aria-label="Mark done"></button><span>${esc(m.text)}</span></div>`).join("") : `<div class="rmv ghost"><span>Nothing yet — send a unit and its report becomes a real move you can do.</span></div>`}</div>`;
+      td.hidden = false;
+      $$("#ws-todo [data-rm]").forEach((r) => (r.querySelector("button").onclick = () => { markReal(r.dataset.rm); r.classList.add("done"); r.querySelector("button").textContent = "✓"; }));
+    }
+    $("#ws-ft").innerHTML = `<div class="ws-ft-hint">You decide what actually happens — nothing moves until you give orders.</div>
       <div class="bt"><button class="ghost2" id="ws-peek">Peek: what winning looks like</button><button class="bigcta" id="ws-go">${over ? "SEE YOUR TOUR PACK" : `WEEK ${G.week} · GIVE ORDERS`}</button></div>`;
-    $$("#ws-ft [data-rm]").forEach((r) => (r.querySelector("button").onclick = () => { markReal(r.dataset.rm); r.classList.add("done"); r.querySelector("button").textContent = "✓"; }));
     $("#ws-peek").onclick = () => victory(true);
     $("#ws-go").onclick = () => { close(); if (over) victory(); };
     $$("#ws-in [data-act]").forEach((b) => (b.onclick = () => { const k = b.dataset.act; close(); if (k === "xray") Drawer.open("xray"); else if (k === "tour") openTourFromQuest(); }));
@@ -2854,7 +2860,7 @@ function victory(preview = false) {
   if (!preview) { if (G.over) return; G.over = true; renderAgents(); }
   const f = questFacts(), tq = questState({ ...f, objective: "tour" }), q = quest(), obj = objectiveOf(G.objective), L = levelOf(G.xp), have = tq.have, won = !preview && q.won;
   const title = preview ? "WHAT WINNING LOOKS LIKE" : won ? (obj.id === "tour" ? "YOUR TOUR IS BOOKED" : `QUEST COMPLETE · ${obj.title.toUpperCase()}`) : G.realDone >= 5 ? "GROUNDWORK DONE" : `YOUR TOUR: ${have} OF 6 STOPS`;
-  const sub = preview ? "Your pack so far. Every grey row is a stop your army can still fill." : "Every stop below came from an order you gave. This is the thing you played for: a plan your manager would have taken a month to make, with the emails already written.";
+  const sub = preview ? "Your pack so far. Every grey row is a stop your army can still fill." : "Every stop came from an order you gave — a month of a manager's work, emails already written.";
   const rows = tq.slots.map((s, i) => {
     if (!s.city) return `<div class="vp-row empty"><span class="n">${i + 1}</span><span><strong>Stop ${i + 1}</strong><br><small>take a city, then send the Booker</small></span><span>—</span><span>—</span><span>—</span><span>—</span></div>`;
     const r = roomOf(s.city), n = G.nights.find((x) => x.city === s.city && x.venue) ?? G.nights.find((x) => x.city === s.city);
@@ -2868,9 +2874,18 @@ function victory(preview = false) {
   const camp = `${pl(G.taken, "city", "cities")} taken · ${pl(G.saved, "attack")} held · ${pl(G.allies, "ally", "allies")}${allyNames.length ? ` (${allyNames.slice(0, 2).join(", ")})` : ""} · ${pl(G.sponsors.length, "sponsor")} · ${pl(G.realDone, "real move")} done`;
   const nIcs = G.nights.length;
   const pk = obj.id === "tour" ? null : packFor(obj, preview, won), bc = pk ? [...new Set(pk.cities)].filter((c) => METROS[c]).slice(0, 6) : stops;
+  // when the pack is still thin, fill the space with a short "how your army fills this" guide instead of dead rows
+  const filled = pk ? pk.have : have, target = pk ? pk.need : 6;
+  const guide = filled < target ? `<div class="vp-guide"><div class="vp-guide-h">Fill your pack — send your army</div><div class="vp-guide-row">
+    <div class="vp-guide-c"><span class="gi">🎟️</span><b>Booker</b><small>rooms &amp; show nights</small></div>
+    <div class="vp-guide-c"><span class="gi">🕊️</span><b>Diplomat</b><small>acts &amp; openers (the DMs)</small></div>
+    <div class="vp-guide-c"><span class="gi">💼</span><b>Sponsor scout</b><small>sponsors &amp; weekly gold</small></div>
+    <div class="vp-guide-c"><span class="gi">🎭</span><b>Room reader</b><small>posts &amp; better odds</small></div></div>
+    <div class="vp-guide-f">Every order you give adds a real row here — with the email already written. <b>${target - filled}</b> of ${target} still to fill.</div></div>` : "";
   $("#vpack").innerHTML = `<header class="vp-hd"><div class="k">Week ${Math.min(G.week, WEEKS)} of ${WEEKS} · Lv ${L.roman} ${esc(L.name)} reached · ${pk ? `${pk.have} of ${pk.need} · ${esc(obj.title)}` : `${have} of 6 stops booked`}</div><h1>${esc(pk && !preview ? pk.title : title)}</h1><p>${esc(sub)}</p></header>
     <div class="vp-body"><section class="vp-map" aria-label="${pk ? "Your map" : "Tour route"}"><canvas id="vp-cv"></canvas><div class="sum">${pk ? pk.summary : esc(summary)}</div><div class="camp"><strong>Campaign:</strong> ${esc(camp)}</div></section>
-      <section class="vp-stops" aria-label="Your pack">${pk ? pk.table : `<div class="vp-row hd"><span>#</span><span>City · night</span><span>Room (Booker)</span><span>Opener (Diplomat)</span><span>Sponsor (Sponsor scout)</span><span>Post (Room reader)</span></div>${rows}`}<div class="vp-note">Every cell has a receipt (hover it): Qloo places and brands, Open-Meteo, the fan panel. Fan counts and fits are real; opener and sponsor replies are up to you.</div></section></div>
+      <section class="vp-stops" aria-label="Your pack">${pk ? pk.table : `<div class="vp-row hd"><span>#</span><span>City · night</span><span>Room (Booker)</span><span>Opener (Diplomat)</span><span>Sponsor (Sponsor scout)</span><span>Post (Room reader)</span></div>${rows}`}<div class="vp-note">Hover any cell for its receipt (Qloo, Open-Meteo, fan panel). Fan counts and fits are real; opener and sponsor replies are up to you.</div></section></div>
+    ${guide}
     <footer class="vp-ft"><div><button class="vbtn" id="vp-ics" ${nIcs ? "" : "disabled title=\"Book a room or send the Weather oracle first\""}>Calendar (.ics, ${pl(nIcs, "night")})</button><button class="vbtn" id="vp-briefs" ${bc.length && G.cid ? "" : "disabled"}>${pl(bc.length, "City Brief")} (PDF)</button><button class="vbtn" id="vp-assets">${pl(G.venueMails.length, "venue email")} · ${pl(G.sponsorPitches.length, "sponsor pitch", "sponsor pitches")} · ${pl(G.dms.length, "DM")}</button>${have >= 4 ? `<button class="vbtn" id="vp-tour">Tour Planner: route it</button>` : ""}<button class="vbtn" id="vp-share">Share card</button></div>
       <div>${preview ? `<button class="bigcta" id="vp-back">BACK TO THE WEEK</button>` : `<button class="ghost2" id="vp-map">Examine the map</button><button class="bigcta gold" id="vp-new">NEW CAMPAIGN · LV ${L.roman}</button>`}</div></footer>`;
   $("#victory").hidden = false; $("#victory").scrollTop = 0; Sound.play(preview ? "select" : won ? "victory" : "week");

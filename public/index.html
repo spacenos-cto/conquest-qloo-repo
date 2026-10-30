@@ -609,6 +609,9 @@ em{font-style:italic}
 .pill2:hover{background:rgba(255,255,255,.16)}
 .lnk2{margin-top:12px;background:none;border:0;color:rgba(255,255,255,.8);font-size:13.5px;padding:4px 0}
 .barcode{position:absolute;right:20px;top:26px;bottom:26px;width:42px;opacity:.75;background:repeating-linear-gradient(180deg,#fff 0 3px,transparent 3px 5px,#fff 5px 6px,transparent 6px 10px,#fff 10px 14px,transparent 14px 16px)}
+.ptag{font-size:13.5px;line-height:1.5;opacity:.85;margin:12px 0 2px;max-width:46ch}
+.pass h3{margin:20px 0 4px}
+.psub{font-size:13px;line-height:1.45;opacity:.8;margin:0 0 6px;max-width:44ch}
 /* story: three eras */
 .story{position:relative;background:#090909;padding:150px 0 0}
 .mix2{font-size:clamp(40px,5.6vw,80px);line-height:1;letter-spacing:-.045em;font-weight:700;margin:0}
@@ -1701,7 +1704,15 @@ body:not(.simple) .fanstrip{right:300px}
 .vp-row{display:grid;grid-template-columns:36px 1.2fr 1.4fr 1fr 1fr 1fr;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#141827;border:1px solid #262c40;font-size:13px;min-width:640px}
 .vp-row.hd{background:none;border:0;padding:0 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9a9db3}
 .vp-row .n{width:28px;height:28px;border-radius:50%;background:#f0c46a;display:inline-flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;font-weight:900;color:#0b0d14}
-.vp-row.empty{opacity:.5}.vp-row.empty .n{background:#262c40;color:#9a9db3}
+.vp-row.empty{opacity:.6;border-style:dashed}.vp-row.empty .n{background:#262c40;color:#9a9db3}
+.vp-guide{border:1px solid #2a3350;border-radius:16px;background:#10131f;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.vp-guide-h{font:600 13px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:#f0c46a}
+.vp-guide-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.vp-guide-c{display:flex;flex-direction:column;gap:3px;background:#141827;border:1px solid #262c40;border-radius:12px;padding:13px 15px}
+.vp-guide-c .gi{font-size:22px;line-height:1}
+.vp-guide-c b{font-size:14px;color:#e9e7f2}.vp-guide-c small{font-size:12px;color:#9a9db3}
+.vp-guide-f{font-size:13px;color:#c9cbd8}.vp-guide-f b{color:#f0c46a;font-family:var(--mono,monospace)}
+@media (max-width:760px){.vp-guide-row{grid-template-columns:repeat(2,1fr)}}
 .vp-row small{color:#9a9db3;font-size:12px}.vp-row .fit{color:#3dff9a;font-size:12px}.vp-row .c{color:#c9cbd8}
 .vp-note{font-size:12px;color:#6f7390;padding:2px 12px}
 .vp-ft{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-top:1px solid #262c40;padding-top:16px}.vp-ft > div{display:flex;flex-wrap:wrap;gap:10px}
@@ -1739,6 +1750,17 @@ body:not(.simple) .fanstrip{right:300px}
 .ws-panel{display:none;flex-direction:column;gap:14px;animation:lin .25s ease-out}
 .ws-panel.active{display:flex}
 .ws-panel .ws-left{flex:0 1 auto}
+/* the prominent 'do it for real' card, up top beside the summary */
+.ws-todo{background:linear-gradient(90deg,rgba(61,255,154,.09),rgba(61,255,154,.02));border:1px solid rgba(61,255,154,.32);border-radius:14px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;animation:lin .4s ease-out}
+.ws-todo-h{display:flex;align-items:center;gap:10px;font:700 14px var(--sans);color:#3dff9a;letter-spacing:.01em}
+.ws-todo-h em{font-style:normal;margin-left:auto;font-size:11px;color:#9a9db3;font-family:var(--mono,monospace);text-transform:uppercase;letter-spacing:.06em}
+.ws-todo-list{display:flex;flex-direction:column;gap:7px}
+.ws-todo .rmv{display:flex;gap:11px;align-items:center;font-size:14px;color:#e9e7f2;line-height:1.35}
+.ws-todo .rmv button{width:24px;height:24px;border-radius:7px;border:1px solid #3a4060;background:#0f1220;color:#3dff9a;cursor:pointer;flex-shrink:0;padding:0;font-size:14px;line-height:1}
+.ws-todo .rmv button:hover{border-color:#3dff9a}
+.ws-todo .rmv.done{color:#9a9db3;text-decoration:line-through}.ws-todo .rmv.done button{color:#9a9db3}
+.ws-todo .rmv.ghost{color:#9a9db3;font-size:13px}
+.ws-ft-hint{flex:1 1 320px;font-size:12px;color:#9a9db3}
 .lcard .mv i{font-style:normal;color:#9a9db3;font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-right:6px;background:#0f1220;border:1px solid #2a3350;border-radius:999px;padding:3px 7px;vertical-align:middle}
 .lwhy{margin-top:2px}
 .lwhy summary{font-size:11px;color:#9a9db3;cursor:pointer;list-style:none;user-select:none}
@@ -1822,13 +1844,15 @@ body:not(.simple) .fanstrip{right:300px}
       </div>
       <div class="pass" aria-label="Campaign pass">
         <div class="ptop"><svg class="ic" viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg> Campaign Pass</div>
-        <div class="route"><div><small>ORIGIN</small><b>OPEN MIC</b></div><span>→</span><div><small>DESTINATION</small><b>LEGEND</b></div></div>
-        <div class="pmid"><div><small>AGENTS</small><b>5</b></div><div><small>FANS SIMULATED</small><b>1,000</b></div><div><small>WEEKS</small><b>8</b></div></div>
-        <h3>Free instant campaign</h3>
+        <p class="ptag">A strategy game: take a real creator from open mic to legend in 8 weeks. Your moves run on live fan data — their actual audience becomes your map.</p>
+        <div class="route"><div><small>YOU START AS</small><b>OPEN MIC</b></div><span>→</span><div><small>8-WEEK GOAL</small><b>LEGEND</b></div></div>
+        <div class="pmid"><div><small>AI AGENTS</small><b>5</b></div><div><small>FANS SIMULATED</small><b>1,000</b></div><div><small>WEEKS</small><b>8</b></div></div>
+        <h3>Pick who to play</h3>
+        <p class="psub">We pull their real fans from Qloo and build your map. Free, no signup — starts now.</p>
         <button class="pill2" data-as="Jason Calacanis">Play as Jason Calacanis</button>
         <button class="pill2" data-as="Cedric the Entertainer">Play as Cedric the Entertainer</button>
         <button class="pill2" data-as="Los Angeles Dodgers">Play as the LA Dodgers</button>
-        <button class="lnk2" data-play>or type your own name →</button> <button class="lnk2" data-tour>· watch the jury tour</button>
+        <button class="lnk2" data-play>or play as yourself / any name →</button> <button class="lnk2" data-tour>· watch the jury tour</button>
         <i class="barcode" aria-hidden="true"></i>
       </div>
     </div>
