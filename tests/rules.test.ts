@@ -98,6 +98,7 @@ test("tour missions complete in order as the board fills", () => {
 test("headlineFor: the first matching template wins, names are real", () => {
   const all = { you: "Cedric", battle: { won: true, kind: "take", city: "Chicago", rival: "Anderson" }, held: { city: "Atlanta", rival: "Anderson", ripe: "Chicago" }, lost: { city: "Dallas", rival: "King" }, stop: { city: "Nashville", n: 3, m: 6 }, sponsor: { brand: "Cadillac", gold: 60 }, levelUp: "Theater Tour", topFact: "fans love Cadillac" };
   assert.equal(R.headlineFor(all), "Cedric takes Chicago as Anderson's crowd thins");
+  assert.equal(R.headlineFor({ ...all, giant: true }), "Cedric, giant slayer, takes Chicago from Anderson");
   assert.equal(R.headlineFor({ ...all, battle: null }), "Cedric holds Atlanta as Anderson's raid fizzles; Chicago now ripe");
   assert.equal(R.headlineFor({ ...all, battle: null, held: null }), "King takes Dallas; Cedric's tour loses a stop");
   assert.equal(R.headlineFor({ you: "Cedric", stop: all.stop, sponsor: all.sponsor }), "Nashville booked: Cedric's tour hits 3 of 6 stops");
@@ -124,4 +125,17 @@ test("save migration: a v1 save comes back as v2 on the tour objective, XP from 
   assert.equal(R.migrateSave(again), again, "v2 saves pass through");
   assert.equal(R.migrateSave({ v: 9 }), null);
   assert.equal(R.migrateSave(null), null);
+});
+
+test("save migration: the twelve agents fold into five, keeping the best XP and one order per unit", () => {
+  const v2 = { v: 2, week: 4, unitXp: [["scout", 40], ["spy", 130], ["oracle", 30], ["booker", 20], ["listener", 99]], crew: [["scout", { recruited: true }], ["spy", { recruited: true }], ["herald", { recruited: true }]],
+    army: [{ id: "scout" }, { id: "spy" }, { id: "showrunner" }], orderQueue: [{ unitId: "spy", city: "Atlanta" }, { unitId: "scout", city: "Memphis" }, { unitId: "herald", city: "Chicago" }, { unitId: "you", city: "Dallas" }] };
+  const m = R.migrateSave(v2);
+  assert.deepEqual(plain(m.unitXp).sort(), [["booker", 30], ["scout", 130]]);
+  assert.deepEqual(plain(m.crew.map(([id]: [string]) => id)), ["scout"]);
+  assert.deepEqual(plain(m.army.map((u: any) => u.id)), ["scout"]);
+  assert.deepEqual(plain(m.orderQueue.map((q: any) => `${q.unitId}:${q.city}`)), ["scout:Atlanta", "diplomat:Chicago", "you:Dallas"]);
+  const v1 = R.migrateSave({ v: 1, conquest: 10, missions: 2, crew: [["trend", {}], ["scout", {}]], army: [{ id: "trend" }], real: [] });
+  assert.deepEqual(plain(v1.crew.map(([id]: [string]) => id)), ["scout"], "v1 saves (no unit XP yet) drop the merged units too");
+  assert.deepEqual(plain(v1.army), []);
 });

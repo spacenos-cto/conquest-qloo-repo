@@ -1,4 +1,4 @@
-# Conquest: every feature, as built (Oct 29, evening)
+# Conquest: every feature, as built (Oct 30, v2)
 
 **Conquest is a growth agent for comedians, creators and performers, played like a Rise of Nations strategy game.** Your real audience (from Qloo's taste graph) is the map, and every move in the game is a real growth move: a city to play, a venue to book, a sponsor to pitch, a collab to propose, a post to make.
 
@@ -34,53 +34,41 @@
    - Lists your real missions to tick off ("Did you do these for real?").
    - Continue or start a new campaign.
 
-## 3. The game screen
+## 3. The game screen (v2: turn-based, no clock)
 
 | Area | What it does |
 |---|---|
-| **Map** | The US by state. Each city shows your real fan count (Qloo). Every state is shaded by its nearest city in play: yours, a rival's, an ally's or open. Uncharted states are striped ("send a Scout"). |
-| **Goal bar** | One slim line: "Goal: win 40% of your fans by week 8", with a progress bar. Click it for where you stand and what a week means. |
-| **World clock** | 8 weeks per campaign, about 90 seconds per week, stepping by the hour. Pause and fast-forward use line icons. At Sunday midnight gold comes in and rivals attack. |
-| **AI strategist** | Closed by default: a single best-move button. Open it for **Now / Do / Why**, timed opportunities and **Simulate my whole plan**. With the AI on, Claude's plan replaces the rules-based one (section 6). |
-| **Opportunities** | Timed offers built from live data, about 3 real minutes each: a trend wave (Google Trends), a fan meetup in your best city, a brand that wants a sponsored post (Qloo), a performer booking an opener. |
-| **Top bar** | Buzz ⚡ (moves per week), Hype (how hard your material hits), Gold 🪙 (agents and walls). One **⭐ Stats** button (cities held, allies, agents, score). Real moves · X-ray · Share · Simple/Full view · help · sound · exit. |
-| **Right column** | The world clock, the **Radar** minimap (incoming rivals; click a blip for that rival, anywhere else for the threat report), **Crowd brain** (click to open) and **Live calls** (every API call the agents make, with sources). |
-| **Rival faces** | Real performers your fans also follow. The badge says Calm / Attacking / Under siege. Click a face for the **rival card**: their line, fame, cities they hold, this week, if-you-wait, and Defend / Walls / Strike / Deal. |
-| **Full / Simple view** | Opens in Full view. Simple view hides the brain, live calls, scoreboard and legend, and shows only your hired agents plus a few to hire. The choice is remembered once you switch. |
-| **Bottom bar** | Agent army · next move (or the selected unit or city) · End week. |
-| **Tutorial** | Six steps for first-timers: your ground, your first move, a rival moving, the three resources, agents, real moves. |
+| **Screen 0: objective** | Before week 1: **What do you want in 8 weeks?** Four cards: Book a tour · Land sponsors · Break into a new city (pick one of your 5 biggest cities you don't hold) · Fill my calendar. Each shows its four missions (one per two weeks, named with your real cities), your army for it, how you win, and who's in your way. **Change nemesis** lists the rivals Qloo found; a bigger name attacks 2 weeks out of 3 but is worth +50% XP ("giant slayer"). |
+| **Top bar** | You, `Week N of 8`, your level (Open Mic → Club Circuit → Theater Tour → Arena Headliner → Legend) and XP to the next one · the **quest bar** (6 tour stops, 3 sponsors, 4 parts of the new city or 5 DMs; click it for the missions sheet and **Change objective**) · gold and income · **orders left** · help · Full view · a `···` menu (Real moves, Tour Planner, X-ray, Share, Threat report, sound, exit). |
+| **Map** | Three colours in Simple view: yours, the nemesis (red), open. Your tour route in violet with gold numbers on booked stops, dashed green march lines for this week's orders, the rival's attack labelled "HITS <city> AT END WEEK", venue / sponsor / walls badges, "UNCHARTED · SEND A SCOUT", an always-on legend, and a fan strip with a real panel quote. Hover a city: what each unit would bring back from it. Click a city with a unit selected to order it there. |
+| **Army rail** | **You** plus five agents from week 1 (Scout, Booker, Sponsor scout, Diplomat, Room reader); Lv III gives each a second power. Each row says **Does** and **Brings back**. Click a unit: 3 target chips (4 from Lv II), each with what you'd get; the AI strategist moves its pick first when it's on. **All-in** chips on rival cities and sponsor pitches: 2 orders + 100 gold for a 30% shot (40% at Lv IV) at three times the prize. Weekly **offers** (trend wave, fan meetup, sponsored post, an act booking an opener) cost one order each. |
+| **END WEEK** | The only way time moves. About five seconds of show: units march, the live calls come back as **loot cards** (fact, receipt, map change, quest change or XP, the real move), a random event (40%, from live data, two free answers), battles with the crowd meter and five rounds, sieges, the rival's attack and next move, missions completed, level-ups, the tally and a **headline**. It stays as the week's report until **WEEK N+1 · GIVE ORDERS**. Click to skip ahead. |
+| **Win screen** | The deliverable: the tour pack (route map, six stops with night, room, opener, sponsor and post, calendar, City Briefs, emails, share), or the sponsor, new-city or collab pack. Reachable mid-game as **Peek: what winning looks like**. |
+| **Full / Simple view** | Simple is the default. Full view adds the radar, the crowd brain, live calls, the rival strip and scoreboard, and every rival's colour. |
+| **Tutorial** | Four beats: the quest bar, one Booker order, END WEEK, and the first loot card inside the show. |
 
-## 4. The 12 agents (each calls real data)
+## 4. The army: five agents (each runs real calls)
 
-Send an agent to a city (click it then a city, or drag it onto the map). It marches on the clock, does its job on arrival (once per week), and earns while stationed in a city you hold. Its card says what it does, **what you get**, **what it does in the game** and its **last report**.
+One agent per outcome you can name: know a city, book a show, get paid, make a friend, test the material. The old twelve were merged by outcome, so no data call was lost: a merged agent runs its calls together and brings back one loot card, one fact line per source, every receipt listed. All five march from week 1. **Lv III gives every agent its second power** instead of new units.
 
-| Agent | Real job | You get |
-|---|---|---|
-| Scout | What your fans in a city also love (Qloo) | Things to mention there |
-| Booker | The venue whose crowd fits yours (Qloo places) | A room to book, plus a backup |
-| Diplomat | A performer whose fans would like you (Qloo overlap) | A partner, and a deal screen with a DM |
-| Sponsor scout | A brand your fans love (Qloo) | A sponsor paying gold weekly, and a pitch email |
-| Herald | A podcast your fans listen to (Qloo) | A guest spot |
-| Room reader | Simulated fans in that city react, fan by fan | Who loved it and who didn't |
-| Trend hunter | What's trending in that state (Google Trends) | A topic to post on |
-| Weather oracle | 7-day forecast (Open-Meteo) | The best dry show night (and a calendar entry) |
-| Spy | Rivals' fame and momentum (Wikipedia pageviews) | Who attacks next |
-| Copywriter | Writes a post for that city | A ready-to-post caption |
-| Showrunner | Plans a whole show night in a city you hold | A night plan, +gold |
-| Listener | Reddit (locked until connected) | What fans say about you |
+| Agent | Does (the real calls) | Brings back | XP | Lv III power |
+|---|---|---|---|---|
+| You | Fights for a city with your material (odds from Qloo, the panel and Wikipedia) | The city and its tour stop. An unprepared rival city takes 2 orders: groundwork, then the strike | 80 / 60 | — |
+| Scout | Qloo brands × city + Google Trends for that state + Wikipedia fame of whoever is marching there | Fog lifted, intel, the city costs 1 less to take, the attack before it lands | 40 | Trend wave: +1 order next week if you post on the trend |
+| Booker | Qloo places × city + Open-Meteo for that week | A booked venue = a tour stop, a dated Fri/Sat night in route order, the venue email | 60 | Festival night: a second room in a held city becomes a festival, +200 gold |
+| Sponsor scout | Qloo brands your fans over-index on | Gold every week + a pitch email | 50 | Double deal: a second brand per city as a backup pitch |
+| Diplomat | Qloo taste overlap | A parley: an ally (their cities count for your quest) + a DM | 50 | Podcast tour: a podcast your fans listen to, a guest spot |
+| Room reader | 1,000 simulated fans in that city | +30% odds there, a fan quote | 40 | Copywriter: the post for that city, +1 order next week |
+
+Agents earn stars: ★★ at 100 XP (more results, +10 gold, +5% odds, the Scout sees the nemesis's next target), ★★★ at 250 (the job also runs free in your nearest other held city). A job that finds nothing says "Qloo had nothing distinctive here" and pays no XP. Walls cost 80 gold (the Spy is gone; the Scout tells you who's coming).
 
 ## 5. Rivals, battles and deals
 
-1. **Rivals move every week:** they pick one of your cities to attack, and you see them coming days ahead (radar, threat report, rival card). If you do nothing, a 2-week siege starts.
-2. **Battles are a night in five rounds:**
-   - Fan base (Qloo counts)
-   - The material (your fan panel's rating there)
-   - Momentum (Wikipedia)
-   - Groundwork (your agents, walls and intel)
-   - The night (the only luck)
-   48 fans in the middle switch sides round by round. The result says **why you won** (or why they held) and the real move to make.
-3. **Deals:** three offers (shout-out swap, co-headline, open for them) with odds, plus a pitch you can copy. With the AI on, Claude writes the DM.
-4. **Rivals talk:** speech boxes with their portrait and lines tied to real events: attacking, sieges, walls, battle results, Wikipedia momentum. Your simulated fans also speak a real panel quote when you win their city.
+1. **Rivals move at END WEEK.** The nemesis (and sometimes another rival) marches on one of your cities; you see the arrow all week. Walls (80 gold) bounce it; otherwise a 2-week siege starts. Defend it with **You**: win and they retreat; lose and the siege runs on.
+2. **Battles are a night in five rounds:** fan base (Qloo), the material (panel), momentum (Wikipedia), groundwork (your units and walls), and the night (the only luck). The show plays them with a crowd meter and a stamp: TAKEN, HELD, REPELLED or LOST.
+3. **Deals:** the Diplomat picks the smallest offer that likely works and asks; yes or no comes back as loot with the DM.
+4. **Rivals talk** in a bubble that says what they're doing and what you can do: "Respond: defend / strike / talk ›", or for someone who wants to team up, "🕊 Team up · 1 Diplomat order".
+5. **Random events** (P1): a trend breaking (Google Trends), a rival's views spiking (Wikipedia: they hit two cities next week), rain all weekend in a booked city (Open-Meteo), a fan thread (the panel). Each has two free answers.
 
 ## 6. Content X-ray (your real content)
 

@@ -19,16 +19,16 @@ function ordersPerWeek(level, allies, bonus = 0) { return Math.min(5, 3 + (level
 // ---------------------------------------------------------------- the four objectives
 const OBJECTIVES = [
   { id: "tour", tag: "TOUR", col: "#f0c46a", title: "Book a tour", quest: "BOOK A TOUR", blurb: "6 nights in the cities where your fans already are, in a route you can drive.", get: "rooms, nights, calendar, venue emails",
-    army: (x) => `Scout to find the cities, Booker to land the rooms, Weather oracle for the nights, Diplomat for an opener in each. Spy keeps ${x.nem ?? "your nemesis"} off your dates.`,
+    army: (x) => `Scout to find the cities (and to see ${x.nem ?? "your nemesis"} coming), Booker for the rooms and dry nights, Diplomat for an opener in each.`,
     win: "6 held cities each with a booked room by week 8. Lose a city to a rival and that stop goes with it.", rule: "each held city with a booked room = a stop" },
   { id: "sponsor", tag: "GOLD", col: "#3dff9a", title: "Land sponsors", quest: "LAND SPONSORS", blurb: "Brands your fans over-index on, with a pitch written for each.", get: "3 sponsor pitches + weekly gold",
-    army: () => "Sponsor scout in every held city, Room reader to prove the audience, Copywriter for the sponsored post.",
+    army: () => "Sponsor scout in every held city, Room reader to prove the audience (and, from Lv III, to write the sponsored post).",
     win: "3 sponsors signed (gold per week) and one sponsored post that your fans rated 4+.", rule: "3 sponsors signed + a 4+ fan rating" },
   { id: "city", tag: "NEW", col: "#38d8ff", title: "Break into a new city", quest: "BREAK INTO A NEW CITY", blurb: "Pick a city you've never played and make it yours.", get: "a room, a local ally, a podcast slot there",
-    army: () => "Scout lifts the fog, Herald finds the podcast, Diplomat finds the local act, Booker lands the room, then the battle.",
+    army: () => "Scout lifts the fog, Diplomat finds the local act (and a podcast from Lv III), Booker lands the room, then the battle.",
     win: "The chosen city flips to your colour and has a booked room and an ally.", rule: "held + a room + an ally or guest spot + a night" },
   { id: "collab", tag: "ALLY", col: "#ff9d5c", title: "Fill my calendar", quest: "FILL MY CALENDAR", blurb: "Guest spots, collabs and co-headlines with acts whose fans would like you.", get: "5 DMs ready to send + a podcast list",
-    army: () => "Diplomat and Herald do the work; Spy tells you who's rising so you ask at the right time.",
+    army: () => "The Diplomat does the work, and books podcasts too from Lv III; the Scout tells you who's rising so you ask at the right time.",
     win: "5 deals offered, 3 accepted, each a real DM you sent.", rule: "5 offered · 3 accepted" },
 ];
 const objectiveOf = (id) => OBJECTIVES.find((o) => o.id === id) ?? OBJECTIVES[0];
@@ -45,14 +45,14 @@ function buildMissions(objective, x = {}) {
     sponsor: [["s1", "Find your first brand", `Sponsor scout to ${c("capital", "your capital")}.`, "1 sponsor paying"],
       ["s2", "Prove the crowd", "Room reader tests your sponsor read.", "a 4+ rating"],
       ["s3", "Stack two more", `Sponsor scout to ${c("held2", "a held city")}, ${c("held3", "another")}.`, "3 sponsors"],
-      ["s4", "Post it", "Copywriter drafts, you post for real.", "ticked as done"]],
+      ["s4", "Post it", "Room reader drafts it (Lv III), you post for real.", "ticked as done"]],
     city: [["c1", "Pick and scout it", `Scout to ${c("objCity", "the city")}; see what they love.`, "fog lifted"],
-      ["c2", "Get a local voice", "Herald + Diplomat there.", "an ally or a guest spot"],
+      ["c2", "Get a local voice", "Diplomat there (a podcast too from Lv III).", "an ally or a guest spot"],
       ["c3", "Win the crowd", "Room reader, then strike.", "city is yours"],
       ["c4", "Book it", "Booker lands the room.", "a date on the calendar"]],
     collab: [["k1", "Map your allies", "Diplomat to 2 cities.", "2 partners found"],
       ["k2", "First deal", "Parley with the best fit.", "DEAL"],
-      ["k3", "Podcast run", "Herald to 3 cities.", "3 guest spots"],
+      ["k3", "Podcast run", "Diplomat to 3 cities (podcast tour, Lv III).", "3 guest spots"],
       ["k4", "Send them", "Tick each DM as sent for real.", "3 accepted"]],
   };
   const WK = [[1, 2], [3, 4], [5, 6], [7, 8]];
@@ -97,7 +97,7 @@ function questState(f) {
 // ---------------------------------------------------------------- the weekly headline: first match wins, names are real
 function headlineFor(r) {
   const y = r.you ?? "You", b = r.battle;
-  if (b?.won && b.kind === "take") return `${y} takes ${b.city} as ${b.rival}'s crowd thins`;
+  if (b?.won && b.kind === "take") return r.giant ? `${y}, giant slayer, takes ${b.city} from ${b.rival}` : `${y} takes ${b.city} as ${b.rival}'s crowd thins`;
   if (r.held) return `${y} holds ${r.held.city} as ${r.held.rival}'s raid fizzles${r.held.ripe ? `; ${r.held.ripe} now ripe` : ""}`;
   if (r.lost) return `${r.lost.rival} takes ${r.lost.city}; ${y}'s tour loses a stop`;
   if (r.stop) return `${r.stop.city} booked: ${y}'s tour hits ${r.stop.n} of ${r.stop.m} stops`;
@@ -107,10 +107,20 @@ function headlineFor(r) {
 }
 
 // ---------------------------------------------------------------- saves: v1 → v2
+// twelve agents became five (Oct 30): each old unit's XP, crew slot and orders go to its new owner
+const MERGED = { spy: "scout", trend: "scout", oracle: "booker", showrunner: "booker", herald: "diplomat", scribe: "reader", listener: null };
+const ownerOf = (id) => (id in MERGED ? MERGED[id] : id);
+function mergeUnits(s) {
+  const xp = new Map(); for (const [id, v] of s.unitXp ?? []) { const o = ownerOf(id); if (o) xp.set(o, Math.max(xp.get(o) ?? 0, v)); }
+  const seen = new Set(), queue = [];
+  for (const q of s.orderQueue ?? []) { const id = q.unitId.startsWith("offer") || q.unitId === "you" ? q.unitId : ownerOf(q.unitId); if (!id || seen.has(id)) continue; seen.add(id); queue.push({ ...q, unitId: id }); }
+  return { ...s, unitXp: [...xp], orderQueue: queue, crew: (s.crew ?? []).filter(([id]) => !(id in MERGED)), army: (s.army ?? []).filter((u) => !(u.id in MERGED)) };
+}
+const hasMerged = (s) => [...(s.unitXp ?? []).map(([id]) => id), ...(s.crew ?? []).map(([id]) => id), ...(s.army ?? []).map((u) => u.id), ...(s.orderQueue ?? []).map((q) => q.unitId)].some((id) => id in MERGED);
 function migrateSave(s) {
   if (!s || (s.v !== 1 && s.v !== 2)) return null;
-  if (s.v === 2) return s;
+  if (s.v === 2) return hasMerged(s) ? mergeUnits(s) : s;
   const m = { ...s, v: 2, objective: "tour", objCity: null, runs: typeof s.missions === "number" ? s.missions : 0, missions: null, ordersLeft: 3, orderQueue: [], xp: Math.round((s.conquest ?? 0) * 10), unitXp: [], report: null, headline: "", venues: [] };
   delete m.hour; delete m.buzz;
-  return m;
+  return mergeUnits(m);
 }

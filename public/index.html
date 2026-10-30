@@ -1708,10 +1708,17 @@ body:not(.simple) .fanstrip{right:300px}
 .vbtn{cursor:pointer;height:46px;padding:0 16px;border-radius:12px;background:#141827;border:1px solid #3a4060;color:#e9e7f2;font:500 14px var(--sans)}.vbtn:hover{background:#1c2238}.vbtn:disabled{opacity:.4;cursor:not-allowed}
 #intro{z-index:84}#docv{z-index:86}.weekshow{background:rgba(11,13,20,.74)}
 .introsheet.obj{text-align:left}.introsheet.obj :is(h1,h2),.weekshow :is(h1,h2),.vpack :is(h1,h2),.arail h2{font-style:normal}
+.say .say-what{margin:6px 0 2px;font-size:12px;line-height:1.4;color:#c9cbd8}
+.chip2.allin{border-color:#f0c46a;color:#f0c46a}.chip2.allin.on{background:#f0c46a;color:#0b0d14}
+.lnk2{background:none;border:0;padding:0;color:#c9a8ff;font:500 13px var(--sans);text-decoration:underline dotted;cursor:pointer;align-self:flex-start}
+.draft{display:flex;flex-wrap:wrap;gap:8px}.draft small{font-size:12px;color:#9a9db3;flex-basis:100%}
+.ecard{border-color:#f0c46a}.ecard .tx{font-size:13px;color:#c9cbd8}.ecard .evnote{font-size:12px;color:#9a9db3}.ecard .chip2 small{text-transform:none;letter-spacing:0;color:#3dff9a}
+#game button:focus-visible,.weekshow button:focus-visible,.vpack button:focus-visible,.introsheet.obj button:focus-visible{outline:2px solid #f0c46a;outline-offset:2px}
+.ub .pw{font-size:11.5px;color:#6f7390}.ub .pw i{font-style:normal}.ub .pw.on{color:#f0c46a}
 /* missions drawer */
 .msheet{display:flex;flex-direction:column;gap:10px}.msheet .win{font-size:13px;color:#c9cbd8;border-radius:12px;background:#0f1220;border:1px solid #262c40;padding:10px 12px}.msheet .win b{color:#f0c46a}
 @media (max-width:1180px){
-  #game{position:fixed;overflow:auto;display:block!important}
+  #game:not([hidden]){position:fixed;overflow:auto;display:block!important}
   #game .hud{flex-wrap:wrap!important}
   .questbar{order:5;flex-basis:100%}
   #game .stage{grid-template-columns:1fr!important;grid-template-rows:auto auto!important;padding:12px}
@@ -1748,14 +1755,14 @@ body:not(.simple) .fanstrip{right:300px}
     <div class="skybg" aria-hidden="true"><canvas id="stars"></canvas><i class="cl c1"></i><i class="cl c2"></i><i class="cl c3"></i><i class="cl c4"></i><i class="cl c5"></i><span class="streak"><svg viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg></span></div>
     <div class="skyin">
       <div class="hleft">
-        <h1 class="mix"><span class="l">Your</span> <em>next</em><br><b>audience is</b><br><b>a map.</b><br><em class="ghosty">go conquer it</em></h1>
-        <p class="hsub">The growth agent for comedians, creators and performers. Played like a strategy game.</p>
+        <h1 class="mix"><span class="l">Your</span> <em>fans</em><br><b>are out there.</b><br><b>Somewhere.</b><br><em class="ghosty">go find them</em></h1>
+        <p class="hsub">A strategy game that grows your real audience. For comedians, creators and anyone whose mom is still their biggest fan.</p>
         <button class="playbtn" data-tour><span>Watch the 2-min tour</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
       </div>
       <div class="pass" aria-label="Campaign pass">
         <div class="ptop"><svg class="ic" viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg> Campaign Pass</div>
         <div class="route"><div><small>ORIGIN</small><b>OPEN MIC</b></div><span>→</span><div><small>DESTINATION</small><b>LEGEND</b></div></div>
-        <div class="pmid"><div><small>AGENTS</small><b>12</b></div><div><small>FANS SIMULATED</small><b>1,000</b></div><div><small>WEEKS</small><b>8</b></div></div>
+        <div class="pmid"><div><small>AGENTS</small><b>5</b></div><div><small>FANS SIMULATED</small><b>1,000</b></div><div><small>WEEKS</small><b>8</b></div></div>
         <h3>Free instant campaign</h3>
         <button class="pill2" data-as="Jason Calacanis">Play as Jason Calacanis</button>
         <button class="pill2" data-as="Cedric the Entertainer">Play as Cedric the Entertainer</button>
@@ -1768,34 +1775,34 @@ body:not(.simple) .fanstrip{right:300px}
 
   <!-- story: three eras of growth -->
   <section class="story" id="story">
-    <div class="wrap2"><h2 class="mix2">There's a problem with <span class="tagged" data-tag="[GROWTH_TODAY]">growth</span> today.</h2>
+    <div class="wrap2"><h2 class="mix2">Growing a fanbase is still <span class="tagged" data-tag="[GROWTH_TODAY]">guesswork</span>.</h2>
     <div class="stamp-sm">IN_THE_BEGINNING<br>&gt;&gt;</div></div>
     <div class="flightline" aria-hidden="true"><i class="fl-line"></i><span class="fl-icon"><svg viewBox="0 0 24 24"><path d="M5 21V4 M5 4h12l-3 4 3 4H5"/></svg></span></div>
     <nav class="eras" aria-hidden="true"><span data-era="1">ERA 1</span><span data-era="2">ERA 2</span><span data-era="3">ERA 3</span></nav>
-    <div class="era" data-era="1"><div class="ghostnum">ERA 1</div><div class="wrap2 eg"><div><div class="eh"><b>Era 1</b><span class="tagbox">20 YEARS AGO</span></div><h3 class="mix2">A <em>booker</em> picked your next city.</h3><p>Gut feel, a phone tree and a promoter who owed you a favour. It only worked if you already knew someone in the room.</p></div><div class="ring" data-text="GUESSING THE ROOM · CALLING VENUES · HOPING THEY COME · "></div></div></div>
-    <div class="era" data-era="2"><div class="ghostnum">ERA 2</div><div class="wrap2 eg"><div><div class="eh"><b>Era 2</b><span class="tagbox">10 YEARS AGO</span></div><h3 class="mix2">Growth was <em>re-routed</em> through the algorithm.</h3><p>Post, pray, refresh. Dashboards full of vanity numbers that tell you what happened, never where to go next.</p></div><div class="ring" data-text="POST · PRAY · REFRESH · POST · PRAY · REFRESH · "></div></div></div>
-    <div class="era now" data-era="3"><div class="ghostnum">ERA 3</div><div class="wrap2 eg"><div><div class="eh"><b>Era 3</b><span class="tagbox">CONQUEST</span></div><h3 class="mix2">The strategist is <em>on your side.</em></h3><p><b>No guessing.</b> Agents read your real fans on Qloo's taste graph, test your material on 1,000 of them, watch your rivals, and hand you the next city to take. <em>Every move</em> is a real growth move.</p></div><div class="globe"><canvas id="globe" aria-hidden="true"></canvas></div></div></div>
+    <div class="era" data-era="1"><div class="ghostnum">ERA 1</div><div class="wrap2 eg"><div><div class="eh"><b>Era 1</b><span class="tagbox">20 YEARS AGO</span></div><h3 class="mix2">A <em>booker</em> picked your next city.</h3><p>Gut feel, a phone tree and a promoter who "owed you one." Worked great, if you were his cousin.</p></div><div class="ring" data-text="CALL A GUY · WHO KNOWS A GUY · HOPE THEY COME · "></div></div></div>
+    <div class="era" data-era="2"><div class="ghostnum">ERA 2</div><div class="wrap2 eg"><div><div class="eh"><b>Era 2</b><span class="tagbox">10 YEARS AGO</span></div><h3 class="mix2">Then the <em>algorithm</em> became your boss.</h3><p>Post, pray, refresh. Dashboards tell you what happened last Tuesday, never where to go next.</p></div><div class="ring" data-text="POST · PRAY · REFRESH · POST · PRAY · REFRESH · "></div></div></div>
+    <div class="era now" data-era="3"><div class="ghostnum">ERA 3</div><div class="wrap2 eg"><div><div class="eh"><b>Era 3</b><span class="tagbox">CONQUEST</span></div><h3 class="mix2">Now the strategist is <em>on your side.</em></h3><p><b>No more guessing.</b> Agents find where your real fans live (Qloo's taste graph), test your jokes on 1,000 of them first, watch your rivals, and tell you the next city to take. <em>Every move</em> in the game is a real move you make this week.</p></div><div class="globe"><canvas id="globe" aria-hidden="true"></canvas></div></div></div>
   </section>
 
 
   <!-- the USP, who it's for, who pays -->
   <section class="usp" id="usp"><div class="wrap2">
     <div class="stamp-sm">[THE_USP]</div>
-    <h2 class="mix2">The only growth tool that <em>plays</em> your real audience, and makes you <em>do the moves.</em></h2>
+    <h2 class="mix2">It's a game. The <em>fans</em> are real. So is the <em>homework.</em></h2>
     <div class="usp3">
-      <div><span class="n">01</span><h3>Real taste data, not vanity metrics</h3><p>Qloo's taste graph knows where your fans live and what else they love. Not likes: taste.</p></div>
-      <div><span class="n">02</span><h3>Agents that act</h3><p>Twelve agents book rooms, find sponsors, pitch partners and test your posts. Every call is live, and every line cites its source.</p></div>
-      <div><span class="n">03</span><h3>A weekly loop that ends in real life</h3><p>Every move in the game becomes a real mission for your week. Tick it off when it's done and the game pays you.</p></div>
+      <div><span class="n">01</span><h3>Real taste, not vanity likes</h3><p>Qloo's taste graph knows where your fans live and what else they love. A like just means someone's thumb slipped.</p></div>
+      <div><span class="n">02</span><h3>Five agents. Zero attitude.</h3><p>They scout cities, book rooms, find sponsors, make friends and test your jokes. Every call is live, and every line shows its source.</p></div>
+      <div><span class="n">03</span><h3>Homework that pays</h3><p>Every move in the game becomes a real task for your week. Tick it off when it's done and the game pays you in XP.</p></div>
     </div>
   </div></section>
 
   <section class="whofor" id="who-for"><div class="wrap2">
     <div class="stamp-sm">[WHO_ITS_FOR]</div>
-    <h2 class="mix2">Built for people whose <em>audience is the business.</em></h2>
+    <h2 class="mix2">Built for people whose <em>audience pays the rent.</em></h2>
     <div class="seg4">
-      <div class="audc"><span class="si"><span class="emo">🎤</span></span><h3>Comedians and touring performers</h3><q>Which city do I book next, and will they show up?</q><p>The next city and the room whose crowd fits yours, a battle-tested set, and rival alerts.</p></div>
-      <div class="audc"><span class="si"><span class="emo">🎥</span></span><h3>Creators and podcasters</h3><q>What do I post, and who do I collab with?</q><p>Your YouTube X-rayed, collab partners with the pitch written, and sponsors your fans already love.</p></div>
-      <div class="audc"><span class="si"><span class="emo">🧑‍💼</span></span><h3>Managers and agencies</h3><q>Ten clients, no time to research each one.</q><p>A campaign per client and one weekly plan each, with real missions you can hand to the talent.</p></div>
+      <div class="audc"><span class="si"><span class="emo">🎤</span></span><h3>Comedians and touring performers</h3><q>Which city next, and will anyone show up?</q><p>The next city, the room whose crowd fits yours, a set tested before you're on stage, and rival alerts.</p></div>
+      <div class="audc"><span class="si"><span class="emo">🎥</span></span><h3>Creators and podcasters</h3><q>What do I post, and who do I collab with?</q><p>Your YouTube X-rayed (gently), collab partners with the DM already written, and sponsors your fans already love.</p></div>
+      <div class="audc"><span class="si"><span class="emo">🧑‍💼</span></span><h3>Managers and agencies</h3><q>Ten clients. One of me. Zero time.</q><p>A campaign per client and one weekly plan each, with real missions you can hand to the talent.</p></div>
       <div class="audc next"><span class="si"><span class="emo">🏟️</span></span><h3>Teams, venues and brands <small>next</small></h3><q>Who's our crowd outside our home city?</q><p>Fan territory, partner fit and sponsor fit. Try it as the LA Dodgers.</p></div>
     </div>
     <div class="pay">
@@ -1813,7 +1820,7 @@ body:not(.simple) .fanstrip{right:300px}
 
   <!-- product: experience the campaign -->
   <section class="product" id="product"><div class="wrap2">
-    <h2 class="center mix2">Experience the <em>campaign</em></h2>
+    <h2 class="center mix2">Welcome to the <em>war room</em></h2>
     <div class="pframe">
       <div class="pchrome"><i></i><i></i><i></i><span>conquest.agent / war-room</span></div>
       <div class="pbody">
@@ -1837,7 +1844,7 @@ body:not(.simple) .fanstrip{right:300px}
   <!-- what you get every week -->
   <section class="value" id="value"><div class="wrap2">
     <h2 class="mix2 sechead">What you <em>get.</em></h2>
-    <p class="lead2">Every Monday, a battle plan built from live data. Every Sunday, what you actually did.</p>
+    <p class="lead2">Every Monday, a battle plan built from live data. Every Sunday, a gentle reminder of what you actually did.</p>
     <div class="val6">
       <div id="tour-card" class="tcard"><span class="emo">🗺️</span><b>A tour, planned for you</b><span>where to play, in what order and in which rooms, with the calendar, a CSV and a one-page brief per city</span></div>
       <div><span class="emo">🎟️</span><b>The next city to play</b><span>and the room whose crowd fits yours</span></div>
@@ -1845,21 +1852,21 @@ body:not(.simple) .fanstrip{right:300px}
       <div><span class="emo">🕊️</span><b>A collab partner</b><span>whose crowd is new to you, and the DM</span></div>
       <div><span class="emo">🎬</span><b>Your content X-rayed</b><span>what lands, where, and what to cut</span></div>
       <div><span class="emo">⚔️</span><b>Rival alerts, days ahead</b><span>with counter-moves</span></div>
-      <div><span class="emo">📅</span><b>Show nights on your calendar</b><span>picked around the weather</span></div>
+      <div><span class="emo">📅</span><b>Show nights on your calendar</b><span>picked around the weather, so nobody skips you for rain</span></div>
     </div>
   </div></section>
 
   <!-- battle-test with the brain -->
   <section id="brain" class="brainsec" data-brain="right"><div class="wrap2 eg"><div>
     <div class="stamp-sm">[BATTLE_TEST]</div>
-    <h2 class="mix2">Know what lands <em>before</em> you post.</h2>
-    <p class="lead2">Play a bit, a caption or a script to 1,000 simulated fans built from real taste data. See the score in every city, and the moment attention drops in the brain. Sharpen it, and the brain lights up.</p>
+    <h2 class="mix2">Bomb in <em>rehearsal,</em> not on stage.</h2>
+    <p class="lead2">Play a bit, a caption or a script to 1,000 simulated fans built from real taste data. See the score in every city, and the exact second they'd reach for their phones. Fix it, and the brain lights up.</p>
   </div><div></div></div></section>
 
   <!-- rivals radar -->
   <section class="rivals2" id="rivals"><div class="wrap2 eg">
     <div><div class="stamp-sm">[RIVALS]</div><h2 class="mix2">See them <em>coming.</em></h2>
-      <p class="lead2">The performers your fans also follow are on the map, with their real fame momentum. When one marches on your city, the radar shows it days ahead. Fortify, strike first, or open a parley and turn them into a co-headliner.</p></div>
+      <p class="lead2">The performers your fans also follow are on the map, with their real fame from Wikipedia. When one marches on your city, the radar shows it days ahead. Build walls, strike first, or send a Diplomat and make them your co-headliner.</p></div>
     <div class="radarbox"><canvas id="heroradar" aria-hidden="true"></canvas></div>
   </div></section>
 
@@ -1871,14 +1878,14 @@ body:not(.simple) .fanstrip{right:300px}
   <section class="compare" id="compare"><div class="wrap2">
     <h2 class="mix2">How we compare <span class="arrowr">⟶</span></h2>
     <div class="route4">
-      <div class="cc"><span class="num">01</span><small>SPREADSHEETS + GUT FEEL</small><p>Where are my fans? Nobody knows.</p><a>vs. a notebook →</a></div>
-      <div class="cc"><span class="num">02</span><small>SOCIAL DASHBOARDS</small><p>What happened, never what to do next.</p><a>vs. analytics →</a></div>
-      <div class="cc"><span class="num">03</span><small>GENERIC AI CHAT</small><p>Confident answers with no data behind them.</p><a>vs. a chatbot →</a></div>
+      <div class="cc"><span class="num">01</span><small>SPREADSHEETS + GUT FEEL</small><p>Where are my fans? Your gut says Ohio. Your gut is guessing.</p><a>vs. a notebook →</a></div>
+      <div class="cc"><span class="num">02</span><small>SOCIAL DASHBOARDS</small><p>Beautiful charts about last week. No idea about next week.</p><a>vs. analytics →</a></div>
+      <div class="cc"><span class="num">03</span><small>GENERIC AI CHAT</small><p>Very confident. Zero data. Like your uncle at dinner.</p><a>vs. a chatbot →</a></div>
       <div class="cc bloom"><span class="num">04</span><small>CONQUEST</small><p>Live taste data, a 1,000-fan panel, rivals on radar and agents that act. Every move cites its source.</p><a data-play>Play it →</a></div>
     </div>
     <div class="cmp"><div class="cmpw"><table>
       <thead><tr><th></th><th class="us">Conquest</th><th>Chartmetric</th><th>Later · Sprout Social</th><th>Bandsintown</th><th>ChatGPT</th></tr></thead>
-      <tbody><tr><th>Where your fans are, by city</th><td class="us"><i class="y">✓</i> taste graph</td><td><i class="p">◐</i> streaming & social</td><td><i class="p">◐</i> follower geography</td><td><i class="p">◐</i> fan trackers</td><td><i class="n">✗</i></td></tr><tr><th>What else your fans love</th><td class="us"><i class="y">✓</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Test content before you post</th><td class="us"><i class="y">✓</i> 1,000 fans + brain</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="p">◐</i> opinions, no data</td></tr><tr><th>Rivals and partners, mapped</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> artist comparisons</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Agents that act: book, pitch, scout</th><td class="us"><i class="y">✓</i> 12 agents</td><td><i class="n">✗</i></td><td><i class="p">◐</i> scheduling</td><td><i class="p">◐</i> show announcements</td><td><i class="p">◐</i> drafts</td></tr><tr><th>A weekly plan you actually do</th><td class="us"><i class="y">✓</i> real missions</td><td><i class="n">✗</i></td><td><i class="p">◐</i> content calendar</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Comedians and podcasters, not just music</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td></tr></tbody>
+      <tbody><tr><th>Where your fans are, by city</th><td class="us"><i class="y">✓</i> taste graph</td><td><i class="p">◐</i> streaming & social</td><td><i class="p">◐</i> follower geography</td><td><i class="p">◐</i> fan trackers</td><td><i class="n">✗</i></td></tr><tr><th>What else your fans love</th><td class="us"><i class="y">✓</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Test content before you post</th><td class="us"><i class="y">✓</i> 1,000 fans + brain</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="p">◐</i> opinions, no data</td></tr><tr><th>Rivals and partners, mapped</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> artist comparisons</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Agents that act: book, pitch, scout</th><td class="us"><i class="y">✓</i> 5 agents</td><td><i class="n">✗</i></td><td><i class="p">◐</i> scheduling</td><td><i class="p">◐</i> show announcements</td><td><i class="p">◐</i> drafts</td></tr><tr><th>A weekly plan you actually do</th><td class="us"><i class="y">✓</i> real missions</td><td><i class="n">✗</i></td><td><i class="p">◐</i> content calendar</td><td><i class="n">✗</i></td><td><i class="n">✗</i></td></tr><tr><th>Comedians and podcasters, not just music</th><td class="us"><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td><td><i class="p">◐</i> music-first</td><td><i class="y">✓</i></td></tr></tbody>
     </table></div>
     <p class="cmpsum">The others tell you <em>what happened.</em> Conquest tells you <em>where to go next,</em> does the legwork, and makes sure you do it.</p>
     <p class="note">✓ yes · ◐ partly · ✗ no. Based on each product's public features as we understand them; corrections welcome.</p></div>
@@ -1890,7 +1897,7 @@ body:not(.simple) .fanstrip{right:300px}
       <div class="orow"><a class="playbtn" href="mailto:venky@spacenos.com?subject=Conquest%3A%20let's%20talk"><span>Contact us</span><i><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></i></a><span class="ct-mail">venky@spacenos.com</span></div></div>
   </div></section>
 
-  <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your audience is a map.<br><em>Go conquer it.</em></h2><button class="playbtn center-b" data-play><span>Start your Conquest</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
+  <section class="endcta" data-brain="center"><div class="wrap2"><h2 class="mix2 center">Your fans are out there.<br><em>Go find them.</em></h2><button class="playbtn center-b" data-play><span>Start your Conquest</span><i><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></i></button>
     <div class="live2"><span><i></i>Qloo taste graph</span><span><i></i>1,000-fan simulation</span><span><i></i>Google Trends</span><span><i></i>Wikipedia fame</span><span><i></i>Open-Meteo</span><span><i class="stub"></i>TRIBE brain (stub)</span><span><i class="stub"></i>X · TikTok · Reddit: connect</span></div></div></section>
 
   <footer class="coord" aria-hidden="true"><span class="plus">+</span><span>Play Direct</span><span>Growth Agent</span><span class="coords" id="coords">33.7490° N, 84.3880° W</span><span class="heart">♥</span></footer>
@@ -1993,7 +2000,7 @@ body:not(.simple) .fanstrip{right:300px}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="rules.js?v=1"></script>
-<script src="app.js?v=263"></script>
+<script src="rules.js?v=2"></script>
+<script src="app.js?v=264"></script>
 </body>
 </html>

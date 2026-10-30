@@ -84,8 +84,12 @@ const WRITERS: Record<string, { system: string; build: (c: any) => string; max: 
     build: (c) => `From: ${c.name}\nTo: ${c.partner}\nOffer: ${c.offer}${c.city ? ` in ${c.city}` : ""}\nData (Qloo taste overlap): ${c.netnew}% of their crowd would be new to me; ${c.convert}% of my fans already over-index on them.\nReturn only the DM.` },
   sponsor: { max: 1000, system: `You are the Sponsor scout agent in Conquest. ${VOICE} Write a short sponsorship pitch email (subject line, then under 700 characters of body) to a brand.`,
     build: (c) => `Performer: ${c.name}\nBrand: ${c.brand}\nData (Qloo): my fans' taste neighbours show ${c.affinity}% affinity for ${c.brand}. Audience: ${c.audience}.\nReturn "Subject: ..." on the first line, then the body.` },
+  headline: { max: 120, system: "You are the Herald in Conquest. Rewrite one weekly headline for a strategy game played on a performer's real audience. Keep every proper noun exactly as given. Under 90 characters, newspaper style, no quotes, no emoji. Never invent facts.",
+    build: (c) => `Headline: ${c.headline}
+What happened this week: ${c.facts}
+Return only the new headline.` },
 };
-export const WriteReq = z.object({ kind: z.enum(["caption", "pitch", "sponsor"]), context: z.record(z.string(), z.any()) });
+export const WriteReq = z.object({ kind: z.enum(["caption", "pitch", "sponsor", "headline"]), context: z.record(z.string(), z.any()) });
 
 export async function writeFor(req: z.infer<typeof WriteReq>) {
   if (aiMode() !== "claude") return { status: "off" };
