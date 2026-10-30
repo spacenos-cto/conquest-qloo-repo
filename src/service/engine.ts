@@ -225,6 +225,19 @@ export function backtestReport() {
 }
 
 /** Grow: partners to barter with for new reach (people / venues / brands). */
+/**
+ * What a city likes overall in one category, with no performer signal: the
+ * baseline for "your fans vs the city". Names in rank order only: affinity is
+ * rescaled per response, so it never compares across calls.
+ */
+export async function cityPopular(kind = "brands", location = "") {
+  if (!location) return { status: "error", error: "location required" };
+  const target = ({ brands: "brand", venues: "place", people: "person" } as Record<string, string>)[kind] ?? "brand";
+  const env = await gateway.call("popular", { target_type: target, location, take: 20 }, "baseline");
+  if (env.status !== "ok" || !env.results?.length) return { status: "empty" };
+  return { status: "ok", kind, location, names: env.results.map((r: any) => String(r.name)) };
+}
+
 export async function partnerReport(name: string, kind = "people", location?: string, who: Who = {}) {
   const res: any = await fingerprintFor(name, who);
   if (res.candidates) return { status: "needs_input", candidates: res.candidates };

@@ -8,6 +8,7 @@ import {
   ablationReport,
   backtestReport,
   partnerReport,
+  cityPopular,
   directorReport,
   campaignReport,
   profileReport,
@@ -73,6 +74,8 @@ async function api(url: URL, res: any) {
         return send(res, 200, JSON.stringify(await partnerReport(name, q.get("kind") ?? "people", q.get("location") ?? undefined, who)));
       case "/api/backtest-youtube":
         return send(res, 200, JSON.stringify(await youtubeBacktestReport()));
+      case "/api/popular":
+        return send(res, 200, JSON.stringify(await cityPopular(q.get("kind") ?? "brands", q.get("location") ?? "")));
       case "/api/trends":
         return send(res, 200, JSON.stringify(await googleTrends(q.get("geo") ?? "US")));
       case "/api/weather":

@@ -198,6 +198,17 @@ export async function liveCall(
         );
       }
 
+      case "popular": {
+        // the city's own taste in one category, with no performer signal: the baseline
+        // an agency would pitch without Qloo's audience match (names in rank order only)
+        const d = await insights({
+          "filter.type": "urn:entity:" + String(params.target_type),
+          "signal.location.query": String(params.location),
+          take: Number(params.take ?? 20),
+        });
+        return ok((d.results?.entities ?? []).map((e: any) => ({ name: e.name, id: e.entity_id })));
+      }
+
       case "trends": {
         // Momentum is best-effort; a flat/absent series is reported as
         // "not measured", never guessed.

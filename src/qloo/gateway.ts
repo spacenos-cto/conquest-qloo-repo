@@ -15,6 +15,7 @@ const ENDPOINT: Record<string, string> = {
   audience_demographics: "/v2/insights · urn:demographics",
   where_popular: "/v2/insights · urn:heatmap",
   recommend: "/v2/insights · recommend",
+  popular: "/v2/insights · signal.location (no artist signal)",
   rank: "/v2/insights · filter.results.entities",
   compare_audiences: "/v2/analysis/compare",
   trends: "/v2/trending",

@@ -1332,14 +1332,15 @@ const objIs = (id) => (G.objective ?? "tour") === id;
 // one source per old agent; the five agents below run several of these and merge them
 const SRC = {
   async scout(city, st) {
-    const r = await api(`/api/partners?${qs({ ...G.player.q, kind: "brands", location: city.name })}`);
+    const [r, base] = await Promise.all([api(`/api/partners?${qs({ ...G.player.q, kind: "brands", location: city.name })}`), cityBaseline(city)]);
     const names = (r.partners || []).slice(0, st >= 2 ? 4 : 3).map((p) => p.name);
     if (!names.length) return emptyJob(city, `Qloo brands × ${city.name}`);
+    const vs = vsCity(city, names[0], 1, `your ${city.name} fans`, base);
     const fog = city.state === "uncharted"; G.scouted.add(city.name);
     if (fog) city.state = (city.mean ?? 0) >= (G.c.aggregate?.mean ?? 3.5) ? "beachhead" : "hard";
     prep(city, "Scout intel"); assignStates(); MapView.relayer();
     return { intel: `🔭 Fans here also love ${names.join(", ")}. Mention them on stage.`, loot: {
-      fact: `Your ${esc(city.name)} fans also love <b>${names.map(esc).join(", ")}</b>.`, receipts: [`Qloo brands × ${city.name}`, `${names.length} receipts`], xp: 40,
+      fact: `Your ${esc(city.name)} fans also love <b>${names.map(esc).join(", ")}</b>.${vs ? `<br>${vs}` : ""}`, receipts: [`Qloo brands × ${city.name}`, `${names.length} receipts`, ...(vs ? [`Qloo · ${city.name} overall, no artist signal`] : [])], xp: 40,
       mapChange: fog ? `fog lifted around ${city.name} · ${city.state === "beachhead" ? "ring = ripe" : "open ground"}` : city.state === "rival" ? `${city.name} prepared · a strike there now takes 1 order, not 2` : `${city.name} prepared · +30% in a fight there`,
       questChange: objIs("city") && city.name === G.objCity ? "fog lifted on your new city" : null,
       realMove: { title: `Mention ${names.slice(0, 2).join(", ")} in your next ${city.name} post`, detail: `From Qloo: your ${city.name} fans over-index on ${names.join(", ")}.` } } };
@@ -1369,7 +1370,8 @@ const SRC = {
       action: objIs("tour") && q.have >= 4 ? { label: "Tour Planner ready: see the route", run: "tour" } : null } };
   },
   async sponsor(city, st) {
-    const used = new Set(G.sponsors.map((s) => s.name)), b = pick(G.player.aud?.domains?.brand, used);
+    const used = new Set(G.sponsors.map((s) => s.name)), b = pick(G.player.aud?.domains?.brand, used), base = b ? await cityBaseline(city) : null;
+    const vs = b && vsCity(city, b.name, (G.player.aud?.domains?.brand ?? []).findIndex((x) => x.name === b.name) + 1, "your fans", base);
     if (!b) return emptyJob(city, "Qloo brands your fans love");
     const aff = Math.round(b.affinity * 100), perWeek = Math.round(20 + b.affinity * 50) + (st >= 2 ? 10 : 0);
     G.sponsors.push({ name: b.name, perWeek, city: city.name, aff }); ach("paid"); G.gold += perWeek;
@@ -1377,7 +1379,7 @@ const SRC = {
     G.sponsorPitches.push(pitch);
     aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: aff, audience: (G.player.aud?.tags ?? []).slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { pitch.text = mail; ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> rewritten`); } });
     return { intel: `💼 Sponsor: ${b.name} (+${perWeek} gold a week).`, loot: {
-      fact: `<b>${esc(b.name)}</b> signs on: ${aff}% affinity with your fans. First payment in, pitch email drafted.`, receipts: ["Qloo brands your fans love"], gold: perWeek, xp: 50, brand: b.name, brand: b.name,
+      fact: `<b>${esc(b.name)}</b> signs on: ${aff}% affinity with your fans. First payment in, pitch email drafted.${vs ? `<br>${vs}` : ""}`, receipts: ["Qloo brands your fans love", ...(vs ? [`Qloo · ${city.name} overall, no artist signal`] : [])], gold: perWeek, xp: 50, brand: b.name, brand: b.name,
       mapChange: `sponsor badge on ${city.name} · income +${perWeek}/wk`, questChange: objIs("sponsor") ? `sponsor ${G.sponsors.length} of 3` : null,
       realMove: { title: `Send the ${b.name} pitch`, detail: pitch.text } } };
   },
@@ -1464,6 +1466,19 @@ const SRC = {
     return { loot: { fact: `Festival night in ${esc(city.name)}: <b>${esc(plan)}</b>.`, receipts: ["Qloo artists, brands, podcasts"], gold: 200, xp: 100, mapChange: `festival badge on ${city.name}`, questChange: null, realMove: { title: "Book the line-up", detail: plan } } };
   },
 };
+// What your fans like vs what the whole city likes: one more Qloo call with no performer
+// signal, compared by rank only (affinity is rescaled per response). No baseline, no line.
+const BASE = new Map();
+function cityBaseline(city) {
+  if (!BASE.has(city.name)) BASE.set(city.name, api(`/api/popular?kind=brands&location=${encodeURIComponent(city.name)}`).then((r) => (r?.status === "ok" && r.names?.length ? r.names : null)).catch(() => null));
+  return BASE.get(city.name);
+}
+function vsCity(city, name, rank, whose, base) {
+  if (!base?.length || !name || rank < 1) return null;
+  const at = base.findIndex((n) => n.toLowerCase() === name.toLowerCase()), c = esc(city.name);
+  if (at === 0) return `<b>${esc(name)}</b> is #1 for ${esc(whose)} and for ${c} overall: no hidden edge here.`;
+  return `<b>${esc(name)}</b>: #${rank} for ${esc(whose)} · ${at > 0 ? `#${at + 1} in ${c} overall` : `not in ${c}'s top 20 overall`}. Without Qloo you'd have pitched <b>${esc(base[0])}</b>.`;
+}
 // fold several sources into one loot card: one fact line per source, every receipt, the primary's XP
 function mergeLoot(city, parts) {
   const ok = parts.filter((p) => p?.loot && !p.loot.empty); if (!ok.length) return parts[0] ?? emptyJob(city, "Qloo");
@@ -1473,6 +1488,7 @@ function mergeLoot(city, parts) {
   L.questChange = all.map((x) => x.questChange).filter(Boolean).join(" · ") || null;
   L.gold = all.reduce((s, x) => s + (x.gold ?? 0), 0) || undefined;
   for (const k of ["realMove", "action", "stopN", "brand"]) L[k] = first(k);
+  L.removed = parts.filter((p) => !p || p.loot?.empty).length; // sources that came back with nothing: their claims are dropped, not guessed
   return { intel: ok.map((p) => p.intel).filter(Boolean).join(" ") || undefined, loot: L };
 }
 const AGENT_JOBS = {
@@ -1709,7 +1725,7 @@ function intro(change = false) {
         <section class="obj-mis" aria-label="Your missions"><div><div class="hd"><h2>YOUR MISSIONS · ${esc(o.title.toUpperCase())}</h2><span>one per 2 weeks, each unlocks the next</span></div>
           ${ms.map((m) => `<div class="mrow"><span class="wk">${m.wk.join("–")}</span><span><strong>${esc(m.title)}</strong><small>${esc(m.how)}</small><em>Done when: ${esc(m.done)}</em></span></div>`).join("")}</div>
           <div><h2>YOUR ARMY FOR THIS</h2><div class="tx">${esc(o.army({ nem: nemesis()?.name }))}</div><h2>HOW YOU WIN</h2><div class="tx">${esc(o.win)}</div><h2 class="foe">WHO'S IN YOUR WAY</h2><div class="tx">${esc(foeLine())}</div>
-          ${!change && G.fac.size > 1 ? `<button class="lnk2" id="nem-open" aria-expanded="${draft}">${draft ? "Keep it as it is" : "Change nemesis"}</button>${draft ? `<div class="draft">${[...G.fac.values()].map((f) => { const ov = f.plan.overlap ?? 0, fm = G.fame.get(f.name); return `<button class="chip2${f === nemesis() ? " on" : ""}" data-nem="${esc(f.id)}">${esc(f.name)} · ${ov > 1 ? Math.round(ov) : Math.round(ov * 100)}% shared · ${fm?.views ? kfmt(fm.views) + " views/30d · " : ""}${f.plan.holds?.length ?? 0} cit${(f.plan.holds?.length ?? 0) === 1 ? "y" : "ies"}</button>`; }).join("")}<small>A bigger name attacks 2 weeks out of 3, but beating them in their cities is worth +50% XP: giant slayer.</small></div>` : ""}` : ""}</div></section>
+          ${!change && G.fac.size > 1 ? `<button class="lnk3" id="nem-open" aria-expanded="${draft}">${draft ? "Keep it as it is" : "Change nemesis"}</button>${draft ? `<div class="draft">${[...G.fac.values()].map((f) => { const ov = f.plan.overlap ?? 0, fm = G.fame.get(f.name); return `<button class="chip2${f === nemesis() ? " on" : ""}" data-nem="${esc(f.id)}">${esc(f.name)} · ${ov > 1 ? Math.round(ov) : Math.round(ov * 100)}% shared · ${fm?.views ? kfmt(fm.views) + " views/30d · " : ""}${f.plan.holds?.length ?? 0} cit${(f.plan.holds?.length ?? 0) === 1 ? "y" : "ies"}</button>`; }).join("")}<small>A bigger name attacks 2 weeks out of 3, but beating them in their cities is worth +50% XP: giant slayer.</small></div>` : ""}` : ""}</div></section>
         <div class="obj-f"><span>Change your objective any time from the quest bar. Your progress carries over.</span><button class="bigcta" id="intro-go" ${sel === "city" && !city ? "disabled title=\"Pick a city first\"" : ""}>${change ? "KEEP PLAYING" : "START WEEK 1"}</button></div>`;
       $$("[data-obj]").forEach((b) => b.addEventListener("click", () => { sel = b.dataset.obj; if (sel === "city" && !city) city = picks[0]?.name ?? null; Sound.play("select"); draw(); }));
       $$("[data-oc]").forEach((b) => b.addEventListener("click", () => { city = b.dataset.oc; Sound.play("select"); draw(); }));
@@ -2070,13 +2086,14 @@ async function runTour() {
   await until(() => $('[data-me="0"]')); await sleep(2000); if (!live()) return;
   $('[data-me="0"]').click();
   caption(2, N, "Agents scout your real audience: live Qloo calls and 1,000 simulated fans.");
-  await until(() => G && !$("#game").hidden && !$("#intro").hidden && $("#intro-go"), 90000); if (!live()) return;
+  await until(() => G && !$("#game").hidden && G.objective && G.missions?.length, 90000); if (!live()) return;
   G.tour = true;
-  caption(3, N, "First, the objective: what do you want in 8 weeks? A tour. It becomes your quest bar, your missions and the win screen.");
-  await sleep(4500); if (!live()) return; $("#intro-go")?.click(); await sleep(900);
-  caption(4, N, "Three orders a week. Send the Booker for a real room, and march on the city that's ripe.");
-  spot("#army-rail"); selectUnit("booker", true); await sleep(1800); if (!live()) return;
-  const bc = chipsFor("booker")[0]; if (bc) queueOrder("booker", bc); await sleep(1400);
+  caption(3, N, `The objective is set: ${objectiveOf(G.objective).title.toLowerCase()}. It's the quest bar up top, four missions, and the win screen. (Your own name gets to pick it.)`);
+  spot("#quest"); await sleep(4500); spot(null); if (!live()) return;
+  const lead = G.objective === "collab" ? "diplomat" : G.objective === "sponsor" ? "sponsor" : "booker";
+  caption(4, N, `Three orders a week. Send the ${unitName(lead)}, and march on the city that's ripe.`);
+  spot("#army-rail"); selectUnit(lead, true); await sleep(1800); if (!live()) return;
+  const bc = chipsFor(lead).find((c) => !c.allin); if (bc) queueOrder(lead, bc); await sleep(1400);
   selectUnit("you", true); await sleep(1400);
   const yc = chipsFor("you").find((c) => c.kind === "take") ?? chipsFor("you")[0]; if (yc) queueOrder("you", yc); await sleep(1400); spot(null); if (!live()) return;
   caption(5, N, "Nothing moves until END WEEK. Then the army marches, makes the live calls and comes back with loot; the battle resolves; the rival answers.");
@@ -2344,6 +2361,8 @@ function openAssets() {
 function openTourFromQuest() { const first = quest().slots.find((s) => s.city)?.city, d = tourDefaults(); G.tourForm = { ...d, home: METROS[first] ? first : d.home, maxCities: 6 }; Drawer.open("tour"); }
 
 // ---------------------------------------------------------------- the game
+// the demo names open finished: an objective that suits each one, no screen 0
+const PRESET_OBJ = { "cedric the entertainer": "tour", "jason calacanis": "collab", "los angeles dodgers": "sponsor" };
 async function startGame(c, player, opts = {}) {
   await Atlas.ready;
   const cities = c.territory.cities.filter((x) => METROS[x.name]).map((x) => ({ ...x, p: ALB(METROS[x.name]) })).filter((x) => x.p);
@@ -2369,10 +2388,13 @@ async function startGame(c, player, opts = {}) {
   const saved = TOURING || opts.fresh ? null : loadSave(player.name);
   G.cid = saved?.cid ?? (crypto.randomUUID?.() ?? String(Date.now())).replace(/-/g, "").slice(0, 16);
   let fresh = !saved;
-  if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") { fresh = true; await intro(); } }
-  else await intro();
-  // new campaigns: offer the Monday war report once, before the tutorial
-  if (fresh && !TOURING && !G.mailAsked) await new Promise((res) => { askMonday(); const iv = setInterval(() => { if ($("#intro").hidden) { clearInterval(iv); res(); } }, 300); });
+  // the judge path: "Play as" a demo name (or the jury tour) opens on the live map with that name's objective set
+  const preset = (player.quick || TOURING) && PRESET_OBJ[player.name.toLowerCase()];
+  const begin = () => (preset ? (setObjective(preset), hud(), renderAgents(), MapView.relayer()) : intro());
+  if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") { fresh = true; await begin(); } }
+  else await begin();
+  // new campaigns: offer the Monday war report once, before the tutorial (not on the judge path)
+  if (fresh && !TOURING && !preset && !G.mailAsked) await new Promise((res) => { askMonday(); const iv = setInterval(() => { if ($("#intro").hidden) { clearInterval(iv); res(); } }, 300); });
   if (!G.offers.length) G.offers = buildOffers();
   if (!TOURING) G.noSave = false;
   hud(); renderAgents(); saveGame();
@@ -2478,6 +2500,14 @@ async function randomEvent() {
   }
   return pool.length ? pool[Math.floor(G.rng() * pool.length)] : null;
 }
+// the receipt count under each loot card: how many live calls stand behind it, and what was dropped for lack of data
+function receiptLine(L) {
+  const SRCS = [["Qloo", /Qloo/], ["Google Trends", /Google Trends/], ["Wikipedia", /Wikipedia/], ["Open-Meteo", /Open-Meteo/], ["fan panel", /panel/]];
+  const n = new Map(); for (const r of L.receipts ?? []) { const s = SRCS.find(([, re]) => re.test(r)); if (s) n.set(s[0], (n.get(s[0]) ?? 0) + 1); }
+  if (!n.size) return "";
+  const removed = L.empty ? 1 : L.removed ?? 0;
+  return `<div class="rcount">${[...n].map(([k, v]) => (k === "Qloo" ? `${v} Qloo call${v > 1 ? "s" : ""}` : `${v} ${k}`)).join(" · ")} · ${removed} claim${removed === 1 ? "" : "s"} removed${removed ? " (no data, no guess)" : ""}</div>`;
+}
 // ---------------------------------------------------------------- END WEEK: the show
 // About six seconds: marches, loot cards one at a time, the battle, the rival's
 // move, the tally and the headline. Then it stays as the week's report until
@@ -2491,7 +2521,7 @@ const Show = (() => {
     const title = L.title ?? `${unitName(L.unit)} came back from ${L.city}`;
     return `<div class="lcard${L.empty ? " empty" : ""}" style="--lc:${L.empty ? "#3a4060" : col}"><span class="utile" style="--g1:${col}">${I(u?.ic ?? "star")}</span><div class="lb"><div class="l1"><strong>${esc(title)}</strong><span>${esc(right)}</span></div>
       <div class="fact">${L.fact} <span class="lrc" data-rc="${esc(L.unit)}|${esc(L.city)}" title="Show the live call">(${esc(L.receipts.join(" · "))})</span></div>
-      ${L.mapChange ? `<div class="chg${L.mapChange === "nothing changed" ? " none" : ""}">Map: ${esc(L.mapChange)}</div>` : ""}${L.questChange ? `<div class="chg">Quest: ${esc(L.questChange)}</div>` : ""}${L.realMove ? `<div class="mv">Real move: ${esc(L.realMove.title)}</div>` : ""}${L.action ? `<button class="act" data-act="${L.action.run}">${esc(L.action.label)}</button>` : ""}</div></div>`;
+      ${receiptLine(L)}${L.mapChange ? `<div class="chg${L.mapChange === "nothing changed" ? " none" : ""}">Map: ${esc(L.mapChange)}</div>` : ""}${L.questChange ? `<div class="chg">Quest: ${esc(L.questChange)}</div>` : ""}${L.realMove ? `<div class="mv">Real move: ${esc(L.realMove.title)}</div>` : ""}${L.action ? `<button class="act" data-act="${L.action.run}">${esc(L.action.label)}</button>` : ""}</div></div>`;
   };
   function open(week) {
     fast = false;
@@ -3026,7 +3056,9 @@ function openWho(name) {
   if (name) { $("#who-name").value = name; findMe(); } else setTimeout(() => $("#who-name").focus(), 50);
 }
 $$("[data-play]").forEach((b) => b.addEventListener("click", () => openWho()));
-$$("[data-as]").forEach((b) => b.addEventListener("click", () => openWho(b.dataset.as)));
+// "Play as" is one click: the top match is picked for you
+let QUICK = null;
+$$("[data-as]").forEach((b) => b.addEventListener("click", () => { QUICK = b.dataset.as; openWho(b.dataset.as); }));
 $("#who-close").addEventListener("click", () => ($("#who").hidden = true));
 $("#who").addEventListener("click", (e) => { if (e.target.id === "who") $("#who").hidden = true; });
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("#who").hidden = true; });
@@ -3042,6 +3074,7 @@ function candHtml(c, i) {
 async function findMe(e) {
   e?.preventDefault();
   const q = $("#who-name").value.trim(); if (!q) return;
+  const quick = QUICK && QUICK.toLowerCase() === q.toLowerCase(); QUICK = null;
   $("#cands").innerHTML = `<p class="muted">Searching Qloo and the web for “${esc(q)}”…</p>`;
   try {
     const r = await api(`/api/profile?name=${encodeURIComponent(q)}`);
@@ -3053,9 +3086,10 @@ async function findMe(e) {
       // the top hit is what the engine resolves by name (and what's prewarmed); others go by id
       // an exact name match goes by name (what the engine resolves and prewarms); everything else by id
       const exact = c.name.toLowerCase() === q.trim().toLowerCase() && i === 0;
-      player = { name: c.name, image: c.image, bio: c.bio || TYPE(c.type), socials: c.socials, q: exact ? { name: c.name } : { name: c.name, ids: c.entity_id } };
+      player = { name: c.name, image: c.image, bio: c.bio || TYPE(c.type), socials: c.socials, q: exact ? { name: c.name } : { name: c.name, ids: c.entity_id }, quick: quick && i === 0 };
       $("#who").hidden = true; scan();
     }));
+    if (quick) $('[data-me="0"]')?.click();
   } catch { $("#cands").innerHTML = `<p class="muted">Search failed. Try again.</p>`; }
 }
 $("#who-form").addEventListener("submit", findMe);
@@ -3146,4 +3180,4 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
 playHook();
 const autoplay = new URLSearchParams(location.search).get("play");
 if (new URLSearchParams(location.search).has("tour")) setTimeout(runTour, 800);
-else if (autoplay) openWho(autoplay);
+else if (autoplay) { if (PRESET_OBJ[autoplay.toLowerCase()]) QUICK = autoplay; openWho(autoplay); }
