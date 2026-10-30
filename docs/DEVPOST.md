@@ -1,120 +1,94 @@
-# Conquest: your fans are out there. Go find them.
+# Devpost copy: paste field by field
 
-**A strategy game for a stand-up comedian deciding which city to play next. The
-map is your real audience from Qloo's taste graph, five agents do the legwork
-with live data, and every move in the game is a real move you make this week.**
+## Project name
+Conquest
 
-## In numbers
+## Tagline
+Your fans are out there. Go find them.
 
-| | |
-|---|---|
-| **1 click** | from the landing page to a live campaign ("Play as Cedric / Jason / the Dodgers"), no sign-up |
-| **~100 Qloo calls** | per campaign, each one logged with a receipt you can open |
-| **1,000 fans** | simulated per audience, sampled in code from Qloo's demographics, tastes and cities |
-| **5 agents** | Scout, Booker, Sponsor scout, Diplomat, Room reader: each runs live calls (Qloo, Google Trends, Wikipedia, Open-Meteo, YouTube) |
-| **$0** | data cost beyond Qloo: every other source is free and keyless, and the AI layer stays off unless hosted |
-| **57 / 57** | tests passing; the jury tour plays 7 beats in 37 seconds |
-| **ρ −0.94** | how wrong we were on Jason Calacanis's last 6 videos. We publish it (see "Where we were wrong") |
+## Elevator pitch (≤200 characters)
+A strategy game where the map is your real audience. Five AI agents scout cities, book rooms and find sponsors with live Qloo data. Every move in the game is a real move for your week.
 
-## Inspiration
+---
 
-> **[YOUR TRUE STORY: 3 lines. Who you saw struggle to find their audience (you, a
-> friend, a comic you know), the moment it hurt, and why a game and not a
-> dashboard. Real names and places beat a composite. Delete this box when done.]**
+## About the project
 
-A comedian with 50,000 followers still picks the next city the way it was done
-twenty years ago: gut feel, a promoter who "owes you one," and hope. The data
-that would answer it exists (where your fans live, what else they love, which
-room fits them), but nobody below headliner level can afford the strategist who
-reads it. So we made the strategist a game you already know how to play.
+### Inspiration
 
-## What it does
+I've built everything I've ever built alone. No mentor, no manager, no cousin at a label. Just me, a laptop, and a growth strategy best described as "post and pray."
 
-Built for one person first: **a working stand-up comedian with a regional
-following who wants to book a six-city run and not play to empty rooms.**
+Most creators I know are in the same boat. The data that says where your fans live and what they love already exists. The strategist who can read it costs more than your rent.
 
-1. **Type your name.** Qloo finds you, your audience's cities, tastes and
-   demographics. Not enough data on you? It refuses to simulate and says so.
-2. **Pick what you want in 8 weeks:** book a tour, land sponsors, break into a
-   new city, or fill your calendar with collabs. Each gives four missions, one
-   every two weeks, named with your real cities.
-3. **Give orders, then press END WEEK.** Send the Scout to Chicago and it comes
-   back with what your Chicago fans love that the city overall doesn't ("#1 for
-   your fans · not in the city's top 20. Without Qloo you'd have pitched X").
-   The Booker returns a room whose crowd fits yours and the driest Friday. The
-   Room reader plays your bit to that city's 1,000 fans before you're on stage.
-4. **Rivals are real.** The performers your fans also follow are on the map with
-   their real Wikipedia momentum. When one marches on your city you see it a
-   week ahead: build walls, strike first, or send the Diplomat and turn them
-   into your co-headliner.
-5. **Winning is the deliverable:** the tour pack (route, six nights, rooms,
-   openers, sponsors, calendar file, a one-page City Brief per city, the emails).
+So I built the strategist myself, and made it a game, because I will open a game every Monday. I won't open a dashboard. **I'm user #1.** I'm running my own campaign on Conquest every week from now on, and I'll post the real numbers, good or embarrassing.
 
-**Every loot card shows its receipts**, e.g. "2 Qloo calls · 1 Google Trends ·
-0 claims removed". A source that comes back empty counts as a removed claim:
-no data, no guess.
+Also: I joined late. Very late. Conquest went from first commit to a working game in about a day and a night. The git log starts Oct 29 at 00:57, and it gets emotional around 3 a.m.
 
-## You stay in charge
+### What it does
 
-Conquest **drafts, you send.** Agents write the venue email, the sponsor pitch
-and the collab DM; nothing is posted, sent or booked without you. A real move
-only counts once you tick it off yourself, and the game pays you XP for doing it
-in real life, not for clicking.
+Type your name. Qloo finds your real audience, and it becomes a map: your cities, your rivals' cities, and the fog you haven't explored yet.
 
-## How we built it
+1. **Pick a goal for the next 8 weeks:** book a tour, land sponsors, break into a new city, or fill your calendar with collabs.
+2. **Give orders to five agents.** They have zero attitude and never ask for a raise:
+   - **Scout:** what your fans in a city love that the city doesn't. ("Beats: #1 for your Memphis fans, not in Memphis's top 20. Without Qloo you'd have pitched the Grizzlies.")
+   - **Booker:** the room whose crowd fits yours, on the driest Friday.
+   - **Sponsor scout:** a brand your fans over-index on, plus the pitch email.
+   - **Diplomat:** turns a rival into your co-headliner.
+   - **Room reader:** plays your bit to 1,000 simulated fans in that city before you bomb in front of real ones.
+3. **Press END WEEK.** Your army marches, comes back with loot cards (real data, real receipts), and your nemesis makes their move. Rivals are real performers your fans also follow, with real Wikipedia momentum and very fake trash talk.
+4. **Win, and the prize is your actual plan:** a six-city route, rooms, nights, sponsors, a calendar file and the emails.
 
-- **Qloo through the official harness** (`qloo exec` / `qloo mcp`), server-side
-  only. `describe` resolves you; `audience_demographics`, `entity_tags`,
-  `where_popular` and `recommend` build the audience the 1,000 fans are sampled
-  from; Qloo places and brands × city drive the Booker and Sponsor scout; a
-  second, city-only call gives the "what the city likes" baseline. Ranks are
-  compared, never raw affinities, because Qloo rescales affinity per response.
-- **Other live sources, all free:** Google Trends (what's breaking in a state),
-  Wikipedia pageviews (rival momentum), Open-Meteo (dry show nights), YouTube's
-  public feed (your real videos for the X-ray).
-- **Code decides, models write.** Odds, routes, ranks and scores are computed in
-  TypeScript; the optional Claude layer (`claude-haiku-5-5`, hard spend cap,
-  every answer cached) only writes DMs, pitches and fan quotes, and it can't add
-  or drop a city from a plan (checked in code).
-- TypeScript + Node, no framework; sqlite for the evidence ledger and caches;
-  an MCP server so other agents can call the same tools.
+**It drafts. You send.** Nothing gets posted, booked or emailed without you. We're ambitious, not reckless.
 
-## Where we were wrong (and what it taught us)
+### How I built it
 
-We replayed the judges' own past: their last 6 real YouTube videos, scored by
-their 1,000 simulated fans **before** we looked at the views.
+- **Qloo** through the official harness, server-side: who your fans are, where they live, what else they love, which venues and brands fit. About 100 calls per campaign, and every one has a receipt you can click.
+- **Free live data:** Google Trends, Wikipedia pageviews, Open-Meteo weather and YouTube's public feed. No paid APIs needed to play.
+- **Code decides, AI writes.** Odds, routes and rankings are plain TypeScript. The optional Claude layer only writes the DMs and pitches, and it isn't allowed to add a city to your tour.
+- TypeScript and Node, no framework, sqlite, 57 tests passing, deployed on Railway.
 
-- **Jason Calacanis (All-In):** we got it backwards (ρ −0.94). The news roundup
-  drew 4× the views per day of any interview, and his fans scored it lowest.
-  The lesson isn't hidden: reach follows the news, love follows taste. The
-  game's next move for him is to put the news hook on the interviews.
-- **LA Dodgers:** every title scored the same, 3.1 of 5, because hashtag titles
-  name nothing Dodgers fans love. The internet still picked the Shohei pun (3×
-  the average).
-- **Cedric the Entertainer:** YouTube's feed for his channels was down when we
-  ran it, so there's no replay. We didn't fill the gap.
+### Where I was wrong (on purpose, in public)
 
-## Honest limits
+I replayed the judges' own YouTube channels: their last 6 videos, scored by 1,000 simulated fans before I looked at the views.
 
-- **No paying users yet.** This is a hackathon build; we make no revenue claim.
-- **The 1,000 fans are simulated** from aggregate Qloo tastes: not people, not a
-  ticket forecast, never a claim about an individual. On localhost they're
-  rule-based (taste overlap); hosted, Claude voices them.
-- **The "brain" strip is a stand-in** shaped like Meta's TRIBE v2, labelled
-  low-confidence everywhere it appears.
-- **Rival moves are simulated** from the rivals' real data.
-- **No personal data goes to Qloo**, only names of performers, cities, venues
-  and brands.
+- **Jason Calacanis (All-In):** I got it exactly backwards. Not a little bit. ρ −0.94. The news roundup got 4× the views and his fans liked it least. Lesson: reach follows the news, love follows taste. Fix: put the news hook on the interviews.
+- **LA Dodgers:** every title scored the same, because "#nlcs #dodgers" tells a fan nothing. The internet still picked the Shohei pun (3× average).
 
-## What's next
+A tool that's never wrong is lying to you.
 
-1. A real comedian's real run: plan it in Conquest, then compare booked rooms
-   and sell-through with the plan.
-2. The Room reader's "this line misses in Seattle, swap it for this" rewrite.
-3. A public proof page from the YouTube backtest harness, losses included.
+### Challenges
 
-## Try it
+- Qloo tags audiences by race and religion too. My rival bot once taunted Cedric with one of those tags. That got fixed fast: rivals now insult your home city, like civilised people.
+- Qloo rescales scores in every response, so I compare ranks, never raw numbers.
+- Making a strategy game simple enough to understand in 10 seconds. I cut 12 agents down to 5 and it got better.
 
-Landing page → **Play as Cedric the Entertainer** (or Jason Calacanis, or the
-LA Dodgers). Or `?tour=1` for the 37-second jury tour.
-Code: this repo (MIT). `npm install && npm run serve` → http://localhost:5173.
+### What I learned
+
+The data was never the hard part. The hard part is getting someone to act on it every week. Games already solved that.
+
+### What's next (and what funding buys)
+
+If Conquest wins or gets funded, step one is paying for Qloo. Step two is sleep. Then:
+
+1. **Real proof:** my own campaign plus 10 working comedians, comparing the plan against real ticket sales.
+2. **Every platform:** TikTok, Instagram, X and Reddit, so the map knows what you actually post.
+3. **Booking for real:** a venue inbox, sponsor deal tracking and co-bill payouts, all inside the game.
+4. **Multiplayer:** managers running ten performers at once, and real players forming real alliances.
+5. **A phone app** that sends your Monday war report: three moves, five minutes, done.
+6. **Beyond comedy:** podcasters, musicians and sports teams. Play as the LA Dodgers today to see it already works.
+
+### Honest limits
+
+- No paying users yet. It's a one-day-old game with big feelings.
+- The 1,000 fans are simulated from aggregate Qloo tastes: not real people, not a ticket forecast.
+- The brain chart is a stand-in model, and it's labelled low-confidence everywhere it appears.
+- No personal data goes to Qloo, only names of performers, cities, venues and brands.
+
+---
+
+## Built with
+qloo · qloo-mcp · typescript · node.js · sqlite · google-trends · wikipedia · open-meteo · youtube · claude · mcp · railway
+
+## Try it out
+- Live: **[paste the Railway URL]**. Click **Play as Cedric the Entertainer** for a campaign in one click.
+- Code: **[paste the GitHub repo URL]**
+- Jury tour: add `?tour=1` to the live URL (37 seconds).
