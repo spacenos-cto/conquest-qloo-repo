@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@500;600&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #07060d; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(120% 90% at 50% 40%, #1a1030 0%, #07060d 70%); }
+  #src { position: absolute; left: 0; top: 0; transform-origin: 0 0; image-rendering: auto; box-shadow: 0 0 60px rgba(0,0,0,.6); }
+  #tag { position: absolute; left: 56px; top: 40px; font: 600 20px/1 "IBM Plex Mono", monospace; letter-spacing: .18em; color: #f0c46a;
+         background: rgba(7,6,13,.82); border: 1px solid rgba(240,196,106,.45); padding: 12px 18px; border-radius: 999px; opacity: 0; }
+  .cap { position: absolute; max-width: 1480px; padding: 22px 34px; border-radius: 22px; background: rgba(9,7,20,.9);
+         border: 1px solid rgba(175,80,255,.55); box-shadow: 0 18px 50px rgba(0,0,0,.55);
+         font: 600 40px/1.28 "Inter Tight", system-ui, sans-serif; color: #fff; letter-spacing: -.005em; opacity: 0; }
+  .cap b { color: #f0c46a; font-weight: 700; }
+  .cap i { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; font-size: 1.12em; color: #e6c8ff; }
+  .cap.bc { left: 50%; bottom: 46px; transform: translateX(-50%); text-align: center; }
+  .cap.bl { left: 120px; bottom: 60px; max-width: 980px; }
+  .cap.tc { left: 50%; top: 40px; transform: translateX(-50%); text-align: center; }
+  #card { position: absolute; inset: 0; opacity: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          background: radial-gradient(90% 80% at 50% 110%, #8052ff 0%, #3a1a7a 35%, #110a24 70%, #07060d 100%); color: #fff; }
+  #card .k { font: 600 22px/1 "IBM Plex Mono", monospace; letter-spacing: .22em; color: #f0c46a; margin-bottom: 34px; }
+  #card .h { font: 800 96px/1.02 "Inter Tight", sans-serif; letter-spacing: -.03em; max-width: 1600px; }
+  #card .h i { font-family: "Instrument Serif", serif; font-weight: 400; font-style: italic; letter-spacing: 0; color: #e6c8ff; }
+  #card .s { font: 500 38px/1.35 "Inter Tight", sans-serif; color: #d9d0f0; margin-top: 34px; max-width: 1400px; }
+  #card .s b { color: #f0c46a; }
+  #card .stats { display: flex; gap: 28px; margin-top: 10px; }
+  #card .st { background: rgba(7,6,13,.55); border: 1px solid rgba(240,196,106,.35); border-radius: 22px; padding: 26px 30px; width: 300px; }
+  #card .st b { display: block; font: 800 64px/1 "Inter Tight", sans-serif; color: #f0c46a; margin-bottom: 12px; }
+  #card .st span { font: 500 25px/1.3 "Inter Tight", sans-serif; color: #e8e2f8; }
+  #card .logo { font: 900 120px/1 "Cinzel", serif; letter-spacing: .06em; color: #fff; text-shadow: 0 0 40px rgba(175,80,255,.7); }
+  #card .url { font: 600 28px/1 "IBM Plex Mono", monospace; color: #fff; margin-top: 40px; padding: 16px 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); }
+  #dip { position: absolute; inset: 0; background: #07060d; opacity: 0; }
+  #speed { position: absolute; right: 56px; top: 40px; font: 600 22px/1 "IBM Plex Mono", monospace; color: #fff; background: rgba(128,82,255,.85); padding: 12px 18px; border-radius: 999px; opacity: 0; }
+</style></head>
+<body><div id="stage"><img id="src"><div id="card"></div><div id="tag"></div><div id="speed"></div><div id="caps"></div><div id="dip"></div></div>
+<script>
+let lastSrc = "", lastCard = null;
+window.setFrame = async (s) => {
+  const img = document.getElementById("src");
+  if (s.src && s.src !== lastSrc) { img.src = s.src; lastSrc = s.src; await img.decode().catch(() => {}); }
+  img.style.display = s.src ? "block" : "none";
+  if (s.src) {
+    const [x, y, w, h] = s.rect, k = Math.min(1920 / w, 1080 / h);
+    img.style.width = 1440 * k + "px"; img.style.height = 900 * k + "px";
+    img.style.left = (1920 - w * k) / 2 - x * k + "px"; img.style.top = (1080 - h * k) / 2 - y * k + "px";
+    img.style.clipPath = s.clip ? `inset(${y * k}px ${(1440 - x - w) * k}px ${(900 - y - h) * k}px ${x * k}px round 18px)` : "none";
+  }
+  const card = document.getElementById("card");
+  if (s.card !== lastCard) { card.innerHTML = s.card ?? ""; lastCard = s.card; }
+  card.style.opacity = s.cardOp ?? 0;
+  const tag = document.getElementById("tag"); tag.textContent = s.tag ?? ""; tag.style.opacity = s.tag ? s.tagOp : 0;
+  const sp = document.getElementById("speed"); sp.textContent = s.speed ?? ""; sp.style.opacity = s.speed ? 1 : 0;
+  document.getElementById("caps").innerHTML = (s.caps ?? []).map((c) => `<div class="cap ${c.pos}" style="opacity:${c.op}">${c.html}</div>`).join("");
+  document.getElementById("dip").style.opacity = s.dip ?? 0;
+  await document.fonts.ready;
+};
+</script></body></html>
