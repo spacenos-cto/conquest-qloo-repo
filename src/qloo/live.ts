@@ -11,8 +11,13 @@ import type { EnvelopeT } from "./types.js";
  * query string, never committed).
  */
 
-const BASE = process.env.QLOO_BASE_URL || "https://hackathon.api.qloo.com";
-const KEY = process.env.QLOO_API_KEY || "";
+// hosts' variable editors make it easy to paste quotes or a trailing space with the value: strip them
+const clean = (v?: string) => (v ?? "").trim().replace(/^["']|["']$/g, "").trim();
+const BASE = clean(process.env.QLOO_BASE_URL) || "https://hackathon.api.qloo.com";
+const KEY = clean(process.env.QLOO_API_KEY);
+
+/** For /api/health: is a key set, and what did the last failing Qloo call say (never the key itself). */
+export const qlooStatus = { keySet: !!KEY, base: BASE, lastError: null as null | string, lastErrorAt: null as null | string };
 
 // Metros we probe for the "where the fans are" footprint. The web map has
 // coordinates for each of these.
@@ -37,7 +42,7 @@ const insights = (params: Record<string, string | number>) => qloo("/v2/insights
 
 const ok = (results: any[], summary = ""): EnvelopeT => ({ status: "ok", summary, results, result_count: results.length });
 const empty = (summary: string): EnvelopeT => ({ status: "ok", summary, results: [], result_count: 0 });
-const errEnv = (msg: string, retryable = false): EnvelopeT => ({
+const errEnv = (msg: string, retryable = false): EnvelopeT => (Object.assign(qlooStatus, { lastError: (KEY ? msg.replaceAll(KEY, "<key>") : msg).slice(0, 160), lastErrorAt: new Date().toISOString() }), {
   status: "error",
   results: [],
   result_count: 0,

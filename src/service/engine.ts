@@ -1,5 +1,6 @@
 import { Ledger } from "../ledger/ledger.js";
 import { QlooGateway, type Mode } from "../qloo/gateway.js";
+import { qlooStatus } from "../qloo/live.js";
 import { resolve } from "../qloo/resolve.js";
 import { fingerprint } from "../qloo/fingerprint.js";
 import { samplePanel } from "../panel/sampler.js";
@@ -36,7 +37,7 @@ const PANEL_N = Number(process.env.REHEARSAL_PANEL_N || 1000);
 const fpCache = new Map<string, { fp: Fingerprint; runId: string }>();
 
 export function serverInfo() {
-  return { qlooMode: mode, respondentMode: respModeOf(), panelN: PANEL_N };
+  return { qlooMode: mode, respondentMode: respModeOf(), panelN: PANEL_N, ...(mode === "live" ? { qloo: qlooStatus } : {}) };
 }
 
 /**
