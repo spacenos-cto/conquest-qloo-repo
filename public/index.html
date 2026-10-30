@@ -1716,6 +1716,37 @@ body:not(.simple) .fanstrip{right:300px}
 #game button:focus-visible,.weekshow button:focus-visible,.vpack button:focus-visible,.introsheet.obj button:focus-visible{outline:2px solid #f0c46a;outline-offset:2px}
 .ub .pw{font-size:11.5px;color:#6f7390}.ub .pw i{font-style:normal}.ub .pw.on{color:#f0c46a}
 .lcard .rcount{font-size:11px;color:#9a9db3;font-family:var(--mono)}
+/* Mac pass: MacBook windows are 1280–1728 wide and often under 800 tall once the browser chrome is in */
+.modal{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(5,6,10,.88)}
+.weekshow{backdrop-filter:none;-webkit-backdrop-filter:none}
+#game .stage .mapwrap canvas{touch-action:none}
+.urow{touch-action:pan-y}
+.obj-f{position:sticky;bottom:-26px;margin:20px -44px -26px;padding:14px 44px 18px;background:linear-gradient(180deg,rgba(11,13,20,0),#0b0d14 30%);z-index:2}
+@media (max-width:1500px){
+  #game .hud .bt{display:none}
+  #game .hud{gap:12px!important}
+  .hhero{min-width:0}
+  #xp-text{display:none}
+  .tile{padding:6px 10px}
+}
+@media (min-width:1181px) and (max-width:1380px){
+  #game .hud{flex-wrap:wrap!important;row-gap:8px!important}
+  .questbar{order:5;flex:1 1 100%}
+  .hhero{margin-right:auto}
+  #game .stage{grid-template-columns:minmax(0,1fr) 380px!important;gap:16px;padding:14px 16px 16px}
+}
+@media (max-height:820px) and (min-width:1181px){
+  #game .hud{min-height:0;padding:8px 16px!important}
+  .hero-face{width:40px;height:40px}
+  .qs{height:32px}
+  #game .stage{padding-top:12px;padding-bottom:12px}
+  .endweek{height:52px;font-size:18px}
+  .rail-end p{font-size:11px}
+  .ub .d,.ub .g{font-size:11.5px}
+  .urow{padding:8px 10px}
+  .ws-in,.vpack{padding-top:18px}
+  .vp-map{height:380px}
+}
 /* missions drawer */
 .msheet{display:flex;flex-direction:column;gap:10px}.msheet .win{font-size:13px;color:#c9cbd8;border-radius:12px;background:#0f1220;border:1px solid #262c40;padding:10px 12px}.msheet .win b{color:#f0c46a}
 @media (max-width:1180px){
@@ -1731,7 +1762,7 @@ body:not(.simple) .fanstrip{right:300px}
 @media (max-width:768px){
   .hhero{min-width:0}.xpbar2{width:70px}
   .qb-slots{display:flex;overflow-x:auto}.qs{min-width:110px}
-  .obj-cards{grid-template-columns:1fr}.introsheet.obj{padding:22px 16px}.obj-h h1{font-size:28px}
+  .obj-cards{grid-template-columns:1fr}.introsheet.obj{padding:22px 16px}.obj-f{margin:20px -16px -22px;padding:12px 16px 16px;bottom:-22px}.obj-h h1{font-size:28px}
   .wstrip{grid-template-columns:repeat(2,1fr)}.ws-in,.vpack{padding:18px 16px}.ws-hd h1,.vp-hd h1{font-size:24px}
   #game .hud .brand{display:none}
 }
@@ -2054,6 +2085,6 @@ body:not(.simple) .fanstrip{right:300px}
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
 <script src="rules.js?v=2"></script>
-<script src="app.js?v=265"></script>
+<script src="app.js?v=266"></script>
 </body>
 </html>

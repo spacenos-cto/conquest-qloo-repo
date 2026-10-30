@@ -561,35 +561,53 @@ const MapView = (() => {
       ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `italic 400 ${22 * d}px "Instrument Serif", serif`; ctx.textAlign = "center";
       ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; iconText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d, f.col, 17 * d, "800"); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
-    drawArmy(ctx, toS, bez, at, d, s, now);
+    drawArmy(ctx, toS, bez, at, d, s, now); drawDrag(ctx, toS, d);
     for (const f of G.fx) {
       const k = (now - f.t0) / f.dur; if (k > 1 || k < 0) continue; const [X, Y] = toS(f.p);
       if (f.ring) { ctx.strokeStyle = f.col; ctx.globalAlpha = 1 - k; ctx.lineWidth = 4 * d * (1 - k) + 1; ctx.beginPath(); ctx.arc(X, Y, ease(k) * f.r * s, 0, 6.283); ctx.stroke(); }
       else { ctx.fillStyle = f.col; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(X + f.vx * k * s, Y + f.vy * k * s + 40 * k * k * s, 2.6 * d, 0, 6.283); ctx.fill(); }
     }
     ctx.globalAlpha = 1; G.fx = G.fx.filter((f) => now - f.t0 < f.dur);
-    if (mouse) cv.style.cursor = G.hoverUnit ? "pointer" : hit(mouse) ? (G.selected?.type === "unit" ? "copy" : "pointer") : "default";
+    if (mouse) cv.style.cursor = G.drag ? "grabbing" : G.hoverUnit ? "grab" : hit(mouse) ? (G.selected?.type === "unit" ? "copy" : "pointer") : "default";
   }
   function hit([mx, my]) { let best = null, bd = 24 * d; for (const ct of G.cities) { const [X, Y] = toS(ct.p), q = Math.hypot(X - mx * d, Y - my * d); if (q < bd) { bd = q; best = ct; } } return best; }
-  cv.addEventListener("mousemove", (e) => {
-    if (!G) return; mouse = [e.offsetX, e.offsetY];
-    G.hoverUnit = unitAt(e.offsetX * d, e.offsetY * d, d);
-    const h = hit(mouse); G.hoverCity = h;
-    if (h) cityPanel(h); else if (!G.pinned) $("#cityp").hidden = true;
+  // Drag a unit onto a city to order it there (mouse, trackpad or touch). Click a unit to
+  // select it; with a unit selected, click a city to order it there (same as its chip).
+  let press = null, dragEndAt = 0;
+  // pointer position in CSS px inside the canvas (offsetX is unreliable across browsers and zoom)
+  const ex = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const endDrag = () => { if (G) G.drag = null; document.body.classList.remove("dragging-agent"); };
+  cv.addEventListener("pointerdown", (e) => {
+    if (!G || G.busy || e.button !== 0) return;
+    const u = unitAt(ex(e)[0] * d, ex(e)[1] * d, d); if (!u) return;
+    press = { id: u.id, x0: ex(e)[0], y0: ex(e)[1] }; try { cv.setPointerCapture(e.pointerId); } catch {} e.preventDefault();
   });
-  cv.addEventListener("mouseleave", () => { mouse = null; if (G) { G.hoverCity = null; G.hoverUnit = null; if (!G.pinned) $("#cityp").hidden = true; } });
-  // with a unit selected, a city click is that unit's order there (same as its chip); a unit click selects it
+  cv.addEventListener("pointermove", (e) => {
+    if (!G) return; mouse = [ex(e)[0], ex(e)[1]];
+    if (press && !G.drag && Math.hypot(ex(e)[0] - press.x0, ex(e)[1] - press.y0) > 6) { G.drag = { id: press.id, pt: null }; G.selected = { type: "unit", id: press.id }; document.body.classList.add("dragging-agent"); renderAgents(); }
+    if (G.drag) G.drag.pt = [ex(e)[0] * d, ex(e)[1] * d];
+    G.hoverUnit = G.drag ? null : unitAt(ex(e)[0] * d, ex(e)[1] * d, d);
+    const h = hit(mouse); if (h !== G.hoverCity) { G.hoverCity = h; if (h) cityPanel(h); else if (!G.pinned) $("#cityp").hidden = true; } // only on a new city: hover stays cheap
+  });
+  cv.addEventListener("pointerup", () => {
+    if (!press || !G) return; const p = press; press = null; dragEndAt = performance.now();
+    if (G.drag) { const to = G.hoverCity; endDrag(); if (to) orderAt(p.id, to); else toast("Drop the unit on a city."); }
+    else selectUnit(p.id, true);
+  });
+  cv.addEventListener("pointercancel", () => { press = null; endDrag(); });
+  cv.addEventListener("pointerleave", () => { if (press) return; mouse = null; if (G) { G.hoverCity = null; G.hoverUnit = null; if (!G.pinned) $("#cityp").hidden = true; } });
   cv.addEventListener("click", (e) => {
-    if (!G || G.busy) return;
-    const uu = unitAt(e.offsetX * d, e.offsetY * d, d); if (uu) { selectUnit(uu.id); return; }
-    const h = hit([e.offsetX, e.offsetY]); if (!h) { G.pinned = null; $("#cityp").hidden = true; return; }
+    if (!G || G.busy || performance.now() - dragEndAt < 300) return; // a press on a unit was already handled
+    const h = hit([ex(e)[0], ex(e)[1]]); if (!h) { G.pinned = null; $("#cityp").hidden = true; return; }
     if (G.selected?.type === "unit") { orderAt(G.selected.id, h); return; }
     G.pinned = h.name; cityPanel(h);
   });
+  // for drags that start in the army rail: which city is under this viewport point?
+  const pick = (cx, cy) => { const r = cv.getBoundingClientRect(), x = cx - r.left, y = cy - r.top; if (!G || x < 0 || y < 0 || x > r.width || y > r.height) return null; return { city: hit([x, y]), pt: [x * d, y * d] }; };
   // ownership changed: snapshot the old layer for the flood animation, draw the new one
   function flip(p) { const old = G.layer; relayer(); if (old && p) G.anim = { old, p, t0: performance.now() }; }
   // for drags that start outside the map: which city is under this viewport point?
-  return { frame, flip, relayer, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
+  return { frame, flip, relayer, pick, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
 })();
 
 // the city an order marches from: your nearest held city, else the capital
@@ -1191,10 +1209,13 @@ function gambleChip(id, c) {
 // a city on the map was clicked with this unit selected: its chip there, or a plain order
 function orderAt(id, ct) {
   const c = chipsFor(id, true).find((x) => x.city === ct.name);
-  if (c) return queueOrder(id, c);
-  if (id === "you") { if (isHeld(ct)) return toast(`${ct.name} is already yours. Send You to a city you want to take.`); return queueOrder(id, youChip(ct)); }
-  if (id === "diplomat") return toast("The Diplomat works on people, not places: pick one of its chips.");
-  queueOrder(id, { city: ct.name, label: ct.name, get: unitOf(id).brings });
+  const n0 = G.orderQueue.length, was = G.orderQueue.find((o) => o.unitId === id)?.city;
+  if (c) queueOrder(id, c);
+  else if (id === "you") { if (isHeld(ct) && !G.sieges.some((s) => s.city === ct.name)) return toast(`${ct.name} is already yours. Send You to a city you want to take.`); queueOrder(id, youChip(ct)); }
+  else if (id === "diplomat") { const any = chipsFor(id, true)[0]; if (!any) return toast("No one left for the Diplomat to talk to."); queueOrder(id, { ...any, city: ct.name, label: `${any.ally} (${ct.name})` }); }
+  else queueOrder(id, { city: ct.name, label: ct.name, get: unitOf(id).brings });
+  const now = G.orderQueue.find((o) => o.unitId === id);
+  if (now && (G.orderQueue.length > n0 || now.city !== was)) toast(`${unitName(id)} → ${ct.name}. It marches at END WEEK.`);
 }
 function queueOrder(id, chip) {
   if (!G || G.busy || G.over || !chip) return;
@@ -1250,7 +1271,7 @@ function renderAgents() {
   $("#army-lock").textContent = L < 3 ? `Lv III · Theater Tour: every agent gets its second power (${levelOf(G.xp).toNext} XP to go)` : "Every agent has its Lv III power.";
   const n = G.orderQueue.length, eb = $("#endweek");
   eb.textContent = n ? `END WEEK · ${n} order${n > 1 ? "s" : ""} queued` : "END WEEK"; eb.disabled = G.busy || G.over;
-  $$("#army-list [data-u]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.u; if (!unitReady(id)) return recruit(id); selectUnit(id); }));
+  $$("#army-list [data-u]").forEach((b) => { b.addEventListener("click", () => { if (b._dragged) return; const id = b.dataset.u; if (!unitReady(id)) return recruit(id); selectUnit(id); }); railDrag(b); });
   $$("#army-list [data-chip]").forEach((b) => {
     const c = G._chips?.[+b.dataset.chip];
     b.addEventListener("click", () => queueOrder(G._chipsFor, c));
@@ -1258,6 +1279,34 @@ function renderAgents() {
   });
   $$("#army-list [data-claim]").forEach((b) => b.addEventListener("click", () => claimOffer(b.dataset.claim)));
   renderPrimary();
+}
+// drag a unit's row from the rail onto a city on the map: a ghost follows the pointer
+function railDrag(b) {
+  b.addEventListener("pointerdown", (e) => {
+    const id = b.dataset.u; if (e.button !== 0 || !G || G.busy || !unitReady(id)) return;
+    const x0 = e.clientX, y0 = e.clientY; let ghost = null, target = null;
+    const move = (ev) => {
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+        ghost = document.createElement("div"); ghost.className = "dragghost";
+        ghost.innerHTML = `<span class="face" style="--g1:${AG_COL[id]?.[0] ?? "#af50ff"};--g2:${AG_COL[id]?.[1] ?? "#4c1a91"}">${I(unitOf(id).ic)}</span><span><b>${esc(unitName(id))}</b><small>Drop it on a city</small></span>`;
+        document.body.appendChild(ghost); document.body.classList.add("dragging-agent"); G.selected = { type: "unit", id };
+      }
+      ghost.style.transform = `translate(${ev.clientX + 14}px, ${ev.clientY + 14}px)`;
+      const pk = MapView.pick(ev.clientX, ev.clientY); target = pk?.city ?? null; G.hoverCity = target;
+      G.drag = pk ? { id, pt: pk.pt } : null;
+      ghost.querySelector("small").textContent = target ? `Send to ${target.name}` : pk ? "Drop it on a city" : "Drag onto the map";
+      ghost.classList.toggle("ok", !!target);
+    };
+    const up = () => {
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up);
+      if (!ghost) return;
+      ghost.remove(); document.body.classList.remove("dragging-agent"); G.drag = null;
+      b._dragged = true; setTimeout(() => (b._dragged = false), 80);
+      if (target) orderAt(id, target); else renderAgents();
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+  });
 }
 function orderBox(id) {
   const chips = chipsFor(id), o = G.orderQueue.find((x) => x.unitId === id);
@@ -1591,12 +1640,26 @@ function drawArmy(ctx, toS, bez, at, d, s, now) {
     ctx.beginPath(); ctx.roundRect(X - r, Y - r, 2 * r, 2 * r, 7 * d); ctx.fill(); ctx.stroke();
     drawIcon(ctx, ui?.ic ?? "star", X, Y, 15 * d, col, 2.2);
     if (isSel || u === G.hoverUnit || u.state === "moving") {
-      const label = u.state === "moving" ? `${agentOf(u.id).name} → ${u.toCity}` : agentOf(u.id).name;
+      const label = u.state === "moving" ? `${agentOf(u.id).name} → ${u.toCity}` : u === G.hoverUnit && !G.drag ? `${agentOf(u.id).name} · drag to a city` : agentOf(u.id).name;
       ctx.font = `600 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const w = ctx.measureText(label).width + 12 * d, ty = Y + r + 12 * d;
       ctx.fillStyle = "rgba(11,13,20,.88)"; ctx.beginPath(); ctx.roundRect(X - w / 2, ty - 9 * d, w, 18 * d, 6 * d); ctx.fill();
       ctx.fillStyle = u.state === "moving" ? "#3dff9a" : "#fff"; ctx.fillText(label, X, ty);
     }
   }
+}
+// while dragging: a line from the unit to the pointer, the unit's ghost, and where it would go
+function drawDrag(ctx, toS, d) {
+  const dr = G.drag; if (!dr?.pt) return;
+  const u = G.army.get(dr.id), from = u?._s ?? (dr.id === "you" ? toS(cityOf(G.capital)?.p ?? [0, 0]) : null), [X, Y] = dr.pt, to = G.hoverCity;
+  if (from) { ctx.save(); ctx.strokeStyle = to ? "#3dff9a" : "rgba(255,255,255,.7)"; ctx.setLineDash([6 * d, 5 * d]); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(from[0], from[1]); ctx.lineTo(X, Y); ctx.stroke(); ctx.restore(); }
+  if (to) { const [TX, TY] = toS(to.p); ctx.strokeStyle = "#3dff9a"; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(TX, TY, 22 * d, 0, 6.283); ctx.stroke(); }
+  const r = 13 * d, col = AG_COL[dr.id]?.[0] ?? "#af50ff";
+  ctx.fillStyle = "#0b0d14"; ctx.strokeStyle = "#3dff9a"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.roundRect(X - r, Y - r, 2 * r, 2 * r, 7 * d); ctx.fill(); ctx.stroke();
+  drawIcon(ctx, unitOf(dr.id)?.ic ?? "flag", X, Y, 15 * d, col, 2.2);
+  const label = to ? `SEND ${unitName(dr.id).toUpperCase()} → ${to.name.toUpperCase()}` : "DROP ON A CITY";
+  ctx.font = `600 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const w = ctx.measureText(label).width + 14 * d;
+  ctx.fillStyle = "rgba(11,13,20,.9)"; ctx.beginPath(); ctx.roundRect(X - w / 2, Y - r - 26 * d, w, 18 * d, 6 * d); ctx.fill();
+  ctx.fillStyle = to ? "#3dff9a" : "#fff"; ctx.fillText(label, X, Y - r - 17 * d);
 }
 function unitAt(sx, sy, d) { let best = null, bd = 18 * d; for (const u of G.army.values()) { if (!u._s) continue; const q = Math.hypot(u._s[0] - sx, u._s[1] - sy); if (q < bd) { bd = q; best = u; } } return best; }
 
@@ -2817,9 +2880,9 @@ const Coach = (() => {
   let step = -1, dim = null, spotEl = null, waitLoot = false;
   const STEPS = [
     { spot: "#quest", go: "Continue", t: () => ((G.objective ?? "tour") === "tour" ? "This is what you're playing for: a 6-stop tour. Every slot you fill here is a real date." : `This is what you're playing for: ${objectiveOf(G.objective).title.toLowerCase()}. Every slot you fill here is real.`) },
-    { spot: "#army-rail", go: null, enter: () => selectUnit("booker", true), t: () => { const c = chipsFor("booker")[0]; return `Your army does the work. The Booker finds a room${c ? ` in ${c.city}` : ""}: real venue, real crowd fit. Click the chip.`; } },
-    { spot: "#endweek", go: null, t: () => "Nothing moves until you press this. Press it and watch the week play out." },
-    { spot: null, go: "Play", t: (L) => (L && !L.empty && L.questChange ? `That's real data, and it just did this for your quest: ${L.questChange}. Three orders a week. Go.` : "That's real data from your army. Three orders a week. Go.") },
+    { spot: "#army-rail", go: "Continue", enter: () => selectUnit("booker", true), t: () => { const o = G.orderQueue.find((x) => x.unitId === "booker"), c = chipsFor("booker")[0]; return o ? `Your army does the work. The Booker is ordered to ${o.city}: a real venue with a real crowd fit. Every unit works the same way: click it, then a place (or drag it onto the map).` : `Your army does the work. The Booker finds a room${c ? ` in ${c.city}` : ""}: real venue, real crowd fit. Click its first chip, or drag the Booker onto a city.`; } },
+    { spot: "#endweek", go: "Continue", t: () => "Nothing moves until you press END WEEK. Then your army marches, makes its live calls and comes back with loot. Press it now, or after your other orders." },
+    { spot: null, go: "Play", t: (L) => (L === undefined ? "Each END WEEK brings back a report card per unit: a real fact, its receipt, and what it did for your quest. Three orders a week. Go." : L && !L.empty && L.questChange ? `That's real data, and it just did this for your quest: ${L.questChange}. Three orders a week. Go.` : "That's real data from your army. Three orders a week. Go.") },
   ];
   function clear() { spotEl?.classList.remove("spot"); spotEl = null; }
   function show(arg) {
@@ -2832,13 +2895,13 @@ const Coach = (() => {
   }
   function end() { clear(); dim?.remove(); dim = null; $("#coach").hidden = true; step = -1; waitLoot = false; if (G) G.coach = false; try { localStorage.setItem("conquest-coached", "1"); } catch {} }
   function next(arg) { step++; if (step >= STEPS.length) return end(); show(arg); }
-  $("#coach-go").addEventListener("click", () => next());
+  $("#coach-go").addEventListener("click", () => next(undefined));
   $("#coach-skip").addEventListener("click", end);
   return {
     start() { if (!G || G.over) return; G.coach = true; step = -1; Drawer.close(); next(); },
     ordered(id) { if (step === 1 && id === "booker") next(); },
-    // END WEEK pressed: the last beat waits for the first loot card
-    ended() { if (step < 0) return; clear(); dim?.remove(); dim = null; $("#coach").hidden = true; waitLoot = true; step = 2; },
+    // END WEEK pressed before the last beat: that beat waits for the first loot card, inside the show
+    ended() { if (step < 0) return; if (step >= 3) return end(); clear(); dim?.remove(); dim = null; $("#coach").hidden = true; waitLoot = true; step = 2; },
     loot(L) { if (!waitLoot) return; waitLoot = false; next(L); },
   };
 })();
@@ -3173,7 +3236,8 @@ function safe(name, fn, now) { try { fn(now); } catch (e) { if (!failed.has(name
   requestAnimationFrame(loop);
   safe("brain", Field.frame, now);
   safe("say", sayTick, now);
-  if (G && !$("#game").hidden) { safe("map", MapView.frame, now); safe("radar", Radar.frame, now); safe("regions", brainTick, now); }
+  // the map only draws when you can see it: not under the objective screen, a modal or the win screen
+  if (G && !$("#game").hidden) { if ($("#intro").hidden && $("#victory").hidden && $("#docv").hidden) { safe("map", MapView.frame, now); safe("radar", Radar.frame, now); } safe("regions", brainTick, now); }
   else { safe("hero", HeroMap.frame, now); safe("heroradar", HeroRadar.frame, now); safe("stars", Stars.frame, now); safe("globe", Globe.frame, now); safe("story", Story.frame, now); safe("feed", Feed.frame, now); }
 })(performance.now());
 // a shareable link: ?play=Name opens the game as that person
