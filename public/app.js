@@ -256,7 +256,7 @@ const AGES = [[0, "I", "Open Mic"], [20, "II", "Club Circuit"], [40, "III", "The
 const ageOf = (c) => { let a = AGES[0]; for (const x of AGES) if (c >= x[0]) a = x; return a; };
 const ICON = { edit: "✍️", ally: "🤝", take: "🚩", hold: "🛡️", alliance: "🕊️", rivalry: "⚔️", defend: "🛡️" };
 const COST = { edit: 2, ally: 3, take: 4, hold: 3, alliance: 3, rivalry: 5, defend: 2 };
-const WEEKS = 8, BUZZ_MAX = 12;
+const WEEKS = 8;
 const kfmt = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k" : String(Math.round(n)));
 const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 const STATE_TEXT = {
@@ -314,6 +314,9 @@ const PATHS = {
   close: "M6 6l12 12 M18 6 6 18",
   film: "M3 5h18v14H3z M3 9h18 M7 5l2 4 M12 5l2 4 M17 5l2 4 M10 12.5v4l3.5-2z",
   chev: "M9 6l6 6-6 6",
+  mag: "M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13 M15.5 15.5 21 21",
+  masks: "M3 4h8v5a4 4 0 0 1-8 0z M13 9h8v5a4 4 0 0 1-8 0z M5.5 7h.5 M8 7h.5 M15.5 12h.5 M18 12h.5 M5.5 10.5c.8.6 2.2.6 3 0 M15.5 15.5c.8-.6 2.2-.6 3 0",
+  route: "M5 19a2 2 0 1 0 0-4a2 2 0 1 0 0 4 M19 9a2 2 0 1 0 0-4a2 2 0 1 0 0 4 M7 17h7a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h7",
 };
 const P2D = {};
 const pathOf = (k) => (P2D[k] ??= new Path2D(PATHS[k] ?? PATHS.star));
@@ -372,6 +375,9 @@ function sideOf(ct) {
   return "open";
 }
 const colOf = (key) => COL[key] ?? G.fac.get(key)?.col ?? COL.open;
+// Simple view paints three colours: you, the nemesis, open ground. Full view brings every rival's colour back.
+const nemesis = () => [...G.fac.values()].find((f) => f.strategy === "compete" && !f.allied) ?? [...G.fac.values()].find((f) => !f.allied);
+const paintOf = (key) => (G.fac.has(key) && document.body.classList.contains("simple") && key !== nemesis()?.id ? COL.open : colOf(key));
 const facByName = (n) => [...G.fac.values()].find((f) => f.name === n);
 const nearest = (list, to) => [...list].sort((a, b) => Math.hypot(a.p[0] - to.p[0], a.p[1] - to.p[1]) - Math.hypot(b.p[0] - to.p[0], b.p[1] - to.p[1]))[0];
 const pts = (ct) => Math.max(1, Math.round((ct.presence / (G.c.territory.total || 1)) * 100));
@@ -424,7 +430,7 @@ const MapView = (() => {
     const hatch = x.createPattern(hc, "repeat");
     for (const s of Atlas.states) {
       const g = G.gov.get(s.id); if (!g) continue; const key = keyOf.get(s.id);
-      x.beginPath(); P(s.f); x.globalAlpha = (A[key] ?? 0.56) * g.k; x.fillStyle = colOf(key); x.fill();
+      x.beginPath(); P(s.f); x.globalAlpha = (A[key] ?? 0.56) * g.k; x.fillStyle = paintOf(key); x.fill();
       if (key === "fog" && hatch) { x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.fillStyle = hatch; x.restore(); x.save(); x.globalAlpha = 0.9; x.fillStyle = hatch; x.fill(); x.restore(); }
     }
     x.globalAlpha = 1; x.lineJoin = "round";
@@ -434,7 +440,7 @@ const MapView = (() => {
     for (const key of new Set(keyOf.values())) {
       if (key === "fog" || key === "open") continue;
       const m = topojson.mesh(Atlas.topo, { type: "GeometryCollection", geometries: geoms }, (a, b) => (keyOf.get(a.id) === key) !== (keyOf.get(b.id) === key) || (a === b && keyOf.get(a.id) === key));
-      x.beginPath(); P(m); x.strokeStyle = colOf(key); x.lineWidth = (2.2 * d) / T.s; x.shadowColor = colOf(key); x.shadowBlur = 10 * d; x.stroke(); x.shadowBlur = 0;
+      x.beginPath(); P(m); x.strokeStyle = paintOf(key); x.lineWidth = (2.2 * d) / T.s; x.shadowColor = paintOf(key); x.shadowBlur = 10 * d; x.stroke(); x.shadowBlur = 0;
     }
     return c;
   }
@@ -468,18 +474,18 @@ const MapView = (() => {
   }
   function badge(X, Y, txt, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y, 7.5 * d, 0, 6.283); ctx.fill(); ctx.fillStyle = "#000"; ctx.font = `700 ${10 * d}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, X, Y + 0.5 * d); }
   function token(ct, now, night) {
-    const [X, Y] = toS(ct.p), key = sideOf(ct), col = colOf(key), r = (7 + ct.presence * 8) * d, t = now / 1000;
-    const sel = G.orders[G.sel], isTarget = sel && !sel.done && sel.city === ct.name;
+    const [X, Y] = toS(ct.p), key = sideOf(ct), col = paintOf(key), r = (7 + ct.presence * 8) * d, t = now / 1000;
+    const isTarget = G.orderQueue.some((o) => o.city === ct.name);
     const siege = G.sieges.find((s) => s.city === ct.name);
     // city lights after dark
     const lit = night(ct.p[0]); if (lit > 0.3 && key !== "fog") { const g = ctx.createRadialGradient(X, Y, 0, X, Y, r * 3.2); g.addColorStop(0, `rgba(235,215,255,${0.45 * lit})`); g.addColorStop(1, "rgba(235,215,255,0)"); ctx.fillStyle = g; ctx.fillRect(X - r * 3.2, Y - r * 3.2, r * 6.4, r * 6.4); }
-    if (ct.state === "beachhead") { ctx.strokeStyle = "#3dff9a"; ctx.globalAlpha = 0.45 + 0.4 * Math.sin(t * 3); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, r + 6 * d + 3 * d * Math.sin(t * 3), 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (ct.state === "beachhead" || (ct.state === "rival" && G.prep.has(ct.name))) { ctx.strokeStyle = "#3dff9a"; ctx.globalAlpha = 0.45 + 0.4 * Math.sin(t * 3); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, r + 6 * d + 3 * d * Math.sin(t * 3), 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
     if (siege) { ctx.strokeStyle = "#ff4d6d"; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 6); ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(X, Y, r + 9 * d, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
     if (isTarget) { const k = (t % 1.4) / 1.4; ctx.strokeStyle = "#fff"; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(X, Y, r + k * 26 * d, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
     const f = G.fac.get(ct.owner), cap = G.capital === ct.name && key === "you";
     let drew = false;
     if (cap) drew = face(X, Y, 20 * d, G.player.image, COL.you);
-    else if (ct.state === "rival" && f) drew = face(X, Y, Math.max(r + 4 * d, 15 * d), f.img, f.allied ? COL.allied : f.col);
+    else if (ct.state === "rival" && f) drew = face(X, Y, Math.max(r + 4 * d, 15 * d), f.img, f.allied ? COL.allied : paintOf(f.id));
     if (!drew) {
       ctx.shadowColor = col; ctx.shadowBlur = (key === "fog" ? 0 : 14) * d;
       ctx.fillStyle = "#0a0f18"; ctx.beginPath(); ctx.arc(X, Y, r, 0, 6.283); ctx.fill();
@@ -496,7 +502,10 @@ const MapView = (() => {
     if (G.prep.has(ct.name)) badge(X + rr * 0.85, Y + rr * 0.75, "✓", "#7fd8ff");
     if (siege) badge(X - rr * 0.9, Y - rr * 0.8, String(siege.left), "#ff4d6d");
     else if (ct.contested && key === "you") badge(X - rr * 0.9, Y - rr * 0.8, "⚔", "#ff4d6d");
-    if (isTarget) drawIcon(ctx, "flag", X + rr + 6 * d, Y - rr - 6 * d, 18 * d, "#fff", 2.2);
+    if (isTarget) drawIcon(ctx, "flag", X + rr + 6 * d, Y - rr - 6 * d, 18 * d, "#3dff9a", 2.2);
+    if (roomOf(ct.name)) { ctx.fillStyle = "#0b0d14"; ctx.beginPath(); ctx.arc(X - rr - 2 * d, Y + rr * 0.6, 9 * d, 0, 6.283); ctx.fill(); drawIcon(ctx, "ticket", X - rr - 2 * d, Y + rr * 0.6, 13 * d, "#f0c46a", 2.2); }
+    if (G.sponsors.some((sp) => sp.city === ct.name)) drawIcon(ctx, "case", X + rr + 4 * d, Y + rr * 0.6, 13 * d, "#3dff9a", 2.2);
+    if (G.forts.has(ct.name)) { ctx.font = `600 ${10 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "left"; const w = ctx.measureText("Walls up").width + 24 * d, bx = X + rr + 4 * d, by = Y - 8 * d; ctx.fillStyle = "rgba(11,13,20,.85)"; ctx.beginPath(); ctx.roundRect(bx, by - 9 * d, w, 18 * d, 6 * d); ctx.fill(); drawIcon(ctx, "shield", bx + 10 * d, by, 12 * d, "#f0c46a", 2.2); ctx.fillStyle = "#f0c46a"; ctx.textBaseline = "middle"; ctx.fillText("Walls up", bx + 19 * d, by + 0.5 * d); ctx.textAlign = "center"; }
     // what-if ghost: the city in your colour, with the gain floating up
     const pv = G.preview; if (pv && pv.city === ct.name) {
       const k = (now - pv.t0) / 2600; if (k >= 0 && k < 1) {
@@ -509,7 +518,6 @@ const MapView = (() => {
 
   function frame(now) {
     if (!G) return;
-    Clock.tick(now);
     if (!Atlas.topo) return;
     fit(cv, 2); d = cv._dpr || 1; const W = cv.width, H = cv.height;
     const s = Math.min(W / MW, H / MH) * 0.96; T = { s, ox: (W - MW * s) / 2, oy: (H - MH * s) / 2 + 6 * d };
@@ -531,20 +539,19 @@ const MapView = (() => {
     ctx.restore();
     // sieges in rival colour, your selected order in gold, rival moves this week
     for (const sg of G.sieges) { const to = G.cities.find((c) => c.name === sg.city), f = G.fac.get(sg.fid); const from = f && nearest(G.cities.filter((c) => c.owner === f.id && c.state === "rival"), to); if (to && from) arrow(from.p, to.p, f.col, now, 2.8); }
-    const o = G.orders[G.sel];
-    if (o && !o.done && o.city) { const to = G.cities.find((c) => c.name === o.city); if (to) arrow(fromFor(to).p, to.p, o.kind === "alliance" ? COL.allied : o.kind === "defend" ? "#fff" : "#e1bdff", now, 3.4); }
+    drawRoute(ctx, toS, d, now); fogLabel(ctx, toS, d);
     G.temp = G.temp.filter((tr) => now - tr.t0 <= 3500);
     for (const tr of G.temp) arrow(tr.from, tr.to, tr.col, now, 2.4);
     for (const ct of G.cities) token(ct, now, night);
     // rival armies on the march toward the city they mean to take this week
     for (const it of G.intents.slice(0, 2)) {
       const f = G.fac.get(it.fid), to = G.cities.find((c) => c.name === it.city); if (!f || !to || f.allied) continue;
-      const a0 = toS(it.from), b0 = toS(to.p), c0 = bez(a0, b0), k = 0.1 + 0.78 * clamp01(G.hour / 168), [X, Y] = at(a0, c0, b0, k);
-      ctx.save(); ctx.strokeStyle = f.col; ctx.globalAlpha = 0.55; ctx.setLineDash([4 * d, 6 * d]); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
+      const a0 = toS(it.from), b0 = toS(to.p), c0 = bez(a0, b0), k = 0.38 + (G.showT ? 0.5 * clamp01((now - G.showT) / 4500) : 0), [X, Y] = at(a0, c0, b0, k);
+      ctx.save(); ctx.strokeStyle = f.col; ctx.globalAlpha = 0.85; ctx.lineDashOffset = -now / 40; ctx.setLineDash([4 * d, 6 * d]); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
       const blocked = G.forts.has(to.name);
       if (!face(X, Y, 13 * d, f.img, f.col)) { ctx.fillStyle = f.col; ctx.beginPath(); ctx.arc(X, Y, 11 * d, 0, 6.283); ctx.fill(); }
       ctx.font = `700 ${10 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillStyle = blocked ? "#3dff9a" : "#ff8fa5"; ctx.shadowColor = "#000"; ctx.shadowBlur = 4 * d;
-      iconText(blocked ? "🛡 WALLS UP" : `⚔ ${to.name.toUpperCase()} · SUN`, X, Y - 22 * d, blocked ? "#3dff9a" : "#ff8fa5", 10.5 * d); ctx.shadowBlur = 0;
+      iconText(blocked ? "🛡 WALLS UP" : `⚔ HITS ${to.name.toUpperCase()} AT END WEEK`, X, Y - 22 * d, blocked ? "#3dff9a" : "#ff8fa5", 10.5 * d); ctx.shadowBlur = 0;
       if (blocked) { const [TX, TY] = b0; ctx.strokeStyle = "#3dff9a"; ctx.lineWidth = 3 * d; ctx.beginPath(); ctx.arc(TX, TY, 24 * d, 0, 6.283); ctx.stroke(); }
     }
     // floating numbers
@@ -554,57 +561,35 @@ const MapView = (() => {
       ctx.globalAlpha = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85; ctx.fillStyle = f.col; ctx.font = `italic 400 ${22 * d}px "Instrument Serif", serif`; ctx.textAlign = "center";
       ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; iconText(f.text, X + (f.dx ?? 0) * d, Y - 30 * d - k * 46 * d, f.col, 17 * d, "800"); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
-    armyTick(); drawArmy(ctx, toS, bez, at, d, s, now); placeUnitPop();
-    // the tutorial's free agent run
-    for (const u of G.units) {
-      const k = clamp01((now - u.t0) / u.dur), back = u.phase === "back";
-      const a0 = toS(back ? u.to : u.from), b0 = toS(back ? u.from : u.to), c0 = bez(a0, b0), [X, Y] = at(a0, c0, b0, ease(k));
-      ctx.save(); ctx.strokeStyle = "rgba(127,216,255,.5)"; ctx.setLineDash([3 * d, 5 * d]); ctx.lineWidth = 1.5 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
-      const bob = u.phase === "work" ? Math.sin(now / 150) * 3 * d : 0;
-      const [UX, UY] = u.phase === "work" ? b0 : [X, Y];
-      ctx.fillStyle = "#0a0f18"; ctx.strokeStyle = "#7fd8ff"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.arc(UX, UY - 18 * d + bob, 12 * d, 0, 6.283); ctx.fill(); ctx.stroke();
-      drawIcon(ctx, deEmoji(u.icon).icon ?? "bot", UX, UY - 18 * d + bob, 15 * d, "#7fd8ff", 2.2);
-      if (u.phase === "work") { ctx.fillStyle = "#7fd8ff"; ctx.font = `600 ${9.5 * d}px "IBM Plex Mono", monospace`; ctx.fillText("working…", UX, UY - 36 * d); }
-    }
+    drawArmy(ctx, toS, bez, at, d, s, now);
     for (const f of G.fx) {
       const k = (now - f.t0) / f.dur; if (k > 1 || k < 0) continue; const [X, Y] = toS(f.p);
       if (f.ring) { ctx.strokeStyle = f.col; ctx.globalAlpha = 1 - k; ctx.lineWidth = 4 * d * (1 - k) + 1; ctx.beginPath(); ctx.arc(X, Y, ease(k) * f.r * s, 0, 6.283); ctx.stroke(); }
       else { ctx.fillStyle = f.col; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(X + f.vx * k * s, Y + f.vy * k * s + 40 * k * k * s, 2.6 * d, 0, 6.283); ctx.fill(); }
     }
     ctx.globalAlpha = 1; G.fx = G.fx.filter((f) => now - f.t0 < f.dur);
-    if (mouse) cv.style.cursor = G.drag ? "grabbing" : G.hoverUnit ? "grab" : hit(mouse) ? (G.selected?.type === "unit" ? "copy" : "pointer") : "crosshair";
+    if (mouse) cv.style.cursor = G.hoverUnit ? "pointer" : hit(mouse) ? (G.selected?.type === "unit" ? "copy" : "pointer") : "default";
   }
   function hit([mx, my]) { let best = null, bd = 24 * d; for (const ct of G.cities) { const [X, Y] = toS(ct.p), q = Math.hypot(X - mx * d, Y - my * d); if (q < bd) { bd = q; best = ct; } } return best; }
-  cv.addEventListener("mousedown", (e) => {
-    if (!G || e.button !== 0) return;
-    const u = unitAt(e.offsetX * d, e.offsetY * d, d);
-    if (u) { select({ type: "unit", id: u.id }); G.drag = { id: u.id, x0: e.offsetX, y0: e.offsetY, pt: [e.offsetX * d, e.offsetY * d], moved: false }; e.preventDefault(); }
-  });
   cv.addEventListener("mousemove", (e) => {
     if (!G) return; mouse = [e.offsetX, e.offsetY];
     G.hoverUnit = unitAt(e.offsetX * d, e.offsetY * d, d);
     const h = hit(mouse); G.hoverCity = h;
-    if (G.drag) { G.drag.pt = [e.offsetX * d, e.offsetY * d]; if (Math.hypot(e.offsetX - G.drag.x0, e.offsetY - G.drag.y0) > 6) G.drag.moved = true; }
-    if (h && !G.drag) cityPanel(h); else if (!G.pinned) $("#cityp").hidden = true;
+    if (h) cityPanel(h); else if (!G.pinned) $("#cityp").hidden = true;
   });
-  addEventListener("mouseup", () => { if (!G?.drag) return; const { id, moved } = G.drag; G.drag = null; if (moved && G.hoverCity) { sendUnit(id, G.hoverCity); G.justDragged = true; } });
-  cv.addEventListener("contextmenu", (e) => { if (!G) return; e.preventDefault(); const h = hit([e.offsetX, e.offsetY]); if (h && G.selected?.type === "unit") sendUnit(G.selected.id, h); });
-  cv.addEventListener("dragover", (e) => { if (G?.dragTile) e.preventDefault(); });
-  cv.addEventListener("drop", (e) => { if (!G?.dragTile) return; e.preventDefault(); const h = hit([e.offsetX, e.offsetY]); if (h) sendUnit(G.dragTile, h); G.dragTile = null; });
   cv.addEventListener("mouseleave", () => { mouse = null; if (G) { G.hoverCity = null; G.hoverUnit = null; if (!G.pinned) $("#cityp").hidden = true; } });
+  // with a unit selected, a city click is that unit's order there (same as its chip); a unit click selects it
   cv.addEventListener("click", (e) => {
-    if (!G) return;
-    if (G.justDragged) { G.justDragged = false; return; }
-    { const uu = unitAt(e.offsetX * d, e.offsetY * d, d); if (uu) { openUnitPop(uu.id); return; } } // selected on mousedown
-    const h = hit([e.offsetX, e.offsetY]); if (!h) { G.pinned = null; $("#cityp").hidden = true; select(null); return; }
-    if (G.selected?.type === "unit") { sendUnit(G.selected.id, h); return; } // RTS: with a unit selected, a city click is a move order
-    G.pinned = h.name; cityPanel(h); select({ type: "city", name: h.name });
+    if (!G || G.busy) return;
+    const uu = unitAt(e.offsetX * d, e.offsetY * d, d); if (uu) { selectUnit(uu.id); return; }
+    const h = hit([e.offsetX, e.offsetY]); if (!h) { G.pinned = null; $("#cityp").hidden = true; return; }
+    if (G.selected?.type === "unit") { orderAt(G.selected.id, h); return; }
+    G.pinned = h.name; cityPanel(h);
   });
   // ownership changed: snapshot the old layer for the flood animation, draw the new one
   function flip(p) { const old = G.layer; relayer(); if (old && p) G.anim = { old, p, t0: performance.now() }; }
   // for drags that start outside the map: which city is under this viewport point?
-  const pick = (cx, cy) => { const r = cv.getBoundingClientRect(), x = cx - r.left, y = cy - r.top; if (!G || x < 0 || y < 0 || x > r.width || y > r.height) return null; return { city: hit([x, y]), pt: [x * d, y * d] }; };
-  return { frame, flip, relayer, pick, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
+  return { frame, flip, relayer, screen: (p) => { const [X, Y] = toS(p); return [X / d, Y / d]; }, css: ([X, Y]) => [X / d, Y / d] };
 })();
 
 // the city an order marches from: your nearest held city, else the capital
@@ -616,8 +601,8 @@ function cityPanel(ct) {
   const top = ct.rivals?.[0];
   const text = ct.state === "rival" ? `${f?.name ?? "A rival"}'s crowd is relatively stronger here. ${f?.strategy === "ally" ? "Your advisor says: team up." : "Your advisor says: out-play them."}` : STATE_TEXT[ct.state] ?? "";
   $("#cityp").innerHTML = `<div class="ptitle">City report</div><h4>${esc(ct.name)}</h4><div class="who" style="color:${colOf(key)}">${esc(owner)}</div>
-    <dl><dt>Your fan signal</dt><dd>${ct.you.toLocaleString()}</dd><dt>Material rating</dt><dd>${ct.mean != null ? ct.mean + "/5" : "—"}</dd><dt>Simulated fans here</dt><dd>${ct.n}</dd>${top && top.count ? `<dt>${esc(top.name)}</dt><dd>${top.count.toLocaleString()}</dd>` : ""}<dt>Worth</dt><dd>${pts(ct)}% conquest</dd><dt>Local time</dt><dd>${Clock.localLabel(ct)}</dd></dl>
-    <p>${esc(text)}</p>${G.intel.get(ct.name) ? `<p style="color:#7fd8ff">${esc(G.intel.get(ct.name))}</p>` : ""}${sg ? `<p style="color:#ff8fa5">⚔ Under siege by ${esc(G.fac.get(sg.fid)?.name)}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""} unless you defend.</p>` : ct.contested && key === "you" ? `<p style="color:#ff8fa5">⚔ ${esc(ct.contested)} is close behind you here.</p>` : ""}`;
+    <dl><dt>Your fans (Qloo)</dt><dd>${ct.you.toLocaleString()}</dd><dt>Material rating</dt><dd>${ct.mean != null ? ct.mean + "/5" : "—"}</dd><dt>Simulated fans here</dt><dd>${ct.n}</dd>${top && top.count ? `<dt>${esc(top.name)}</dt><dd>${top.count.toLocaleString()}</dd>` : ""}${roomOf(ct.name) ? `<dt>Room</dt><dd>${esc(roomOf(ct.name).venue)}</dd>` : ""}</dl>
+    <p>${esc(text)}</p>${G.intel.get(ct.name) ? `<p style="color:#7fd8ff">${esc(G.intel.get(ct.name))}</p>` : ""}${cityGets(ct)}${sg ? `<p style="color:#ff8fa5">⚔ Under siege by ${esc(G.fac.get(sg.fid)?.name)}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""} unless you defend.</p>` : ct.contested && key === "you" ? `<p style="color:#ff8fa5">⚔ ${esc(ct.contested)} is close behind you here.</p>` : ""}`;
   if (G.cid && METROS[ct.name]) { $("#cityp").insertAdjacentHTML("beforeend", `<button class="ghostbtn cbrief">📄 City Brief</button>`); $("#cityp .cbrief").addEventListener("click", () => openDoc(briefHref(ct.name), `City Brief · ${ct.name}`)); }
   $("#cityp").hidden = false;
 }
@@ -666,18 +651,13 @@ function ach(id) {
   $("#achs").appendChild(el); setTimeout(() => el.remove(), 3800); Sound.play("potion"); ops(`<span class="ok">🏆 ${t}</span> · ${d}`);
 }
 
-// ---------------------------------------------------------------- the world clock
-// One game week runs in about 84 seconds. Night sweeps across the map from
-// east to west by real longitude; at Sunday midnight the week ends on its own.
-// line icons for the clock buttons (emoji render as coloured boxes)
-const CLOCK_ICONS = { pause: '<path d="M9 6v12M15 6v12"/>', play: '<path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor"/>', fast: '<path d="M4 6l8 6-8 6zM12 6l8 6-8 6z" fill="currentColor"/>', slow: '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" stroke="none" font-family="Inter Tight, sans-serif">1×</text>' };
-function clockIcon(sel, k) { const b = $(sel); if (b) b.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${CLOCK_ICONS[k]}</svg>`; }
+// ---------------------------------------------------------------- the world clock (display only)
+// v2 has no clock: nothing moves until END WEEK. Clock keeps the formatting and
+// the map's day/night look: Wednesday noon while you give orders, Sunday 20:00 in the show.
 const Clock = (() => {
-  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], RATE = 2; // game hours per real second
-  let last = 0, speed = 1, paused = false, shown = "";
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const pad = (n) => String(n).padStart(2, "0");
   const fmt = (h) => `${DAYS[Math.floor(h / 24) % 7]} ${pad(Math.floor(h % 24))}:${pad(Math.floor(((h % 1) * 60) / 15) * 15)}`;
-  const hourLab = (h) => `${DAYS[Math.floor(h / 24) % 7]} ${pad(Math.floor(h % 24))}:00`;
   const lonOfX = (x) => -125 + (x / MW) * 58;
   function nightAt(x) {
     if (!G) return 0;
@@ -686,25 +666,11 @@ const Clock = (() => {
     if (local >= 20 || local <= 5) return 1;
     return local > 17.5 ? (local - 17.5) / 2.5 : (7 - local) / 2;
   }
-  function tick(now) {
-    const dt = last ? Math.min(0.25, (now - last) / 1000) : 0; last = now;
-    if (!G || G.over) return;
-    if (!paused && !G.busy && !G.simulating && !G.modal && !G.coach) {
-      G.hour += dt * RATE * speed;
-      questTick(dt);
-      if (G.hour >= 168) { G.hour = 168; speed = 1; clockIcon("#cfast", "fast"); endWeek(); }
-    }
-    const lab = hourLab(Math.min(G.hour, 167.99));
-    if (lab !== shown) { shown = lab; $("#ctime").textContent = lab.toUpperCase(); $("#cday").textContent = `WEEK ${G.week} OF ${WEEKS} · ET`; $("#cdial").style.setProperty("--k", `${((G.hour % 24) / 24) * 100}%`); if (lab.endsWith(":00")) renderQuests(); }
-  }
   return {
-    tick, nightAt, fmt,
-    label: () => (G ? fmt(Math.min(G.hour, 167.99)) : ""),
+    nightAt, fmt,
+    label: () => (G ? `Week ${G.week}` : ""),
     localLabel: (ct) => { const lon = METROS[ct.name]?.[0] ?? -75, h = (((G.hour % 24) + (lon + 75) / 15) % 24 + 24) % 24; return `${pad(Math.floor(h))}:${pad(Math.floor(((h % 1) * 60) / 15) * 15)}`; },
-    toggle() { paused = !paused; clockIcon("#cpause", paused ? "play" : "pause"); return paused; },
-    fast() { speed = speed > 1 ? 1 : 12; clockIcon("#cfast", speed > 1 ? "slow" : "fast"); },
-    finishWeek() { speed = 60; paused = false; clockIcon("#cpause", "pause"); },
-    reset() { speed = 1; paused = false; last = 0; shown = ""; clockIcon("#cpause", "pause"); clockIcon("#cfast", "fast"); },
+    reset() { if (G) G.hour = 60; },
   };
 })();
 
@@ -719,7 +685,7 @@ async function aiCheck() { if (G.aiMode != null) return G.aiMode === "claude"; c
 function board() {
   const [, , aname] = ageOf(G.conquest), goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1);
   return {
-    name: G.player.name, ids: G.player.q?.ids, week: G.week, weeks: WEEKS, conquest: G.conquest, goal: `${goal[2]} (${goal[0]}%)`, buzz: G.buzz, gold: G.gold, hype: Math.round(G.morale * 10) / 10, capital: G.capital,
+    name: G.player.name, ids: G.player.q?.ids, week: G.week, weeks: WEEKS, conquest: G.conquest, goal: `${goal[2]} (${goal[0]}%)`, buzz: G.ordersLeft, gold: G.gold, hype: Math.round(G.morale * 10) / 10, capital: G.capital,
     cities: G.cities.slice(0, 30).map((c) => ({ name: c.name, side: sideOf(c), you: c.you, mean: c.mean ?? null, worth: pts(c), state: c.state, lon: METROS[c.name]?.[0], lat: METROS[c.name]?.[1], prepared: G.prep.has(c.name), walls: G.forts.has(c.name) })),
     orders: G.orders.filter((o) => !o.done).slice(0, 12).map((o) => ({ id: String(o.id), title: o.title, kind: o.kind, city: o.city ?? null, cost: costOf(o), gain: gainOf(o) })),
     rivals: [...G.fac.values()].slice(0, 6).map((f) => ({ name: f.name, role: ROLE(f), momentum: G.fame.get(f.name)?.momentum ?? null, attacking: G.intents.find((i) => i.fid === f.id)?.city ?? null, besieging: G.sieges.find((i) => i.fid === f.id)?.city ?? null })),
@@ -733,7 +699,7 @@ async function aiPlan() {
   const r = await post("/api/agent/strategist", board(), 60000);
   if (r?.status !== "ok" || !G || G.week !== week) { if (r?.status === "off") G.aiMode = "off"; return; }
   G.aiPlan = { week, ...r }; ops(`<span class="api">${esc(r.model)}</span> plan: ${esc(r.plan.headline)} · tools: ${esc((r.tools ?? []).join(", ") || "none")}`);
-  council();
+  renderAgents(); // the plan re-ranks the target chips
 }
 // agents that write: the AI's text when it's on, the template otherwise
 async function aiWrite(kind, context, fallback) {
@@ -741,63 +707,24 @@ async function aiWrite(kind, context, fallback) {
   const r = await post("/api/agent/write", { kind, context }, 20000);
   return r?.status === "ok" && r.text ? r.text : fallback;
 }
-function council() {
-  const open = G.orders.filter((o) => !o.done);
-  const sg = G.sieges.slice().sort((a, b) => a.left - b.left)[0];
-  const inc = G.intents.find((it) => !G.forts.has(it.city) && !G.fac.get(it.fid)?.allied);
-  const afford = open.filter((o) => costOf(o) <= G.buzz && o.gain);
-  const best = afford.sort((a, b) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a))[0];
-  const left = WEEKS - G.week + 1;
-  const goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1), name = (fid) => G.fac.get(fid)?.name ?? "A rival";
-  let pts;
-  if (sg) pts = [["Now", `${name(sg.fid)} is besieging ${sg.city}`], ["Do", `Defend ${sg.city} · ⚡${COST.defend}`], ["Why", `It falls in ${sg.left} week${sg.left > 1 ? "s" : ""}: −${pts_(sg.city)}% conquest`]];
-  else if (inc) pts = [["Now", `${name(inc.fid)} marches on ${inc.city}, Sunday`], ["Do", "Build walls (🪙80) or strike first"], ["Then", best ? `${best.title} · +${gainOf(best)}%` : "End the week"]];
-  else if (!open.length) pts = [["Now", "Every order is done"], ["Do", "End the week"], ["Why", "The campaign closes at week " + WEEKS]];
-  else if (!afford.length) pts = [["Now", `Low on buzz (⚡${G.buzz})`], ["Do", "Claim an opportunity or end the week"], ["Why", `Sunday pays +⚡${regen()}`]];
-  else pts = [["Now", `You hold ${held()} of ${ground()} cities`], ["Do", `${best.title} · ⚡${costOf(best)}`], ["Why", `+${gainOf(best)}% conquest${G.prep.has(best.city) ? ", city already prepared" : ""}`]];
-  const ai = G.aiPlan?.week === G.week && G.aiPlan.plan, step = ai?.steps?.[0];
-  if (step) pts = [["Do", step.action], ["Why", `${step.why} (${step.source})`], ...(ai.real_world ? [["For real", ai.real_world]] : [])];
-  $("#brief").innerHTML = `<ul class="pts">${pts.map(([k, v]) => `<li><b>${esc(k)}</b><span>${esc(v)}</span></li>`).join("")}</ul>
-    <small class="rc">${ai ? `🧠 ${esc(G.aiPlan.model)} · used ${esc((G.aiPlan.tools ?? []).join(", ") || "the board")}` : `Week ${G.week} of ${WEEKS} · goal: ${esc(goal[2])} (${goal[0]}%)`}</small>`;
-  renderAdvice();
-}
-
 // ---------------------------------------------------------------- HUD and panels
 const held = () => G.cities.filter((c) => ["you", "allied"].includes(sideOf(c))).length;
 const ground = () => G.cities.filter((c) => c.state !== "uncharted").length;
 const fansOf = () => G.cities.filter((c) => sideOf(c) === "you").reduce((s, c) => s + c.you, 0);
 const power = () => Math.round((fansOf() * G.morale) / 10);
-const regen = () => Math.min(8, 3 + Math.max(0, Math.round((G.morale - 3.5) * 4)) + G.allies);
-const score = () => Math.round(G.conquest * 100 + G.allies * 500 + G.taken * 750 + power() + G.saved * 400 + G.missions * 150 + G.achPts);
-let lastOrb = {};
-function orb(id, frac, label) {
-  const el = $(id); el.style.setProperty("--f", `${Math.round(clamp01(frac) * 100)}%`); el.querySelector("b").textContent = label;
-  if (lastOrb[id] != null && lastOrb[id] !== label) { el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
-  lastOrb[id] = label;
-}
+const score = () => Math.round(G.conquest * 100 + G.allies * 500 + G.taken * 750 + power() + G.saved * 400 + G.runs * 150 + G.achPts);
 let saveT = 0;
-// One line that says what the game is and how you're doing, always on screen
-function goalBar(nx) {
-  const el = $("#goalbar"); if (!el) return;
-  const target = nx ?? AGES.at(-1), pct = Math.min(100, (G.conquest / target[0]) * 100);
-  // the objective, in plain words: win enough of your fans' cities before the last week
-  el.innerHTML = `<b>Goal: win ${target[0]}% of your fans by week ${WEEKS}</b><span>You have ${G.conquest}% (${held()} of ${ground()} cities) · week ${G.week} of ${WEEKS}</span><i><u style="width:${pct}%"></u></i><em>Each week: spend ⚡ on moves → Sunday: rivals attack, gold comes in</em>`;
-}
-function hud(delta) {
-  clearTimeout(saveT); saveT = setTimeout(saveGame, 800); renderAdvice();
-  const [a0, n, name] = ageOf(G.conquest), nx = AGES.find((x) => x[0] > G.conquest);
-  goalBar(nx);
-  $("#lvl-n").textContent = n; $("#age-name").textContent = name;
-  $("#xp-fill").style.width = `${nx ? ((G.conquest - a0) / (nx[0] - a0)) * 100 : 100}%`;
-  $("#xp-text").textContent = `${G.conquest}% conquest${delta ? ` (${delta > 0 ? "+" : ""}${delta})` : ""}${nx ? ` · ${nx[2]} at ${nx[0]}%` : " · max age"}`;
-  orb("#orb-buzz", G.buzz / BUZZ_MAX, `⚡${G.buzz}`); $("#rate-buzz").textContent = `+${regen()}/wk`;
-  orb("#orb-hype", (G.morale - 1) / 4, G.morale.toFixed(1));
-  orb("#orb-gold", Math.min(1, G.gold / 800), `${G.gold}`); $("#rate-gold").textContent = `+${income()}/wk`;
-  $("#mini").innerHTML = [["🏰", `${held()}/${ground()}`, "Cities held"], ["🤝", G.allies, "Allies"], ["🤖", [...G.crew.values()].filter((c) => c.recruited).length, "Agents"], ["⭐", score().toLocaleString(), "Score"]]
-    .map(([i, v, t]) => `<span title="${t}"><i>${i}</i><b>${v}</b><small>${t}</small></span>`).join("");
-  $("#stats-score").textContent = score().toLocaleString();
-  $("#weeknote").textContent = `Sunday midnight: +⚡${regen()} buzz, +🪙${income()} gold, then the rivals strike.`;
-  factions(); renderThreats(); renderRivalStrip(); hudReal();
+// the top bar: who you are and your level, the quest, gold and orders
+function hud() {
+  if (!G) return;
+  clearTimeout(saveT); saveT = setTimeout(saveGame, 800);
+  const L = levelOf(G.xp);
+  $("#lvl-n").textContent = L.roman; $("#age-name").textContent = `Lv ${L.roman} · ${L.name}`;
+  $("#hero-name").textContent = G.player.name; $("#hero-week").textContent = `Week ${Math.min(G.week, WEEKS)} of ${WEEKS}`;
+  $("#xp-fill").style.width = `${Math.round(L.frac * 100)}%`; $("#xp-text").textContent = L.next ? `${L.toNext} XP to ${L.next.name}` : "max level";
+  $("#gold-n").textContent = G.gold; $("#gold-rate").textContent = `gold · +${income()}/wk`;
+  $("#orders-n").textContent = G.ordersLeft; $("#orders-tile").classList.toggle("empty", G.ordersLeft <= 0);
+  renderQuestBar(); factions(); renderThreats(); renderRivalStrip(); hudReal(); renderLegend(); renderFanStrip();
 }
 function factions() {
   const reach = (f) => G.cities.reduce((s, c) => s + (c.rivals.find((r) => r.id === f.id)?.count ?? 0), 0);
@@ -883,7 +810,7 @@ const Radar = (() => {
       for (const c of G.cities.filter((x) => x.owner === f.id && x.state === "rival")) { const [X, Y] = pos(c.p); hits.push({ fid: f.id, x: X, y: Y }); ctx.globalAlpha = lit(X, Y) * 0.8; ctx.fillStyle = col; ctx.fillRect(X - 3 * d, Y - 3 * d, 6 * d, 6 * d); }
       const it = G.intents.find((x) => x.fid === f.id); if (!it || f.allied) continue;
       const to = G.cities.find((c) => c.name === it.city); if (!to) continue;
-      const k = 0.1 + 0.78 * clamp01(G.hour / 168), from = pos(it.from), dst = pos(to.p), X = from[0] + (dst[0] - from[0]) * k, Y = from[1] + (dst[1] - from[1]) * k;
+      const k = 0.4, from = pos(it.from), dst = pos(to.p), X = from[0] + (dst[0] - from[0]) * k, Y = from[1] + (dst[1] - from[1]) * k;
       const a = lit(X, Y); ctx.globalAlpha = 0.5; ctx.strokeStyle = col; ctx.setLineDash([3 * d, 4 * d]); ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(dst[0], dst[1]); ctx.stroke(); ctx.setLineDash([]);
       hits.push({ fid: f.id, x: X, y: Y, army: true });
       ctx.globalAlpha = a; ctx.shadowColor = col; ctx.shadowBlur = 14 * d * a; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y, 5.5 * d, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0;
@@ -894,7 +821,7 @@ const Radar = (() => {
     ctx.globalAlpha = 1;
     ctx.fillStyle = COL.you; ctx.beginPath(); ctx.arc(cx, cy, 5 * d, 0, 6.283); ctx.fill();
     ctx.fillStyle = "rgba(225,189,255,.7)"; ctx.font = `600 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "left"; ctx.fillText(`HQ · ${G.capital?.toUpperCase() ?? ""}`, 8 * d, H - 8 * d);
-    ctx.textAlign = "right"; ctx.fillText(`SUN · ${Math.max(0, Math.ceil((168 - G.hour) / 24))}D`, W - 8 * d, 14 * d);
+    ctx.textAlign = "right"; ctx.fillText("HITS AT END WEEK", W - 8 * d, 14 * d);
   }
   // click a blip to pick that rival; click anywhere else for the full threat report
   let hits = [], hd = 1;
@@ -981,15 +908,15 @@ function threatReport() {
     let now, risk, rc = "";
     if (f.allied) { now = "Allied: they fight at your side."; risk = "No risk."; }
     else if (sg) { now = `Besieging your ${sg.city}. It falls in ${sg.left} week${sg.left > 1 ? "s" : ""}.`; risk = `You lose ${sg.city} and ${pts(cityOf(sg.city))}% conquest.`; rc = "bad"; }
-    else if (it && !G.forts.has(it.city)) { now = `Marching on your ${it.city}. Arrives Sunday.`; risk = `A 2-week siege starts: ${pts(cityOf(it.city))}% conquest at stake.`; rc = "warn"; }
+    else if (it && !G.forts.has(it.city)) { now = `Marching on your ${it.city}. Hits at END WEEK.`; risk = `A 2-week siege starts on ${it.city} and its tour stop.`; rc = "warn"; }
     else if (it) { now = `Marching on ${it.city}, but your walls are up.`; risk = "Their attack bounces off."; }
     else { now = "No attack planned this week."; risk = "Nothing, for now."; }
     const acts = [];
-    if (sg) { const i = G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city); if (i >= 0) acts.push(`<button class="go" data-tdef="${i}">🛡 Defend ${esc(sg.city)} · ⚡${COST.defend}</button>`); }
-    if (it && !G.forts.has(it.city)) acts.push(`<button class="ghostbtn" data-fort="${esc(it.city)}" ${G.gold >= 80 ? "" : "disabled"}>🛡 Build walls in ${esc(it.city)} · 🪙80</button>`);
+    if (sg) acts.push(`<button class="go" data-tdef="${esc(sg.city)}">🛡 Defend ${esc(sg.city)} · 1 order</button>`);
+    if (it && !G.forts.has(it.city)) acts.push(`<button class="ghostbtn" data-fort="${esc(it.city)}" ${G.gold >= 80 ? "" : "disabled"}>🛡 Build walls in ${esc(it.city)} · 80 gold</button>`);
     if (!f.allied) {
-      acts.push(`<button class="ghostbtn" data-strike="${esc(f.id)}" ${at && G.buzz >= 4 ? "" : "disabled"}>⚔ ${at ? "Strike their " + esc(at.name) + " · ⚡4" : "Strike (they hold no city yet)"}</button>`);
-      acts.push(`<button class="ghostbtn" data-parley="${esc(f.id)}">🕊 Offer a deal</button>`);
+      acts.push(`<button class="ghostbtn" data-strike="${esc(f.id)}" ${at ? "" : "disabled"}>⚔ ${at ? "Strike their " + esc(at.name) + " · 1 order" : "Strike (they hold no city yet)"}</button>`);
+      acts.push(`<button class="ghostbtn" data-parley="${esc(f.id)}">🕊 Send the Diplomat · 1 order</button>`);
     }
     return `<div class="trc ${lv}" style="--c:${f.allied ? COL.allied : f.col}">
       <div class="trc-h">${avatar(f.img, f.name, "fp")}<div><b>${esc(f.name)}</b><small>${held.length ? "Holds " + esc(held.slice(0, 3).join(", ")) : "Holds no cities yet"}${mo != null ? ` · fame ${mo >= 0 ? "▲" : "▼"}${Math.abs(mo)}%` : ""}</small></div><span class="lv2">${LV_LABEL[lv]}</span></div>
@@ -997,25 +924,14 @@ function threatReport() {
       ${acts.length ? `<div class="trc-a">${acts.join("")}</div>` : ""}</div>`;
   }).join("");
   const hot = fs.filter((f) => ["SIEGE", "HIGH", "MED"].includes(threatLevel(f)));
-  const head = hot.length ? `<div class="tr-sum bad"><b>${hot.length} rival${hot.length > 1 ? "s" : ""} coming for you</b><span>Act before Sunday midnight, when attacks land.</span></div>` : `<div class="tr-sum"><b>All quiet this week</b><span>No rival is attacking you. A good week to strike first.</span></div>`;
+  const head = hot.length ? `<div class="tr-sum bad"><b>${hot.length} rival${hot.length > 1 ? "s" : ""} coming for you</b><span>Act before you press END WEEK, when attacks land.</span></div>` : `<div class="tr-sum"><b>All quiet this week</b><span>No rival is attacking you. A good week to strike first.</span></div>`;
   return head + cards + `<p class="note" style="margin-top:12px">Rivals are real performers your fans also follow (from Qloo). Their moves are simulated from their real fan footprints and Wikipedia momentum.</p>`;
 }
 function bindThreats() {
-  $$("#drawer-b [data-tdef]").forEach((b) => b.addEventListener("click", () => { execute(+b.dataset.tdef); Drawer.render(); }));
+  $$("#drawer-b [data-tdef]").forEach((b) => b.addEventListener("click", () => { defendOrder(b.dataset.tdef); Drawer.render(); }));
   $$("#drawer-b [data-fort]").forEach((b) => b.addEventListener("click", () => { fortify(b.dataset.fort); Drawer.render(); }));
-  $$("#drawer-b [data-strike]").forEach((b) => b.addEventListener("click", () => strike(b.dataset.strike)));
-  $$("#drawer-b [data-parley]").forEach((b) => b.addEventListener("click", () => { const f = G.fac.get(b.dataset.parley); if (f) parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); }));
-}
-function threatReportOld() {
-  const rows = [...G.fac.values()].map((f) => {
-    const it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id), ct = it && G.cities.find((c) => c.name === it.city);
-    const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name);
-    const ignore = sg ? `${sg.city} falls in ${sg.left} week${sg.left > 1 ? "s" : ""}: −${pts(G.cities.find((c) => c.name === sg.city))}% conquest.`
-      : it && !G.forts.has(it.city) ? `Sunday they reach ${it.city} and a 2-week siege starts (${ct ? pts(ct) : 0}% conquest at stake).`
-      : it ? `Your walls in ${it.city} will bounce them.` : f.allied ? "Allied: they fight with you." : "No attack planned this week.";
-    return `<div class="move"><span class="emo" style="font-size:18px">${f.allied ? "🕊️" : it ? "⚔️" : "👀"}</span><span><b>${esc(f.name)}</b> · ${threatLevel(f)}<small>${held.length ? "holds " + esc(held.slice(0, 3).join(", ")) : "holds none of your cities"}</small>${esc(ignore)}</span></div>`;
-  }).join("");
-  return `<p class="note" style="margin:0 0 10px">Rivals are the performers your fans also follow (Qloo). Each week some pick one of your cities to attack, and you see them coming days ahead. Their moves are simulated from their real footprints and Wikipedia momentum.</p><div class="dgroup">IF YOU DO NOTHING</div><div class="moves">${rows}</div><div class="dgroup">COUNTER-MOVES</div><div class="threats" id="threats"></div>`;
+  $$("#drawer-b [data-strike]").forEach((b) => b.addEventListener("click", () => { strike(b.dataset.strike); Drawer.render(); }));
+  $$("#drawer-b [data-parley]").forEach((b) => b.addEventListener("click", () => { parleyOrder(b.dataset.parley); Drawer.render(); }));
 }
 function threatLevel(f) {
   if (f.allied) return "ALLY";
@@ -1025,42 +941,20 @@ function threatLevel(f) {
   return "LOW";
 }
 function renderThreats() {
-  if (!G) return;
-  if (typeof Drawer !== "undefined" && Drawer.mode === "radar") { $("#drawer-b").innerHTML = threatReport(); bindThreats(); }
-  if (!$("#threats")) return;
-  const RANK = { SIEGE: 0, HIGH: 1, MED: 2, LOW: 3, ALLY: 4 };
-  $("#threats").innerHTML = [...G.fac.values()].sort((a, b) => RANK[threatLevel(a)] - RANK[threatLevel(b)]).map((f) => {
-    const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), mo = G.fame.get(f.name)?.momentum;
-    const strikeAt = strikeCity(f);
-    const why = f.allied ? "Fighting at your side" : it ? (G.forts.has(it.city) ? "→ " + it.city + " · walls up" : "→ " + it.city + " · arrives Sun") : f.strategy === "ally" ? "Same taste, new crowd" : "Watching your ground";
-    const btns = f.allied ? "" : '<div class="cnt">' +
-      (it ? '<button data-fort="' + esc(it.city) + '" ' + (G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled") + ' title="Fortify ' + esc(it.city) + ' (80 gold): their attack bounces">🛡</button>' : "") +
-      '<button data-strike="' + esc(f.id) + '" ' + (strikeAt && G.buzz >= 4 ? "" : "disabled") + ' title="' + (strikeAt ? "Strike first in " + esc(strikeAt.name) + " (4 buzz)" : "They hold no city to hit") + '">⚔</button>' +
-      '<button data-parley="' + esc(f.id) + '" title="Parley: offer a partnership">🕊</button></div>';
-    return '<div class="threat' + (lv === "HIGH" || lv === "SIEGE" ? " hi" : "") + '" style="--c:' + (f.allied ? COL.allied : f.col) + '"><span class="lv ' + lv + '">' + lv + '</span><div class="th">' + avatar(f.img, f.name, "fp") + '<span class="nmx">' + esc(f.name) + (mo != null ? ' <small style="color:var(--ash)">' + (mo >= 0 ? "▲" : "▼") + Math.abs(mo) + "%</small>" : "") + "</span></div><p>" + esc(why) + "</p>" + btns + "</div>";
-  }).join("");
-  $$("[data-fort]").forEach((b) => b.addEventListener("click", () => fortify(b.dataset.fort)));
-  $$("[data-strike]").forEach((b) => b.addEventListener("click", () => strike(b.dataset.strike)));
-  $$("[data-parley]").forEach((b) => b.addEventListener("click", () => { const f = G.fac.get(b.dataset.parley); if (f) parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); }));
+  if (G && typeof Drawer !== "undefined" && Drawer.mode === "radar") { $("#drawer-b").innerHTML = threatReport(); bindThreats(); }
 }
 function strikeCity(f) { const cap = G.cities.find((c) => c.name === G.capital); const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival"); return cap ? nearest(theirs, cap) : theirs[0]; }
 function fortify(city) {
   if (G.gold < 80 || G.forts.has(city)) return;
   G.gold -= 80; G.forts.add(city); Sound.play("alliance");
   const ct = G.cities.find((c) => c.name === city); float(ct?.p, "🛡 WALLS UP", "#3dff9a");
-  event(`🛡 Walls go up in ${city}. The attack will bounce.`, "good"); ops(`<span class="ok">🛡 fortified ${esc(city)}</span> · 🪙80`);
-  hud(); council();
+  event(`🛡 Walls go up in ${city}. The attack will bounce.`, "good"); ops(`<span class="ok">🛡 fortified ${esc(city)}</span> · 80 gold`);
+  hud(); renderAgents();
 }
-async function strike(fid) {
-  const f = G.fac.get(fid), ct = f && strikeCity(f); if (!ct || G.buzz < 4 || G.busy) return;
-  const r = await battle({ city: ct, f, cost: 4, title: `Strike first · ${ct.name}` });
-  if (r !== "win") return;
-  const loss = pts(ct); ct.state = "stronghold"; ct.owner = "you"; G.taken++;
-  G.intents = G.intents.filter((x) => x.fid !== fid); f.last = `Lost ${ct.name} to you`;
-  G.conquest = Math.min(100, G.conquest + loss); MapView.flip(ct.p); boom(ct.p, COL.you); float(ct.p, `+${loss}%`);
-  banner(`${ct.name.toUpperCase()} TAKEN`, `${f.name}'s march is broken · +${loss}%`); ach("blood");
-  hud(loss); renderOrders(); council();
-}
+// the rival card and the threat report give orders too: they queue the same chips the rail does
+function strike(fid) { const f = G.fac.get(fid), ct = f && strikeCity(f); if (!ct) return; const c = chipsFor("you").find((x) => x.city === ct.name) ?? youChip(ct); queueOrder("you", c); selectUnit("you", true); }
+function defendOrder(city) { const ct = G.cities.find((c) => c.name === city); if (!ct) return; const c = chipsFor("you").find((x) => x.city === city && x.kind === "defend"); if (c) { queueOrder("you", c); selectUnit("you", true); } }
+function parleyOrder(fid) { const f = G.fac.get(fid); if (!f) return; queueOrder("diplomat", { city: f.plan.city ?? G.capital, label: f.name, get: "an ally + a DM", ally: f.name }); selectUnit("diplomat", true); }
 
 // ---------------------------------------------------------------- battle
 // Odds come from real numbers: your fans there and your material's rating vs
@@ -1069,7 +963,7 @@ function oddsFor(ct, f) {
   const theirs = Math.max(1, ct.rivals.find((r) => r.id === f.id)?.count ?? 0), mo = G.fame.get(f.name)?.momentum ?? 0;
   const mods = [];
   let me = ct.you * (G.morale / 4);
-  if (G.prep.has(ct.name)) { me *= 1.3; mods.push("+30% city prepared by your agents"); }
+  if (G.prep.has(ct.name)) { me *= 1.3 + (G.readBonus?.get(ct.name) ?? 0); mods.push("+30% city prepared by your agents"); }
   if (G.forts.has(ct.name)) { me *= 1.3; mods.push("+30% walls up"); }
   if ((G.intel.get(ct.name) ?? []).length) { me *= 1.1; mods.push("+10% agent intel"); }
   if (G.morale >= 4.3) mods.push("hype is high");
@@ -1098,135 +992,39 @@ function battleRounds(city, f, o) {
       say: prep || walls || intel ? [prep && "your agents prepared the room", walls && "your walls held the line", intel && "your intel found the soft spots"].filter(Boolean).join(", ").replace(/^./, (x) => x.toUpperCase()) + "." : `You walked in cold: no agent prepared ${city.name}.` },
   ];
 }
-function battle({ city, f, cost, title }) {
-  return new Promise((resolve) => {
-    const o = oddsFor(city, f), box = $("#battle-body"), R = battleRounds(city, f, o), FANS = 48; G.modal = true;
-    box.innerHTML = `<div class="ptitle">Battle · ${esc(city.name)}</div><h2>${esc(title)}</h2><p class="sub2">One night, five rounds, your crowd against ${esc(f.name)}'s</p>
-      <div class="vs bt-vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><span id="bt-me">0</span></div>
-        <div class="bt-crowd" id="bt-crowd" style="--rc:${f.col}">${Array.from({ length: FANS }, (_, i) => `<i style="--d:${(i % 12) * 30}ms"></i>`).join("")}</div>
-        <div class="side" style="--c:${f.col}">${avatar(f.img, f.name)}<b>${esc(f.name)}</b><span id="bt-them">0</span></div></div>
-      <div class="tug" style="--rc:${f.col}"><i id="tug" style="width:50%"></i></div>
-      <div class="bt-rounds" id="bt-rounds">${R.concat([{ k: "The night", src: "Live crowd" }]).map((r, i) => `<div class="bt-r" id="btr${i}"><b>${i + 1}</b><span><em>${esc(r.k)}</em><small>${esc(r.src)}</small></span><p>${i < 4 ? "" : "Who the room picks on the night"}</p><i class="bt-bar"><u></u></i></div>`).join("")}</div>
-      <div class="odds">Odds before the night: <b>${Math.round(o.p * 100)}%</b></div>
-      <div class="verdict" id="verdict"></div><div class="bt-why" id="bt-why"></div>
-      <div class="row2" id="brow"><button class="go" id="charge" ${G.buzz >= cost ? "" : "disabled"}>⚔ Start the night · ⚡${cost}</button><button class="ghostbtn" id="retreat" style="margin-top:4px">Retreat</button></div>
-      <p class="note" style="text-align:center;margin:10px 18px 0" id="bt-tip">Raise your odds first: send a Scout or Booker to ${esc(city.name)}, or fortify it.</p>`;
-    $("#battle").hidden = false; Sound.play("threat");
-    const close = (r) => { $("#battle").hidden = true; G.modal = false; resolve(r); };
-    $("#retreat").onclick = () => close("cancel");
-    $("#charge").onclick = async () => {
-      G.buzz -= cost; hud(); $("#brow").innerHTML = ""; $("#bt-tip").hidden = true; Sound.play("week");
-      const win = G.tour || Math.random() < o.p;
-      // the last round is the luck: it lands wherever it must for the night's result
-      const base = R.reduce((t, r) => t + r.s * r.w, 0);
-      const night = win ? Math.max(0.56, Math.min(0.92, base + 0.15)) : Math.min(0.44, Math.max(0.08, base - 0.15));
-      const rounds = R.concat([{ k: "The night", s: night, say: win ? `The room goes your way. ${city.name} is chanting your name.` : `${f.name.split(" ").pop()} kills on the night. The room turns.` }]);
-      const dots = [...$$("#bt-crowd i")], tug = $("#tug"); let won = 0, lost = 0, share = 0.5;
-      for (let i = 0; i < rounds.length; i++) {
-        const r = rounds[i], el = $("#btr" + i); el.classList.add("on");
-        el.querySelector("p").textContent = r.say; el.querySelector("u").style.width = Math.round(r.s * 100) + "%";
-        share = i < 4 ? (share * i + r.s) / (i + 1) : win ? Math.max(0.62, share) : Math.min(0.38, share);
-        const mine = Math.round(share * dots.length); dots.forEach((d, j) => d.classList.toggle("me", j < mine));
-        tug.style.width = Math.round(share * 100) + "%";
-        if (r.s >= 0.5) { won++; el.classList.add("w"); Sound.play("tick"); } else { lost++; el.classList.add("l"); Sound.play("nope"); }
-        $("#bt-me").textContent = won; $("#bt-them").textContent = lost;
-        await sleep(1000);
-      }
-      dots.forEach((d) => d.classList.toggle("me", win)); tug.style.width = win ? "100%" : "0%";
-      const v = $("#verdict"); v.className = "verdict " + (win ? "win" : "lose"); v.textContent = win ? "VICTORY" : "REPELLED";
-      const best = [...R].sort((x, y) => (win ? y.s - x.s : x.s - y.s))[0];
-      $("#bt-why").innerHTML = win ? `<b>Why you won:</b> ${esc(best.say)} <span>Do it for real this week: play ${esc(city.name)} and post your best clip there.</span>`
-        : `<b>Why they held:</b> ${esc(best.say)} <span>Flip it: send a Scout or Booker to prepare ${esc(city.name)} (+30%), or build walls.</span>`;
-      Sound.play(win ? "conquer" : "lost");
-      if (win && o.p < 0.5) ach("giant");
-      setTimeout(() => say(f, rivalLine(f, win ? "beaten" : "won", { city: city.name })), 1200);
-      if (!win) { event(`⚔ ${f.name} held ${city.name}. Prepare the city and try again.`, "bad"); ops(`<span class="rv">⚔ lost the battle for ${esc(city.name)}</span> · ${won}–${lost} in rounds · odds were ${Math.round(o.p * 100)}%`); }
-      else ops(`<span class="ok">⚔ won the battle for ${esc(city.name)}</span> · ${won}–${lost} in rounds · odds were ${Math.round(o.p * 100)}%`);
-      $("#brow").innerHTML = `<button class="go" id="bdone">${win ? "Claim " + esc(city.name) : "Fall back"}</button>`;
-      $("#bdone").onclick = () => close(win ? "win" : "lose");
-    };
-  });
+// One night in a city, resolved without a modal: END WEEK's show plays it from this result.
+function fight(city, f) {
+  const o = oddsFor(city, f), R = battleRounds(city, f, o);
+  const win = G.tour || G.rng() < o.p;
+  // the last round is the luck: it lands wherever it must for the night's result
+  const base = R.reduce((t, r) => t + r.s * r.w, 0);
+  const night = win ? Math.max(0.56, Math.min(0.92, base + 0.15)) : Math.min(0.44, Math.max(0.08, base - 0.15));
+  const rounds = R.concat([{ k: "The night", src: "the only dice roll", s: night, say: win ? `The room goes your way. ${city.name} is chanting your name.` : `${f.name.split(" ").pop()} kills on the night. The room turns.` }]);
+  const best = [...R].sort((x, y) => (win ? y.s - x.s : x.s - y.s))[0];
+  if (win && o.p < 0.5) ach("giant");
+  ops(`<span class="${win ? "ok" : "rv"}">⚔ ${win ? "won" : "lost"} the battle for ${esc(city.name)}</span> · odds were ${Math.round(o.p * 100)}%`);
+  return { win, odds: o, rounds, best, f, city: city.name, share: win ? Math.max(0.56, base) : Math.min(0.44, base) };
 }
 
 // ---------------------------------------------------------------- parley (partnership negotiation)
 // Three offers, odds from the Qloo barter score (how much of each crowd is new
 // to the other, and how many would cross over). Shows the smallest offer
 // that likely works, and a one-page pitch you can send for real.
-function parley({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null }) {
-  return new Promise((resolve) => {
-    if (G.modal) return resolve("cancel");
-    G.modal = true; const box = $("#parley-body"), b = barter || 30, img = f?.img ?? null, col = f?.col ?? COL.allied;
-    const clampP = (p) => Math.max(0.1, Math.min(0.95, p));
-    const offers = [
-      { id: "shout", name: "Shout-out swap", text: "You both post about each other this week.", buzz: 1, gold: 0, p: clampP(0.3 + b / 250) },
-      { id: "cobill", name: "Co-headline, 50/50 door", text: `Split a night${city ? ` in ${city}` : ""}. Both crowds in one room.`, buzz: 0, gold: 150, p: clampP(0.55 + b / 200) },
-      { id: "open", name: `Open for them${city ? ` in ${city}` : ""}`, text: "Take the smaller slot; they bring the crowd.", buzz: 3, gold: 0, p: clampP(0.72 + b / 300) },
-    ];
-    const best = offers.filter((x) => x.p >= 0.7).sort((x, y) => x.buzz * 40 + x.gold - (y.buzz * 40 + y.gold))[0];
-    let pitch = `${G.player.name} × ${name}\n${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo).\nProposal: ${best ? best.name.toLowerCase() : "a co-bill"}${city ? ` in ${city}` : ""}. Same taste, different rooms: we both grow.`;
-    box.innerHTML = `<div class="ptitle">Parley</div><h2>Parley with ${esc(name)}</h2><p class="sub2">Barter score ${b}/100 · ${Math.round(netnew * 100)}% of their crowd is new to you · ${Math.round(convert * 100)}% would cross over</p>
-      <div class="vs"><div class="side" style="--c:${COL.you}">${avatar(G.player.image, G.player.name)}<b>You</b></div><div class="vsx" style="color:var(--good);text-shadow:0 0 18px rgba(225,189,255,.6)">🤝</div><div class="side" style="--c:${col}">${avatar(img, name)}<b>${esc(name)}</b></div></div>
-      <div class="offers">${offers.map((x, i) => `<button class="offer${x === best ? " best" : ""}" data-of="${i}" ${(G.buzz >= x.buzz && G.gold >= x.gold) ? "" : "disabled"}><b>${esc(x.name)}${x === best ? " · smallest that likely works" : ""}</b><small>${esc(x.text)}</small><span class="pr"><em>${Math.round(x.p * 100)}%</em>${x.buzz ? `⚡${x.buzz}` : `🪙${x.gold}`}</span></button>`).join("")}</div>
-      <div class="pitch">${esc(pitch)}</div>
-      <div class="verdict" id="pverdict"></div>
-      <div class="row2" id="prow"><button class="ghostbtn" id="pcopy" style="margin-top:4px">Copy the pitch</button><button class="ghostbtn" id="pclose" style="margin-top:4px">Walk away</button></div>`;
-    $("#parley").hidden = false; Sound.play("alliance");
-    aiWrite("pitch", { name: G.player.name, partner: name, offer: best ? best.name : "a co-bill", city, netnew: Math.round(netnew * 100), convert: Math.round(convert * 100) }, null).then((dm) => { if (dm && !$("#parley").hidden) { pitch = dm; const el = $("#parley-body .pitch"); if (el) { el.textContent = dm; el.classList.add("ai"); } } });
-    const close = (r) => { $("#parley").hidden = true; G.modal = false; resolve(r); };
-    $("#pclose").onclick = () => close("cancel");
-    $("#pcopy").onclick = async () => { try { await navigator.clipboard.writeText(pitch); toast("Pitch copied. Send it for real."); } catch {} };
-    $$("[data-of]").forEach((btn) => btn.addEventListener("click", async () => {
-      const x = offers[+btn.dataset.of]; G.buzz -= x.buzz; G.gold -= x.gold; hud();
-      $$("[data-of]").forEach((e) => (e.disabled = true)); const v = $("#pverdict"); v.className = "verdict"; v.textContent = "Waiting for their reply…";
-      await sleep(1400);
-      const yes = G.tour || Math.random() < x.p;
-      v.className = "verdict " + (yes ? "win" : "lose"); v.textContent = yes ? "DEAL!" : "THEY PASSED";
-      Sound.play(yes ? "alliance" : "nope");
-      if (yes) { G.pitches.push(pitch.replace(/\n/g, " ")); if (f) { f.allied = true; f.last = "Fighting at your side"; G.intents = G.intents.filter((it) => it.fid !== f.id); G.sieges = G.sieges.filter((s) => s.fid !== f.id); } G.allies++; ach("diplomat"); ops(`<span class="ok">🤝 ${esc(name)} accepted: ${esc(x.name)}</span>`); float(capP(), "🤝 ALLY", COL.allied); MapView.relayer(); }
-      else ops(`<span class="rv">🕊 ${esc(name)} passed on ${esc(x.name)}</span>`);
-      $("#prow").innerHTML = `<button class="go" id="pdone">${yes ? "Seal it" : "Close"}</button>`;
-      $("#pdone").onclick = () => { hud(); close(yes ? "accept" : "reject"); };
-    }));
-  });
-}
-
-// ---------------------------------------------------------------- opportunities (timed quests)
-// Built from live data: trends, your best-reacting cities, the brands your
-// fans love, partners who are around. Claim before the world clock runs out.
-function questTick(dt = 0) {
-  if (G.quests.length && dt) { let gone = false; for (const q of G.quests) { q.left -= dt; if (q.left <= 0) gone = true; } if (gone) renderQuests(); else questClock(); }
-  if (G.hour < G.nextQuest) return;
-  G.nextQuest = G.hour + 34 + G.rng() * 14;
-  G.quests = G.quests.filter((q) => q.left > 0);
-  if (G.quests.length >= 2) return;
-  const pool = [];
-  const pot = G.potions.find((p) => !p.used && !G.quests.some((q) => q.ref === p.title));
-  if (pot) pool.push({ ref: pot.title, icon: "🔥", title: `Trend wave: “${pot.title}”`, text: `Trending in ${pot.where}. Post a take before it fades.`, reward: "+⚡3 +🪙40", claim: () => { pot.used = true; G.buzz = Math.min(BUZZ_MAX, G.buzz + 3); G.gold += 40; ach("surfer"); renderTrends(); } });
-  const fans = G.cities.filter((c) => c.mean && sideOf(c) !== "fog" && !G.quests.some((q) => q.ref === c.name)).sort((a, b) => b.mean - a.mean)[(G.week + G.quests.length) % 3];
-  if (fans) pool.push({ ref: fans.name, icon: "🎤", title: `Fan meetup in ${fans.name}`, text: `Fans there rated you ${fans.mean}/5. Host a pop-up before they cool off.`, reward: "+⚡1 +0.1 hype · city prepared", claim: () => { G.buzz = Math.min(BUZZ_MAX, G.buzz + 1); G.morale = Math.min(5, G.morale + 0.1); prep(fans, "fan meetup"); float(fans.p, "🎤 MEETUP", "#3dff9a"); } });
-  const brand = (G.player.aud?.domains?.brand ?? []).find((x) => !G.sponsors.some((s) => s.name === x.name) && !G.quests.some((q) => q.ref === x.name));
-  if (brand) pool.push({ ref: brand.name, icon: "💼", title: `${brand.name} wants a sponsored post`, text: `Your fans' taste neighbours love ${brand.name} (${Math.round(brand.affinity * 100)}% affinity, Qloo).`, reward: "+🪙90", claim: () => { G.gold += 90; float(capP(), "+🪙90"); } });
-  const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally" && !G.quests.some((q) => q.ref === f.name));
-  if (pal) pool.push({ ref: pal.name, icon: "🕊️", title: `${pal.name} is booking an opener`, text: `${pal.plan.city ? `Show in ${pal.plan.city}. ` : ""}Shared taste, new crowd. Parley now.`, reward: "alliance chance", claim: () => parley({ name: pal.name, f: pal, barter: pal.plan.barter + 15, netnew: pal.plan.netnew, convert: pal.plan.convert, city: pal.plan.city }) });
-  if (!pool.length) return;
-  const q = pool[Math.floor(G.rng() * pool.length)]; q.id = "q" + Math.round(G.hour * 10) + "w" + G.week; q.left = 180; // real seconds the clock runs
-  G.quests.push(q); Sound.play("tick"); event(`${q.icon} Opportunity: ${q.title}`, "good"); renderQuests();
-}
-// a calm countdown: days while there's time, hours near the end
-function questLeft(q) {
-  const m = Math.ceil(Math.max(0, q.left) / 60);
-  return q.left < 60 ? "under a minute left" : `about ${m} min left`;
-}
-// only touch the countdown text, so the cards don't re-render every frame
-function questClock() { for (const q of G.quests) { const el = $(`[data-ql="${q.id}"]`), t = "⏱ " + questLeft(q); if (el && el.textContent !== t) el.textContent = t; } }
-function questBadge() { const n = G?.quests?.length ?? 0, b = $("#council-more"); if (b) b.textContent = n ? `🎁 ${n} opportunit${n > 1 ? "ies" : "y"} · more ▾` : "Why · more ▾"; }
-function renderQuests() {
-  if (!G) return;
-  const before = G.quests.length; G.quests = G.quests.filter((q) => q.left > 0);
-  if (G.quests.length < before) event("⌛ An opportunity expired.", "info");
-  questBadge();
-  $("#quests").innerHTML = G.quests.map((q) => `<div class="quest"><span>${q.icon}</span><span><b>${esc(q.title)}</b><small>${esc(q.text)} <b style="color:#c9ffe4">${esc(q.reward)}</b></small><span class="tl" data-ql="${q.id}">⏱ ${questLeft(q)}</span></span><button data-q="${q.id}">Claim</button></div>`).join("");
-  $$("[data-q]").forEach((b) => b.addEventListener("click", () => { const q = G.quests.find((x) => x.id === b.dataset.q); if (!q) return; G.quests = G.quests.filter((x) => x !== q); q.claim(); ach("seize"); Sound.play("potion"); ops(`<span class="ok">${q.icon} claimed</span> ${esc(q.title)} · ${esc(q.reward)}`); hud(); renderQuests(); renderOrders(); }));
+// The Diplomat's parley, resolved at END WEEK: it picks the smallest offer that likely works and asks.
+function parleySilent({ name, f, barter = 30, netnew = 0.6, convert = 0.8, city = null }) {
+  const b = barter || 30, clampP = (p) => Math.max(0.1, Math.min(0.95, p));
+  const offers = [
+    { name: "Shout-out swap", gold: 0, p: clampP(0.3 + b / 250) },
+    { name: `Co-headline${city ? ` in ${city}` : ""}, 50/50 door`, gold: 150, p: clampP(0.55 + b / 200) },
+    { name: `Open for them${city ? ` in ${city}` : ""}`, gold: 0, p: clampP(0.72 + b / 300) },
+  ].filter((x) => x.gold <= G.gold);
+  const x = offers.filter((y) => y.p >= 0.7).sort((p, q) => p.gold - q.gold)[0] ?? offers.sort((p, q) => q.p - p.p)[0];
+  G.gold -= x.gold;
+  const yes = G.tour || G.rng() < x.p;
+  const pitch = `${G.player.name} × ${name}: ${Math.round(netnew * 100)}% of your crowd would be new to me, and ${Math.round(convert * 100)}% of my fans already over-index on you (Qloo). Proposal: ${x.name.toLowerCase()}. Same taste, different rooms: we both grow.`;
+  if (yes) { G.pitches.push(pitch); if (f) { f.allied = true; f.last = "Fighting at your side"; G.intents = G.intents.filter((it) => it.fid !== f.id); G.sieges = G.sieges.filter((s) => s.fid !== f.id); } G.allies++; ach("diplomat"); MapView.relayer(); }
+  ops(`<span class="${yes ? "ok" : "rv"}">🕊 ${esc(name)} ${yes ? "accepted" : "passed on"} ${esc(x.name)}</span>`);
+  return { yes, offer: x, pitch, name, barter: b };
 }
 
 // trend radar: live Google Trends become potions; X and TikTok are honest "connect" slots
@@ -1235,32 +1033,13 @@ async function addTrends(geo, where) {
   if (r?.status !== "ok") return [];
   const got = [];
   for (const it of r.items.slice(0, 3)) if (!G.potions.some((p) => p.title === it.title)) { const p = { ...it, where, used: G.usedTrends?.has(it.title) ?? false }; G.potions.unshift(p); got.push(p); }
-  renderTrends(); return got;
+  return got;
 }
 async function loadTrends() {
   const target = G.c.territory.target?.name, st = target && STATE[target];
   await addTrends("US", "the US"); if (st) await addTrends(`US-${st}`, target);
   const el = $("#gt-state"); if (el) el.textContent = G.potions.length ? "live" : "unavailable";
 }
-function renderTrends() {
-  $("#trends-n").textContent = G.potions.filter((p) => !p.used).length;
-  if (Drawer.mode !== "trends") return;
-  const box = $("#drawer-b");
-  const pot = G.potions.slice(0, 5).map((p, i) => `<button class="potion${p.used ? " used" : ""}" data-p="${i}" ${p.used ? "disabled" : ""}><span>🧪</span><span>${esc(p.title)}<small>Trending in ${esc(p.where)} · ${esc(p.traffic || "rising")} searches</small></span><span class="use">${p.used ? "used" : "+⚡3"}</span></button>`).join("");
-  const lock = [["𝕏", "X trends", "X's trends need the paid X API. Connect your X account to unlock this slot."], ["♪", "TikTok trends", "TikTok trends need TikTok's Research API. Connect your TikTok to unlock this slot."]]
-    .map(([ic, n, why]) => `<button class="potion lock" data-lock="${esc(why)}"><span>${ic}</span><span>${n}<small>Not connected</small></span><span class="use">connect</span></button>`).join("");
-  box.innerHTML = `<div class="trends">` + (pot || `<div class="note">Loading live Google Trends…</div>`) + lock + `</div>` + `<div class="note">Potion = post a take on that trend this week (+3 buzz). Tragedies are filtered out.</div>`;
-  $$("[data-p]").forEach((b) => b.addEventListener("click", () => drink(+b.dataset.p)));
-  $$("[data-lock]").forEach((b) => b.addEventListener("click", () => toast(b.dataset.lock)));
-}
-function drink(i) {
-  const p = G.potions[i]; if (!p || p.used || G.over) return;
-  p.used = true; G.buzz = Math.min(BUZZ_MAX, G.buzz + 3); G.last = `Rode the trend “${p.title}”`;
-  Sound.play("potion"); event(`🧪 You rode the trend “${p.title}” (${p.where}). +3 buzz.`, "good"); float(capP(), "+⚡3", "#7fd8ff");
-  ops(`<span class="ag">🧪 you</span> posted a take on <b>${esc(p.title)}</b> <span class="ok">+3 ⚡</span>`); ach("surfer");
-  renderTrends(); hud(); renderOrders(); council();
-}
-
 // ---------------------------------------------------------------- the agent army
 // Each agent is a real job done with real data. Recruit with gold, deploy once
 // a week to a city; its unit marches there on the map, makes the call, and
@@ -1280,412 +1059,536 @@ const AGENTS = [
   { id: "showrunner", icon: "🎪", name: "Showrunner", role: "Plans a whole festival night", src: "Qloo all domains", cost: 250 },
   { id: "listener", icon: "👂", name: "Listener", role: "What Reddit says about you", src: "Reddit · connect", locked: true },
 ];
-const deployCity = () => G.cities.find((c) => c.name === G.pinned) ?? G.cities.find((c) => c.name === G.orders[G.sel]?.city) ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
-const HOTKEYS = "QWERTYASDFGH";
-const simpleView = () => document.body.classList.contains("simple") && !G?.allAgents;
-function renderAgents() {
-  const city = deployCity();
-  $("#army-hint").textContent = city ? "→ " + city.name : "";
-  // simple view: hired agents first, then the three cheapest you can afford; the rest behind "All agents"
-  const hiredIds = new Set([...G.crew.entries()].filter(([, c]) => c.recruited).map(([id]) => id));
-  const offer = AGENTS.filter((a) => !a.locked && !hiredIds.has(a.id)).sort((x, y) => x.cost - y.cost).slice(0, Math.max(2, 5 - hiredIds.size)).map((a) => a.id);
-  const shown = simpleView() ? AGENTS.filter((a) => hiredIds.has(a.id) || offer.includes(a.id)) : AGENTS;
-  $("#agents").innerHTML = shown.map((a) => {
-    const i = AGENTS.indexOf(a), c = G.crew.get(a.id) ?? {}, hk = HOTKEYS[i];
-    let cls = "unit2", tag = "", tip = a.name + ": " + a.role + " (" + a.src + ")";
-    if (a.locked) { cls += " locked"; tag = "LOCK"; tip += ". Connect your account to unlock."; }
-    else if (!c.recruited) { cls += " hire" + (G.gold >= a.cost ? " can" : ""); tag = "🪙" + a.cost; tip += ". Click to recruit for " + a.cost + " gold, or drag it onto a city to hire and send it."; }
-    else if (c.busy) { cls += " busy"; tag = "WORK"; tip += ". Working with live data."; }
-    else if (G.army.get(a.id)?.state === "moving") { cls += " busy"; tag = "MOVE"; tip += ". On the march."; }
-    else if (c.week === G.week) { cls += " rest"; tag = "WK " + (G.week + 1); tip += ". Back next week."; }
-    else { cls += " ready"; tag = G.army.get(a.id)?.state === "stationed" ? "HOLD" : "GO"; tip += ". Click to select, then click a city on the map (or drag this tile onto one)."; }
-    return '<button class="' + cls + '" data-unit="' + a.id + '" title="' + esc(tip) + '" style="' + agentGrad(a.id) + '"><span class="hk">' + hk + '</span><span class="face emo">' + a.icon + '</span><span class="nm2">' + a.name + '</span><span class="pr">' + tag + "</span></button>";
-  }).join("") + (simpleView() && shown.length < AGENTS.length ? `<button class="unit2 more" id="all-agents" title="See all 12 agents"><span class="face">+${AGENTS.length - shown.length}</span><span class="nm2">All agents</span><span class="pr">›</span></button>` : "");
-  $("#all-agents")?.addEventListener("click", () => { G.allAgents = true; renderAgents(); });
-  $$("[data-unit]").forEach((b) => { b.addEventListener("click", () => { if (!b._dragged) unitAction(b.dataset.unit); }); tileDrag(b); });
-  $$("[data-unit]").forEach((b) => b.classList.toggle("sel", G.selected?.type === "unit" && G.selected.id === b.dataset.unit));
+// ---------------------------------------------------------------- v2: the army you command
+// Every unit says what it does (the real call) and what it brings back. The
+// first six march from week 1; five more join at Lv III · Theater Tour. You
+// give orders all week; nothing moves until END WEEK.
+const UNITS = [
+  { id: "you", ic: "flag", does: "fight for a city with your material", brings: "the city (and its tour stop)" },
+  { id: "scout", ic: "mag", xp: 40, does: "learns what your fans in a city love (Qloo brands × city)", brings: "lifts the fog, +intel, the city costs 1 less to take" },
+  { id: "booker", ic: "ticket", xp: 60, does: "finds the room whose crowd fits yours (Qloo places × city)", brings: "a booked venue = a tour stop, venue email drafted" },
+  { id: "sponsor", ic: "case", xp: 50, does: "finds a brand your fans over-index on (Qloo brands)", brings: "gold every week + a pitch email" },
+  { id: "diplomat", ic: "dove", xp: 50, does: "finds a performer whose fans would like you (Qloo overlap)", brings: "an ally (their cities count for your quest) + a DM" },
+  { id: "reader", ic: "masks", xp: 40, does: "1,000 simulated fans in that city react to your bit", brings: "battle odds up there, a fan quote" },
+  { id: "spy", ic: "eye", xp: 30, does: "watches rivals' fame (Wikipedia pageviews)", brings: "see the next attack early, walls where it lands" },
+  { id: "herald", ic: "mic", lv: 3, xp: 50, does: "podcasts your fans listen to (Qloo podcasts)", brings: "a guest spot (= a collab slot)" },
+  { id: "oracle", ic: "cloud", lv: 3, xp: 30, does: "7-day forecast (Open-Meteo)", brings: "the best dry show night (+ calendar entry)" },
+  { id: "trend", ic: "trend", lv: 3, xp: 30, does: "what's trending in that state (Google Trends)", brings: "a Trend wave offer: +1 order next week if you post on it" },
+  { id: "scribe", ic: "pen", lv: 3, xp: 30, does: "writes the post for that city (Qloo tags + trend)", brings: "a ready caption, +1 order next week" },
+  { id: "showrunner", ic: "tent", lv: 3, xp: 100, does: "plans a festival night in a city you hold", brings: "+200 gold and a festival line-up" },
+];
+const BASE6 = ["scout", "booker", "sponsor", "diplomat", "reader", "spy"];
+const HOTKEYS = "1234567";
+const unitOf = (id) => UNITS.find((u) => u.id === id);
+const unitName = (id) => (id === "you" ? "You" : agentOf(id)?.name ?? id);
+const starsOf = (id) => { const x = G.unitXp.get(id) ?? 0; return x >= 250 ? 3 : x >= 100 ? 2 : 1; };
+const lvl = () => levelOf(G.xp).n;
+const unitReady = (id) => id === "you" || !!G.crew.get(id)?.recruited;
+const cityOf = (n) => G.cities.find((c) => c.name === n);
+const gap = (a, b) => Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1]);
+const isHeld = (c) => !!c && ["you", "allied"].includes(sideOf(c));
+const heldNames = () => G.cities.filter(isHeld).map((c) => c.name);
+const lastName = (n) => String(n).split(" ").pop();
+// "Cedric the Entertainer" → "Cedric"; teams and one-word names stay whole
+const shortName = () => { const n = G.player.name, w = n.split(" "); return w.length > 1 && w.length <= 3 && !/^(the|los|las|new|san|st\.?)$/i.test(w[0]) ? w[0] : n; };
+const shortDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+// show nights for the tour: Fri/Sat pairs from two weeks out, one pair a week
+function nightFor(i) { const t = new Date(); t.setDate(t.getDate() + 14 + ((5 - t.getDay() + 7) % 7)); t.setDate(t.getDate() + Math.floor(i / 2) * 7 + (i % 2)); return isoDay(t); }
+// the route: nearest neighbour from the capital, so it's one you can drive
+function tourOrder(names) {
+  const left = names.map(cityOf).filter(Boolean), out = [], cap = cityOf(G.capital);
+  let at = cap && left.includes(cap) ? cap : [...left].sort((a, b) => b.you - a.you)[0];
+  while (at) { out.push(at.name); left.splice(left.indexOf(at), 1); at = left.length ? nearest(left, at) : null; }
+  return out;
 }
-// Drag a tile onto a city: a ghost follows the pointer and the map previews
-// the march. Dropping an agent you haven't hired yet hires it first.
-function tileDrag(b) {
-  b.addEventListener("pointerdown", (e) => {
-    const id = b.dataset.unit, a = AGENTS.find((x) => x.id === id);
-    if (e.button !== 0 || !G || G.over || !a || a.locked) return;
-    const x0 = e.clientX, y0 = e.clientY; let ghost = null, target = null;
-    const move = (ev) => {
-      if (!ghost) {
-        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
-        ghost = document.createElement("div"); ghost.className = "dragghost"; ghost.style.cssText = agentGrad(id);
-        ghost.innerHTML = `<span class="face emo">${a.icon}</span><span><b>${esc(a.name)}</b><small>Drag onto a city</small></span>`;
-        document.body.appendChild(ghost); document.body.classList.add("dragging-agent"); closeUnitPop?.();
-        if (G.army.has(id)) select({ type: "unit", id });
-      }
-      ghost.style.transform = `translate(${ev.clientX + 14}px, ${ev.clientY + 14}px)`;
-      const pk = MapView.pick(ev.clientX, ev.clientY); target = pk?.city ?? null; G.hoverCity = target;
-      G.drag = pk && G.army.has(id) ? { id, pt: pk.pt, x0: 0, y0: 0, moved: true, tile: true } : null;
-      const hire = !G.crew.get(id)?.recruited;
-      ghost.querySelector("small").textContent = target ? `Send to ${target.name}${hire ? ` · hire for 🪙${a.cost}` : ""}` : pk ? "Drop it on a city" : "Drag onto a city on the map";
-      ghost.classList.toggle("ok", !!target); ghost.classList.toggle("no", !!target && hire && G.gold < a.cost);
-    };
-    const up = () => {
-      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
-      if (!ghost) return;
-      ghost.remove(); document.body.classList.remove("dragging-agent"); G.drag = null; G.hoverCity = null;
-      b._dragged = true; setTimeout(() => (b._dragged = false), 60);
-      if (!target) return;
-      if (!G.crew.get(id)?.recruited) { if (G.gold < a.cost) return toast(`You need 🪙${a.cost} to hire the ${a.name}.`); recruit(id); }
-      sendUnit(id, target);
-    };
-    addEventListener("pointermove", move); addEventListener("pointerup", up);
-  });
+function roomOf(name) { const n = [...(G?.nights ?? [])].reverse().find((x) => x.city === name && x.venue); return n ? { venue: n.venue, day: shortDay(n.date), date: n.date, fit: n.fit, backup: n.backup } : null; }
+
+// ---------------------------------------------------------------- the quest, derived from the board every render
+function questFacts() {
+  const held = tourOrder(heldNames()), rooms = {}; for (const n of held) { const r = roomOf(n); if (r) rooms[n] = r; }
+  const oc = G.objCity && cityOf(G.objCity);
+  return { objective: G.objective ?? "tour", objCity: G.objCity, held, rooms, sponsors: G.sponsors.length, sponsorList: G.sponsors, proven: !!G.proven, allies: G.allies, guestSpots: G.guestSpots.length, offered: G.dms.length, dms: G.dms, taken: G.taken,
+    objScouted: !!oc && G.scouted.has(oc.name), objSide: oc ? sideOf(oc) : null, objRoom: !!(oc && roomOf(oc.name)), objNight: !!(oc && G.nights.some((n) => n.city === oc.name)), sponsorPostDone: G.real.some((m) => m.done && /Sponsor scout|Copywriter/.test(m.src ?? "")) };
 }
-function unitAction(id) {
-  const a = AGENTS.find((x) => x.id === id), c = G.crew.get(id); if (!a || !G || G.over) return;
-  if (c?.recruited) select({ type: "unit", id });
-  openUnitPop(id);
+const quest = () => questState(questFacts());
+function missionCtx() {
+  const cap = cityOf(G.capital) ?? G.cities[0], mine = new Set(heldNames());
+  const cand = G.cities.filter((c) => !mine.has(c.name) && c.state !== "rival").sort((a, b) => (a.state === "uncharted" ? 0 : 1) - (b.state === "uncharted" ? 0 : 1) || gap(a, cap) - gap(b, cap));
+  const nem = nemesis(), rc = (nem && strikeCity(nem)) ?? cityOf(G.c.territory.target?.name);
+  const byFans = G.cities.filter((c) => mine.has(c.name)).sort((a, b) => b.you - a.you);
+  return { capital: G.capital, scoutA: cand[0]?.name, scoutB: cand[1]?.name, rivalCity: rc?.name, held2: byFans[1]?.name, held3: byFans[2]?.name, objCity: G.objCity };
+}
+// a new objective keeps your progress: missions already done stay done
+function setObjective(id, city) {
+  G.objective = id; G.objCity = id === "city" ? city ?? null : null;
+  const done = new Set((G.missions ?? []).filter((m) => m.complete).map((m) => m.id));
+  G.missions = buildMissions(id, missionCtx()).map((m) => ({ ...m, complete: done.has(m.id) }));
+  checkMissions();
+}
+function checkMissions() {
+  const f = questFacts(), got = [];
+  for (const m of G.missions ?? []) { if (!m.complete && missionDone(m.id, f)) { m.complete = true; got.push(m); } m.late = !m.complete && G.week > m.wk[1]; }
+  return got;
+}
+
+// ---------------------------------------------------------------- targets: where each unit could go, and what you'd get
+const rivalIn = (ct) => (ct.rivals ?? []).filter((r) => r.count > 0).map((r) => G.fac.get(r.id)).find((f) => f && !f.allied) ?? null;
+function youChip(ct) {
+  const f = ct.state === "rival" ? G.fac.get(ct.owner) : null;
+  if (f && !f.allied && !G.prep.has(ct.name)) return { city: ct.name, label: `Groundwork in ${ct.name}`, get: `prepares ${ct.name}: next week's strike +30% (an unprepared rival city takes 2 orders)`, kind: "groundwork", fid: f.id };
+  const foe = f && !f.allied ? f : rivalIn(ct), p = foe ? Math.round(oddsFor(ct, foe).p * 100) : null;
+  return { city: ct.name, label: `Take ${ct.name}${p != null ? ` · ${p}%` : ""}`, get: `the city${(G.objective ?? "tour") === "tour" ? " and its tour stop" : ""}${foe ? `, if your crowd beats ${foe.name}'s` : ""}`, kind: "take", fid: foe?.id ?? null };
+}
+function chipsFor(id, all = false) {
+  const n = lvl() >= 2 ? 4 : 3, out = [], cap = cityOf(G.capital) ?? G.cities[0];
+  const add = (c, label, get, extra = {}) => { if (c && !out.some((x) => x.city === c.name && (x.kind ?? "") === (extra.kind ?? "") && (x.ally ?? "") === (extra.ally ?? ""))) out.push({ city: c.name, label, get, ...extra }); };
+  const mine = G.cities.filter(isHeld).sort((a, b) => b.you - a.you), q = quest(), stopOf = (name) => q.slots.findIndex((s) => s.city === name);
+  const byCap = (list) => [...list].sort((a, b) => gap(a, cap) - gap(b, cap));
+  const u = unitOf(id);
+  if (id === "you") {
+    for (const sg of G.sieges) { const c = cityOf(sg.city), f = G.fac.get(sg.fid); if (c && f) add(c, `Defend ${c.name} · ${Math.round(oddsFor(c, f).p * 100)}%`, `keeps ${c.name}${stopOf(c.name) >= 0 ? " and its tour stop" : ""}`, { kind: "defend", fid: f.id }); }
+    const t = cityOf(G.c.territory.target?.name); if (t && !isHeld(t)) { const ch = youChip(t); add(t, ch.label, ch.get, ch); }
+    if (G.objCity && !isHeld(cityOf(G.objCity))) { const c = cityOf(G.objCity), ch = youChip(c); add(c, ch.label, ch.get, ch); }
+    for (const c of byCap(G.cities.filter((c) => c.state === "beachhead" && !isHeld(c)))) { const ch = youChip(c); add(c, ch.label, ch.get, ch); }
+    const nem = nemesis(), weak = nem && G.cities.filter((c) => c.owner === nem.id && c.state === "rival").sort((a, b) => oddsFor(b, nem).p - oddsFor(a, nem).p)[0];
+    if (weak) { const ch = youChip(weak); add(weak, ch.label, ch.get, ch); }
+    for (const c of byCap(G.cities.filter((c) => !isHeld(c) && c.state !== "uncharted"))) { const ch = youChip(c); add(c, ch.label, ch.get, ch); }
+  } else if (id === "scout") {
+    for (const c of byCap(G.cities.filter((c) => c.state === "uncharted"))) add(c, `${c.name} (uncharted)`, "lifts the fog and shows what they love");
+    if (G.objCity && !G.scouted.has(G.objCity)) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "what your fans there love; lifts the fog");
+    for (const c of G.cities.filter((c) => !G.scouted.has(c.name) && c.state !== "uncharted" && !isHeld(c)).sort((a, b) => b.you - a.you)) add(c, c.name, c.state === "rival" ? "+intel, and a strike there takes 1 order, not 2" : "+intel, the city costs 1 less to take");
+    for (const c of mine.filter((c) => !G.scouted.has(c.name))) add(c, c.name, "+intel for your posts there");
+  } else if (id === "booker") {
+    for (const s of q.slots.filter((s) => s.city && !s.on)) { const c = cityOf(s.city); add(c, `${c.name} (fills stop ${stopOf(c.name) + 1})`, `a booked room = tour stop ${stopOf(c.name) + 1}, venue email drafted`); }
+    for (const c of mine.filter((c) => !roomOf(c.name))) add(c, c.name, "a booked room, a stop while you hold it");
+    if (G.objCity) add(cityOf(G.objCity), `${G.objCity} (your new city)`, "a room in the city you're breaking into");
+    for (const c of mine.filter((c) => roomOf(c.name))) add(c, `${c.name} (backup room)`, "a better room in a city you hold");
+    for (const c of G.cities.filter((c) => c.state === "beachhead" && !isHeld(c))) add(c, `${c.name} (book ahead)`, "a room on hold: take the city to make it a stop");
+  } else if (id === "sponsor") {
+    const have = new Set(G.sponsors.map((s) => s.city));
+    for (const c of mine.filter((c) => !have.has(c.name))) add(c, c.name, "+20 to 70 gold a week and a pitch email");
+    for (const c of mine) add(c, `${c.name} (second brand)`, "another brand, more gold a week");
+  } else if (id === "diplomat") {
+    const facs = [...G.fac.values()].filter((f) => !f.allied && !G.parleyed.has(f.name)).sort((a, b) => (b.strategy === "ally") - (a.strategy === "ally") || b.plan.barter - a.plan.barter);
+    for (const f of facs) { const c = cityOf(f.plan.city) ?? cityOf(f.plan.holds?.[0]) ?? cap; add(c, `${f.name} (${c.name})`, `${f.strategy === "ally" ? "an ally" : "a truce with a rival"} + a DM ready to send`, { ally: f.name }); }
+    for (const a of (G.c.allies || []).filter((a) => !G.parleyed.has(a.name) && !facByName(a.name))) add(cap, `${a.name} (${cap.name})`, "an ally + a DM ready to send", { ally: a.name });
+  } else if (id === "reader") {
+    for (const sg of G.sieges) add(cityOf(sg.city), `${sg.city} (before the fight)`, "+30% odds there, a fan quote");
+    for (const o of G.orderQueue.filter((o) => o.unitId === "you")) add(cityOf(o.city), `${o.city} (before the fight)`, "+30% odds there, a fan quote");
+    const t = cityOf(G.c.territory.target?.name); if (t && !isHeld(t)) add(t, `${t.name} (before the fight)`, "+30% odds there, a fan quote");
+    const nem = nemesis(), sc = nem && strikeCity(nem); if (sc) add(sc, `${sc.name} (before the fight)`, "+30% odds there, a fan quote");
+    for (const c of G.cities.filter((c) => c.n > 0 && !G.prep.has(c.name)).sort((a, b) => b.you - a.you)) add(c, c.name, "a fan quote, +30% odds there");
+  } else if (id === "spy") {
+    const nem = nemesis();
+    for (const f of [...G.fac.values()].filter((f) => !f.allied).sort((a, b) => (b === nem) - (a === nem))) add(cap, f.name, `${lastName(f.name)}'s fame this month and next attack; walls where it lands`, { fid: f.id });
+  } else if (id === "showrunner") {
+    for (const c of mine.filter((c) => roomOf(c.name))) add(c, c.name, u.brings);
+  } else for (const c of mine) add(c, c.name, u.brings);
+  // the AI strategist's plan, when it's on, moves its pick to the front
+  const steps = G.aiPlan?.week === G.week ? G.aiPlan.plan?.steps ?? [] : [], kw = id === "you" ? /take|defend|strike|battle|hold/i : new RegExp(unitName(id).split(" ")[0], "i");
+  for (const st of steps.slice(0, 3)) { const t = String(st.action ?? ""); if (!kw.test(t)) continue; const i = out.findIndex((c) => t.includes(c.city) || (c.ally && t.includes(c.ally))); if (i >= 0) { const [c] = out.splice(i, 1); out.unshift({ ...c, ai: true }); break; } }
+  return all ? out : out.slice(0, n);
+}
+// a city on the map was clicked with this unit selected: its chip there, or a plain order
+function orderAt(id, ct) {
+  const c = chipsFor(id, true).find((x) => x.city === ct.name);
+  if (c) return queueOrder(id, c);
+  if (id === "you") { if (isHeld(ct)) return toast(`${ct.name} is already yours. Send You to a city you want to take.`); return queueOrder(id, youChip(ct)); }
+  if (id === "spy" || id === "diplomat") return toast(`The ${unitName(id)} works on people, not places: pick one of its chips.`);
+  queueOrder(id, { city: ct.name, label: ct.name, get: unitOf(id).brings });
+}
+function queueOrder(id, chip) {
+  if (!G || G.busy || G.over || !chip) return;
+  const i = G.orderQueue.findIndex((o) => o.unitId === id), same = i >= 0 && G.orderQueue[i].city === chip.city && G.orderQueue[i].label === chip.label;
+  const u = G.army.get(id);
+  if (same) { G.orderQueue.splice(i, 1); G.ordersLeft++; if (u) { u.state = u.at && isHeld(cityOf(u.at)) ? "stationed" : "idle"; u.order = null; } Sound.play("nope"); }
+  else {
+    if (i < 0 && G.ordersLeft <= 0) { const t = $("#orders-tile"); t.classList.remove("pulse"); void t.offsetWidth; t.classList.add("pulse"); Sound.play("nope"); toast("No orders left. Press END WEEK."); return; }
+    const o = { unitId: id, city: chip.city, label: chip.label, kind: chip.kind ?? null, fid: chip.fid ?? null, ally: chip.ally ?? null, get: chip.get ?? "", offer: chip.offer ?? null };
+    if (i >= 0) G.orderQueue[i] = o; else { G.orderQueue.push(o); G.ordersLeft--; }
+    if (u) { u.state = "ordered"; u.order = { city: chip.city, label: chip.label }; }
+    Sound.play("select"); ops(`<span class="ag">order</span> ${esc(unitName(id))} → <b>${esc(chip.label)}</b>`);
+    Coach.ordered?.(id);
+  }
+  hud(); renderAgents();
+}
+function selectUnit(id, force) {
+  if (!G) return; const on = G.selected?.type === "unit" && G.selected.id === id;
+  G.selected = on && !force ? null : { type: "unit", id }; Sound.play("select"); renderAgents();
 }
 function recruit(id) {
-  const a = AGENTS.find((x) => x.id === id); if (!a || G.gold < a.cost) return;
+  const a = AGENTS.find((x) => x.id === id); if (!a || G.crew.get(id)?.recruited) return;
+  if (G.gold < a.cost) return toast(`You need ${a.cost} gold to hire the ${a.name}. Cities and sponsors pay every week.`);
   G.gold -= a.cost; G.crew.set(id, { recruited: true, week: 0, busy: false }); spawnUnit(id); G.selected = { type: "unit", id };
-  Sound.play("alliance"); event(`🤖 ${a.name} agent recruited.`, "good"); ops(`<span class="ag">${a.icon} ${a.name}</span> joined your army · ready to deploy`); float(capP(), `${a.icon} +1`, "#7fd8ff");
+  Sound.play("alliance"); ops(`<span class="ag">${a.icon} ${a.name}</span> joined your army`);
   if ([...G.crew.values()].filter((c) => c.recruited).length >= 3) ach("warlord");
-  hud(); renderAgents(); renderOrders();
+  hud(); renderAgents();
 }
+// ---------------------------------------------------------------- the army rail
+function renderAgents() {
+  if (!G || !$("#army-list")) return;
+  const L = lvl(), sel = G.selected?.type === "unit" ? G.selected.id : null;
+  const rows = UNITS.filter((u) => u.id === "you" || BASE6.includes(u.id) || (u.lv === 3 && L >= 3) || G.crew.get(u.id)?.recruited);
+  let html = "";
+  for (const u of rows) {
+    const a = agentOf(u.id), hired = unitReady(u.id), o = G.orderQueue.find((x) => x.unitId === u.id), unit = G.army.get(u.id), on = sel === u.id;
+    let st = "Idle · ready", cls = "";
+    if (!hired) { st = `Hire · ${a.cost} gold`; cls = "vi"; }
+    else if (o) { st = `Ordered → ${o.city}`; cls = "ok"; }
+    else if (u.id === "you") st = G.sieges.length ? `${G.sieges[0].city} under siege` : "Ready";
+    else if (unit?.state === "stationed" && YIELD[u.id]?.gold) { const sp = G.sponsors.find((s) => s.city === unit.at); st = `In ${unit.at} · ${sp ? `${sp.name} +${sp.perWeek}` : `+${YIELD[u.id].gold * 7}`}/wk`; cls = "sf"; }
+    const tile = u.id === "you" ? `<span class="utile" style="--g1:#2a1a4a">${avatar(G.player.image, G.player.name)}</span>` : `<span class="utile${G.busy && o ? " busy" : ""}" style="--g1:${AG_COL[u.id]?.[0] ?? "#af50ff"}">${I(u.ic)}</span>`;
+    const name = u.id === "you" ? `You <em>Lv ${levelOf(G.xp).roman}</em>` : `${esc(a.name)} <em>${"★".repeat(starsOf(u.id))}</em>`;
+    html += `<button class="urow${on ? " sel" : ""}${hired ? "" : " dim"}" data-u="${u.id}" aria-pressed="${on}">${tile}<span class="ub"><span class="ub1"><b>${name}</b><span class="${cls}">${esc(st)}</span></span><span class="d"><i>Does:</i> ${esc(u.does)}</span><span class="g"><i>Brings back:</i> ${esc(u.brings)}</span></span></button>`;
+    if (on && hired) html += orderBox(u.id);
+  }
+  html += offersBox();
+  $("#army-list").innerHTML = html;
+  $("#army-lock").textContent = L < 3 ? "Herald, Weather oracle, Trend hunter, Copywriter, Showrunner unlock at Lv III · Theater Tour · Listener: connect Reddit" : "Listener: connect Reddit to hire";
+  const n = G.orderQueue.length, eb = $("#endweek");
+  eb.textContent = n ? `END WEEK · ${n} order${n > 1 ? "s" : ""} queued` : "END WEEK"; eb.disabled = G.busy || G.over;
+  $$("#army-list [data-u]").forEach((b) => b.addEventListener("click", () => { const id = b.dataset.u; if (!unitReady(id)) return recruit(id); selectUnit(id); }));
+  $$("#army-list [data-chip]").forEach((b) => {
+    const c = G._chips?.[+b.dataset.chip];
+    b.addEventListener("click", () => queueOrder(G._chipsFor, c));
+    b.addEventListener("mouseenter", () => { const g = $("#chip-get"); if (g && c) g.textContent = "You get: " + c.get; });
+  });
+  $$("#army-list [data-claim]").forEach((b) => b.addEventListener("click", () => claimOffer(b.dataset.claim)));
+  renderPrimary();
+}
+function orderBox(id) {
+  const chips = chipsFor(id), o = G.orderQueue.find((x) => x.unitId === id);
+  if (o && !chips.some((c) => c.city === o.city && c.label === o.label)) chips.unshift({ ...o });
+  G._chips = chips; G._chipsFor = id;
+  const can = G.ordersLeft > 0 || !!o, last = G.army.get(id)?.lastLoot;
+  return `<div class="obox"><div>Send <strong>${esc(unitName(id))}</strong> to:</div><div class="chips2">${chips.length ? chips.map((c, i) => `<button class="chip2${o && o.city === c.city && o.label === c.label ? " on" : ""}" data-chip="${i}" title="${esc(can ? c.get : "No orders left. Press END WEEK.")}" ${can ? "" : "disabled"}>${esc(c.label)}${c.ai ? " <small>strategist</small>" : ""}</button>`).join("") : `<span class="get">Nowhere useful this week.</span>`}</div>
+    <div class="get" id="chip-get">${chips[0] ? "You get: " + esc(chips[0].get) : ""}</div>${last && !last.empty ? `<div class="rail-lock">Last report (${esc(last.city)}): ${esc(stripTags(last.fact))}</div>` : ""}</div>`;
+}
+const stripTags = (h) => { const d = document.createElement("div"); d.innerHTML = h ?? ""; return d.textContent; };
+// exactly one thing glows: the selected unit's first chip, the next idle unit, or END WEEK
+function renderPrimary() {
+  $$("#game .next").forEach((e) => e.classList.remove("next"));
+  if (!G || G.busy || G.over) return;
+  if (G.ordersLeft <= 0) return $("#endweek")?.classList.add("next");
+  const sel = G.selected?.type === "unit" && G.selected.id;
+  if (sel && !G.orderQueue.some((o) => o.unitId === sel)) { const c = $('.chip2[data-chip="0"]'); if (c) return c.classList.add("next"); }
+  const idle = $$("#army-list .urow").find((b) => unitReady(b.dataset.u) && !G.orderQueue.some((o) => o.unitId === b.dataset.u));
+  (idle ?? $("#endweek"))?.classList.add("next");
+}
+const renderSel = () => renderAgents();
+function renderOrders() { renderAgents(); if (Drawer.mode === "missions") Drawer.render(); }
 function prep(city, why) {
-  if (!G.prep.has(city.name)) { G.prep.add(city.name); ops(`<span class="ok">✓ ${esc(city.name)} prepared</span>: its orders cost ⚡1 less, gain +2%, battles there +30% (${esc(why)})`); float(city.p, "✓ PREPARED", "#7fd8ff"); }
-  renderOrders();
+  if (!G.prep.has(city.name)) { G.prep.add(city.name); ops(`<span class="ok">✓ ${esc(city.name)} prepared</span>: battles there +30% (${esc(why)})`); float(city.p, "✓ PREPARED", "#7fd8ff"); }
 }
-async function deploy(id) { const city = deployCity(); if (city) sendUnit(id, city); }
-async function runAgent(a, city) {
-  const id = a.id;
-  const home = G.cities.find((x) => x.name === G.capital) ?? city;
-  const u = { icon: a.icon, from: home.p, to: city.p, t0: performance.now(), dur: 2200, phase: "go" }; G.units.push(u);
-  Sound.play("select"); ops(`<span class="ag">${a.icon} ${a.name}</span> marching to <b>${esc(city.name)}</b>`);
-  await sleep(2200); u.phase = "work";
-  let out = null;
-  try { out = await AGENT_JOBS[id](city); } catch (e) { out = { line: `<span class="rv">came back empty-handed (${esc(e?.message ?? e)})</span>` }; }
-  u.phase = "back"; u.t0 = performance.now(); u.dur = 1800;
-  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`); keepReport(id, city, out);
-  if (out.intel) { G.intel.set(city.name, [...(G.intel.get(city.name) ?? []).filter((x) => x[0] !== out.intel[0]), out.intel]); if (G.pinned === city.name) cityPanel(city); }
-  if (out.float) float(city.p, out.float, "#7fd8ff");
-  Sound.play("potion"); G.missions++;
-  setTimeout(() => { G.units = G.units.filter((x) => x !== u); }, 1800);
+
+// ---------------------------------------------------------------- offers: one week, one order each, no countdown
+function buildOffers() {
+  const pool = [], taken = new Set(G.offersSeen ?? []);
+  const pot = G.potions.find((p) => !p.used && !taken.has("tw:" + p.title));
+  if (pot) pool.push({ id: "tw:" + pot.title, kind: "trend", ref: pot.title, title: `Trend wave: “${pot.title}”`, text: `Trending in ${pot.where} (Google Trends). Post a take on it.`, reward: "+1 order next week" });
+  const fans = G.cities.filter((c) => c.mean && sideOf(c) !== "fog" && !taken.has("fm:" + c.name)).sort((a, b) => b.mean - a.mean)[G.week % 3];
+  if (fans) pool.push({ id: "fm:" + fans.name, kind: "meetup", ref: fans.name, city: fans.name, title: `Fan meetup in ${fans.name}`, text: `Fans there rated you ${fans.mean}/5 (simulated from Qloo).`, reward: "city prepared, +0.1 material" });
+  const brand = (G.player.aud?.domains?.brand ?? []).find((x) => !G.sponsors.some((s) => s.name === x.name) && !taken.has("sp:" + x.name));
+  if (brand) pool.push({ id: "sp:" + brand.name, kind: "post", ref: brand.name, title: `${brand.name} sponsored post`, text: `Your fans' taste neighbours love ${brand.name} (${Math.round(brand.affinity * 100)}% affinity, Qloo).`, reward: "+90 gold" });
+  const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally" && !G.parleyed.has(f.name) && !taken.has("op:" + f.name));
+  if (pal) pool.push({ id: "op:" + pal.name, kind: "opener", ref: pal.name, city: pal.plan.city, title: `${pal.name} is booking an opener`, text: `${pal.plan.city ? `Show in ${pal.plan.city}. ` : ""}Shared taste, new crowd.`, reward: "parley at +15 barter" });
+  const out = []; while (pool.length && out.length < 2) out.push(pool.splice(Math.floor(G.rng() * pool.length), 1)[0]);
+  return out;
 }
+function offersBox() {
+  if (!G.offers?.length) return "";
+  return `<div class="woffers"><h3>Offers this week · 1 order each</h3>${G.offers.map((o) => { const on = G.orderQueue.some((q) => q.offer === o.id); return `<div class="offer2"><span><b>${esc(o.title)}</b> · <em>${esc(o.reward)}</em></span><button class="chip2${on ? " on" : ""}" data-claim="${esc(o.id)}" ${G.ordersLeft > 0 || on ? "" : "disabled"}>${on ? "Claimed" : "Claim"}</button></div>`; }).join("")}</div>`;
+}
+function claimOffer(id) {
+  const o = G.offers.find((x) => x.id === id); if (!o) return;
+  queueOrder("offer:" + o.id, { city: o.city ?? G.capital, label: o.title, get: o.reward, kind: "offer", offer: o.id });
+  if ($("#weekshow").hidden === false) Show.offers(G.offers);
+}
+// claimed offers pay out at END WEEK, as loot with the same five lines
+function applyOffer(o) {
+  const x = G.offers.find((y) => y.id === o.offer); if (!x) return null;
+  (G.offersSeen ??= []).push(x.id);
+  const L = { unit: "offer", city: x.city ?? G.capital, title: x.title, receipts: [], xp: 20, mapChange: "nothing changed" };
+  if (x.kind === "trend") { const p = G.potions.find((q) => q.title === x.ref); if (p) p.used = true; G.bonusNext++; ach("surfer"); Object.assign(L, { fact: `You posted a take on <b>${esc(x.ref)}</b> while it was trending.`, receipts: ["Google Trends"], questChange: "+1 order next week", realMove: { title: `Post on “${x.ref}”`, detail: x.text } }); }
+  else if (x.kind === "meetup") { const c = cityOf(x.ref); G.morale = Math.min(5, G.morale + 0.1); if (c) prep(c, "fan meetup"); Object.assign(L, { fact: `A pop-up for your <b>${esc(x.ref)}</b> fans. Your material now reads ${G.morale.toFixed(1)} of 5.`, receipts: ["1,000-fan panel (simulated from Qloo)"], mapChange: `${x.ref} prepared · +30% in battle`, realMove: { title: `Host a fan meetup in ${x.ref}`, detail: x.text } }); }
+  else if (x.kind === "post") { G.gold += 90; Object.assign(L, { fact: `<b>${esc(x.ref)}</b> paid for one sponsored post.`, receipts: ["Qloo brands your fans love"], gold: 90, realMove: { title: `Post the ${x.ref} spot`, detail: x.text } }); }
+  else if (x.kind === "opener") { const f = facByName(x.ref); if (!f) return null; G.parleyed.add(f.name); const r = parleySilent({ name: f.name, f, barter: f.plan.barter + 15, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); G.dms.push({ name: f.name, yes: r.yes, text: r.pitch, city: f.plan.city }); Object.assign(L, { fact: r.yes ? `<b>${esc(f.name)}</b> said yes: you open for them${f.plan.city ? ` in ${esc(f.plan.city)}` : ""}.` : `<b>${esc(f.name)}</b> went with someone else this time.`, receipts: ["Qloo taste overlap", `barter ${r.barter}/100`], mapChange: r.yes ? `${f.name}'s cities count for your quest` : "nothing changed", realMove: { title: `DM ${f.name}`, detail: r.pitch } }); }
+  if (L.realMove) addRealMove(L.realMove, "Offer", L.city);
+  return L;
+}
+
+// ---------------------------------------------------------------- the jobs: real calls that come back with loot
+// Every job fills the five lines of the outcome rule: the fact, its receipt, the
+// map change, what it did for the quest (or XP), and the real move it created.
 const pick = (arr, used) => (arr ?? []).find((x) => !used.has(x.name));
+const emptyJob = (city, receipt) => ({ loot: { fact: "Qloo had nothing distinctive here. Nothing changed.", receipts: [receipt], mapChange: "nothing changed", xp: 0, empty: true } });
+const objIs = (id) => (G.objective ?? "tour") === id;
 const AGENT_JOBS = {
-  async scout(city) {
+  async scout(city, st) {
     const r = await api(`/api/partners?${qs({ ...G.player.q, kind: "brands", location: city.name })}`);
-    const names = (r.partners || []).slice(0, 3).map((p) => p.name);
-    if (!names.length) return { line: "Qloo had nothing distinctive here." };
-    prep(city, "Scout intel");
-    return { line: `<span class="api">Qloo · brands × ${esc(city.name)}</span> your fans here also love <b>${names.map(esc).join(", ")}</b>`, intel: `🔭 Fans here also love ${names.join(", ")}. Mention them on stage.` };
+    const names = (r.partners || []).slice(0, st >= 2 ? 4 : 3).map((p) => p.name);
+    if (!names.length) return emptyJob(city, `Qloo brands × ${city.name}`);
+    const fog = city.state === "uncharted"; G.scouted.add(city.name);
+    if (fog) city.state = (city.mean ?? 0) >= (G.c.aggregate?.mean ?? 3.5) ? "beachhead" : "hard";
+    prep(city, "Scout intel"); assignStates(); MapView.relayer();
+    return { intel: `🔭 Fans here also love ${names.join(", ")}. Mention them on stage.`, loot: {
+      fact: `Your ${esc(city.name)} fans also love <b>${names.map(esc).join(", ")}</b>.`, receipts: [`Qloo brands × ${city.name}`, `${names.length} receipts`], xp: 40,
+      mapChange: fog ? `fog lifted around ${city.name} · ${city.state === "beachhead" ? "ring = ripe" : "open ground"}` : city.state === "rival" ? `${city.name} prepared · a strike there now takes 1 order, not 2` : `${city.name} prepared · +30% in a fight there`,
+      questChange: objIs("city") && city.name === G.objCity ? "fog lifted on your new city" : null,
+      realMove: { title: `Mention ${names.slice(0, 2).join(", ")} in your next ${city.name} post`, detail: `From Qloo: your ${city.name} fans over-index on ${names.join(", ")}.` } } };
   },
-  async booker(city) {
+  async booker(city, st) {
     const r = await api(`/api/partners?${qs({ ...G.player.q, kind: "venues", location: city.name })}`);
-    const v = (r.partners || []).slice(0, 2);
-    if (!v.length) return { line: "no stage cleared the bar." };
+    const v = (r.partners || []).slice(0, st >= 2 ? 3 : 2);
+    if (!v.length) return emptyJob(city, `Qloo places × ${city.name}`);
     prep(city, `${v[0].name} on hold`);
-    return { line: `<span class="api">Qloo · places × ${esc(city.name)}</span> best stage: <b>${esc(v[0].name)}</b> (${Math.round(v[0].convert * 100)}% crowd fit)${v[1] ? `, backup ${esc(v[1].name)}` : ""}`, intel: `🎟️ Book ${v[0].name}${v[1] ? ` (backup: ${v[1].name})` : ""}.` };
+    const held = isHeld(city), fit = Math.round(v[0].convert * 100);
+    // one Fri/Sat night per stop, in route order, never two rooms on the same night
+    const order = tourOrder([...new Set([...heldNames(), city.name])]), used = new Set(G.nights.filter((n) => n.venue && n.city !== city.name).map((n) => n.date));
+    let k = Math.max(0, order.indexOf(city.name)), date = nightFor(k); while (used.has(date)) date = nightFor(++k);
+    G.nights = G.nights.filter((n) => !(n.city === city.name && n.venue));
+    G.nights.push({ date, city: city.name, venue: v[0].name, fit, backup: v[1]?.name ?? null, why: `${fit}% crowd fit (Qloo places)` });
+    const q = quest(), n = q.slots.findIndex((s) => s.city === city.name) + 1;
+    const mail = `Hi ${v[0].name} team, I'm ${G.player.name}. Qloo puts your crowd at a ${fit}% fit with my fans in ${city.name}. I'd like to hold ${shortDay(date)} for a set. What's your availability and the usual split?`;
+    G.venueMails = G.venueMails.filter((m) => m.city !== city.name).concat({ venue: v[0].name, city: city.name, text: mail });
+    return { intel: `🎟️ Book ${v[0].name}${v[1] ? ` (backup: ${v[1].name})` : ""}.`, loot: {
+      fact: `<b>${esc(v[0].name)}</b>, ${shortDay(date)}, ${fit}% crowd fit${v[1] ? `. Backup: ${esc(v.slice(1).map((x) => x.name).join(", "))}` : ""}. Venue email drafted.`, receipts: [`Qloo places × ${city.name}`], xp: 60,
+      mapChange: `venue badge on ${city.name}${held ? " · route extends" : ""}`, stopN: held && n > 0 ? n : 0,
+      questChange: objIs("tour") ? (held && n > 0 ? `tour stop ${n} of 6 complete` : `room on hold: take ${city.name} to make it a stop`) : objIs("city") && city.name === G.objCity ? "a room in your new city" : null,
+      realMove: { title: `Email ${v[0].name} about ${shortDay(date)}`, detail: mail },
+      action: objIs("tour") && q.have >= 4 ? { label: "Tour Planner ready: see the route", run: "tour" } : null } };
   },
-  async diplomat(city) {
-    const cand = [...G.fac.values()].filter((f) => !f.allied && f.strategy === "ally").sort((a, b) => b.plan.barter - a.plan.barter)[0];
-    const ally = cand ? { name: cand.name, f: cand, barter: cand.plan.barter, netnew: cand.plan.netnew, convert: cand.plan.convert, city: cand.plan.city ?? city.name }
-      : (G.c.allies || []).filter((a) => !G.parleyed.has(a.name)).map((a) => ({ name: a.name, f: null, barter: a.barter, netnew: a.netnew, convert: a.convert, city: city.name }))[0];
-    if (!ally) return { line: "no partner left who isn't already with you." };
-    G.parleyed.add(ally.name);
-    setTimeout(() => parley(ally), 600);
-    return { line: `<span class="api">Qloo · taste overlap</span> best partner: <b>${esc(ally.name)}</b> (barter ${ally.barter}/100, ${Math.round(ally.netnew * 100)}% new crowd) → parley opened, pitch drafted` };
-  },
-  async sponsor(city) {
+  async sponsor(city, st) {
     const used = new Set(G.sponsors.map((s) => s.name)), b = pick(G.player.aud?.domains?.brand, used);
-    if (!b) return { line: "no new brand fits your crowd." };
-    const perWeek = Math.round(20 + b.affinity * 50); G.sponsors.push({ name: b.name, perWeek }); ach("paid");
-    aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: Math.round(b.affinity * 100), audience: (G.player.aud?.tags ?? []).slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { G.drafts.push(mail); ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> drafted: “${esc(mail.split("\n")[0].slice(0, 90))}”`); } });
-    return { line: `<span class="api">Qloo · brands your fans love</span> <b>${esc(b.name)}</b> (${Math.round(b.affinity * 100)}% affinity) signs on <span class="ok">+🪙${perWeek}/week</span>`, intel: `💼 Sponsor: ${b.name} (+${perWeek} gold a week).`, float: `💼 +🪙${perWeek}/wk` };
+    if (!b) return emptyJob(city, "Qloo brands your fans love");
+    const aff = Math.round(b.affinity * 100), perWeek = Math.round(20 + b.affinity * 50) + (st >= 2 ? 10 : 0);
+    G.sponsors.push({ name: b.name, perWeek, city: city.name }); ach("paid"); G.gold += perWeek;
+    const pitch = { brand: b.name, city: city.name, text: `Hi ${b.name} team, I'm ${G.player.name}. ${aff}% of my fans over-index on you (Qloo). I'm playing ${city.name} soon: a sponsored post and a night with your name on it?` };
+    G.sponsorPitches.push(pitch);
+    aiWrite("sponsor", { name: G.player.name, brand: b.name, affinity: aff, audience: (G.player.aud?.tags ?? []).slice(0, 3).join(", ") }, null).then((mail) => { if (mail) { pitch.text = mail; ops(`<span class="api">AI · Sponsor scout</span> pitch to <b>${esc(b.name)}</b> rewritten`); } });
+    return { intel: `💼 Sponsor: ${b.name} (+${perWeek} gold a week).`, loot: {
+      fact: `<b>${esc(b.name)}</b> signs on: ${aff}% affinity with your fans. First payment in, pitch email drafted.`, receipts: ["Qloo brands your fans love"], gold: perWeek, xp: 50, brand: b.name, brand: b.name,
+      mapChange: `sponsor badge on ${city.name} · income +${perWeek}/wk`, questChange: objIs("sponsor") ? `sponsor ${G.sponsors.length} of 3` : null,
+      realMove: { title: `Send the ${b.name} pitch`, detail: pitch.text } } };
+  },
+  async diplomat(city, st, order) {
+    let f = order?.ally ? facByName(order.ally) : null, a = order?.ally && !f ? (G.c.allies || []).find((x) => x.name === order.ally) : null;
+    if (!f && !a) { f = [...G.fac.values()].filter((x) => !x.allied && x.strategy === "ally" && !G.parleyed.has(x.name)).sort((p, q) => q.plan.barter - p.plan.barter)[0]; if (!f) a = (G.c.allies || []).find((x) => !G.parleyed.has(x.name)); }
+    if (!f && !a) return emptyJob(city, "Qloo taste overlap");
+    const ally = f ? { name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city ?? city.name } : { name: a.name, f: null, barter: a.barter, netnew: a.netnew, convert: a.convert, city: city.name };
+    G.parleyed.add(ally.name);
+    const r = parleySilent(ally), dm = { name: ally.name, yes: r.yes, text: r.pitch, city: ally.city }; G.dms.push(dm);
+    aiWrite("pitch", { name: G.player.name, partner: ally.name, offer: r.offer.name, city: ally.city, netnew: Math.round(ally.netnew * 100), convert: Math.round(ally.convert * 100) }, null).then((t) => { if (t) dm.text = t; });
+    return { loot: {
+      fact: r.yes ? `<b>${esc(ally.name)}</b> said yes: ${esc(r.offer.name.toLowerCase())}.` : `<b>${esc(ally.name)}</b> passed on ${esc(r.offer.name.toLowerCase())} for now. The DM is still worth sending.`,
+      receipts: ["Qloo taste overlap", `barter ${r.barter}/100`], xp: 50,
+      mapChange: r.yes ? (f ? `${ally.name}'s cities count for your quest · no more attacks from them` : `${ally.name} is your ally`) : "nothing changed",
+      questChange: objIs("collab") ? `DM ${G.dms.length} of 5 · ${G.allies + G.guestSpots.length} accepted` : r.yes ? "an opener for your tour" : null,
+      realMove: { title: `DM ${ally.name}`, detail: r.pitch } } };
+  },
+  async reader(city, st) {
+    const ppl = (G.player.aud?.personas ?? []).filter((p) => p.metro === city.name);
+    const scored = ppl.map((p) => ({ ...p, s: G.reactions.get(p.id) })).filter((p) => p.s != null).sort((a, b) => b.s - a.s);
+    if (!scored.length && city.mean == null) return emptyJob(city, "1,000-fan panel (simulated from Qloo)");
+    prep(city, "room read"); if (st >= 2) G.readBonus.set(city.name, 0.05);
+    const top = scored[0], qt = (G.c?.aggregate?.quotes ?? []).find((x) => x.persona?.includes(city.name)), rating = top ? top.s : city.mean;
+    if (rating >= 4 && G.sponsors.length) G.proven = true;
+    G.fanLine = { city: city.name, text: qt ? qt.text.replace(/\s*\(\d\/5\)\s*$/, "") : null, rating: city.mean ?? rating };
+    Neuro.play(G.c.tribe); brainNote();
+    return { intel: `🎭 ${scored.length || city.n} simulated fans here; best reaction from ${top?.tastes?.slice(-1)[0] ?? "your core"} fans.`, loot: {
+      fact: top ? `<b>${scored.length} simulated fans</b> in ${esc(city.name)} rated your bit: the best a ${top.s} of 5 from ${esc(top.tastes?.slice(-1)[0] ?? "your core")} fans${city.mean != null ? `, ${city.mean} on average` : ""}.` : `Your material rates <b>${city.mean} of 5</b> with the fans in ${esc(city.name)}.`,
+      receipts: ["1,000-fan panel (simulated from Qloo)"], xp: 40,
+      mapChange: `${city.name} prepared · +${st >= 2 ? 35 : 30}% in battle · fan strip updated`, questChange: objIs("sponsor") && G.proven ? "crowd proven: a 4+ rating" : null,
+      realMove: { title: `Open with ${G.c.stimulus?.label ?? "your best bit"} in ${city.name}`, detail: `The ${city.name} panel liked it most from ${top?.tastes?.slice(-1)[0] ?? "your core"} fans.` },
+      action: st >= 2 ? { label: "X-ray your last 6 videos with these fans", run: "xray" } : null } };
+  },
+  async spy(city, st, order) {
+    const names = [G.player.name, ...[...G.fac.values()].map((f) => f.name)];
+    const r = await api(`/api/fame?names=${encodeURIComponent(names.join("|"))}`).catch(() => null);
+    if (r?.status === "ok") for (const p of r.people) G.fame.set(p.name, p);
+    const it = G.intents.find((x) => !G.fac.get(x.fid)?.allied), f = it && G.fac.get(it.fid), tc = it && cityOf(it.city);
+    const wall = tc && sideOf(tc) === "you" ? tc.name : G.capital; if (wall) G.forts.add(wall);
+    const watch = (order?.fid && G.fac.get(order.fid)) || f || nemesis(), fm = watch && G.fame.get(watch.name);
+    if (it) G.intel.set(it.city, [...(G.intel.get(it.city) ?? []), `🕵️ ${f?.name} attacks here at END WEEK.`]);
+    return { loot: {
+      fact: `${watch ? `<b>${esc(watch.name)}</b> ${fm?.views != null ? `has ${kfmt(fm.views)} Wikipedia views in 30 days${fm.momentum != null ? `, ${fm.momentum >= 0 ? "up" : "down"} ${Math.abs(fm.momentum)}%` : ""}` : "has no Wikipedia page to read"}.` : "No rival to watch."}${it ? ` ${esc(f.name)} hits <b>${esc(it.city)}</b> at END WEEK.` : " No attack planned this week."}`,
+      receipts: ["Wikipedia · 30-day views"], xp: 30, mapChange: wall ? `walls up in ${wall}${it && wall === it.city ? ": the attack will bounce" : ""}` : "nothing changed", realMove: null } };
   },
   async herald(city) {
     G.heard ??= new Set(); const p = pick(G.player.aud?.domains?.podcast, G.heard);
-    if (!p) return { line: "no new podcast fits." }; G.heard.add(p.name);
-    G.morale = Math.min(5, G.morale + 0.15); G.buzz = Math.min(BUZZ_MAX, G.buzz + 2);
-    return { line: `<span class="api">Qloo · podcasts your fans follow</span> guest spot on <b>${esc(p.name)}</b> (${Math.round(p.affinity * 100)}% fan affinity) <span class="ok">+⚡2 · hype +0.15</span>`, intel: `🎙️ Pitch a guest spot on ${p.name}.`, float: "🎙️ +⚡2" };
-  },
-  async reader(city) {
-    const ppl = (G.player.aud?.personas ?? []).filter((p) => p.metro === city.name);
-    if (!ppl.length) return { line: "no simulated fans live here." };
-    const scored = ppl.map((p) => ({ ...p, s: G.reactions.get(p.id) })).filter((p) => p.s != null).sort((a, b) => b.s - a.s);
-    const show = [scored[0], scored[Math.floor(scored.length / 2)], scored.at(-1)].filter((x, i, a) => x && a.indexOf(x) === i);
-    Neuro.play(G.c.tribe); brainNote(); prep(city, "room read");
-    const fmtP = (p) => `${p.gender} ${p.age}, into ${esc(p.tastes.slice(-1)[0] ?? "comedy")} → ${"★".repeat(p.s)}`;
-    return { line: `<span class="api">panel · ${scored.length} fans in ${esc(city.name)}</span> ${show.map(fmtP).join(" · ")}`, intel: `🎭 ${scored.length} simulated fans here; best reaction from ${show[0]?.tastes.slice(-1)[0] ?? "your core"} fans.` };
-  },
-  async trend(city) {
-    const st = STATE[city.name]; const got = await addTrends(st ? `US-${st}` : "US", city.name);
-    if (!got.length) return { line: "nothing new trending there right now." };
-    return { line: `<span class="api">Google Trends · ${st ?? "US"}</span> rising: <b>${got.map((p) => esc(p.title)).join(", ")}</b> → new potions`, intel: `📈 Trending around ${city.name}: ${got.map((p) => p.title).join(", ")}.` };
+    if (!p) return emptyJob(city, "Qloo podcasts your fans follow"); G.heard.add(p.name);
+    G.guestSpots.push({ name: p.name, city: city.name }); G.morale = Math.min(5, G.morale + 0.1);
+    return { intel: `🎙️ Pitch a guest spot on ${p.name}.`, loot: { fact: `A guest spot on <b>${esc(p.name)}</b>: ${Math.round(p.affinity * 100)}% of your fans' taste neighbours listen.`, receipts: ["Qloo podcasts your fans follow"], xp: 50, mapChange: `podcast badge on ${city.name}`, questChange: objIs("collab") ? `${G.allies + G.guestSpots.length} accepted` : objIs("city") && city.name === G.objCity ? "a local voice in your new city" : null, realMove: { title: `Pitch ${p.name}`, detail: `Hi! My fans in ${city.name} listen to you (Qloo). I'd love to come on when I'm in town.` } } };
   },
   async oracle(city) {
     const [lon, lat] = METROS[city.name]; const r = await api(`/api/weather?lat=${lat}&lon=${lon}`);
-    if (r.status !== "ok" || !r.days?.length) return { line: "the forecast is down." };
-    const nice = (x) => new Date(x.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    if (r.status !== "ok" || !r.days?.length) return emptyJob(city, "Open-Meteo 7-day");
     const best = [...r.days].sort((a, b) => a.rain - b.rain || [5, 6, 4].indexOf(new Date(b.date).getDay()) - [5, 6, 4].indexOf(new Date(a.date).getDay()))[0];
-    const worst = [...r.days].sort((a, b) => b.rain - a.rain)[0];
-    G.morale = Math.min(5, G.morale + 0.1); prep(city, `dry show night ${nice(best)}`); G.nights.push({ date: best.date, city: city.name, why: `${best.rain}% rain, ${Math.round(best.tmax)}°C (Open-Meteo)` });
-    return { line: `<span class="api">Open-Meteo · ${esc(city.name)}</span> best show night <b>${nice(best)}</b> (${best.rain}% rain, ${Math.round(best.tmax)}°C)${worst.rain >= 50 ? `; avoid ${nice(worst)} (${worst.rain}% rain)` : ""} <span class="ok">hype +0.1</span>`, intel: `🌦️ Play ${nice(best)}: ${best.rain}% chance of rain.` };
+    const room = G.nights.find((n) => n.city === city.name && n.venue);
+    if (room) Object.assign(room, { date: best.date, why: `${room.why} · ${best.rain}% rain (Open-Meteo)` }); else G.nights.push({ date: best.date, city: city.name, why: `${best.rain}% rain, ${Math.round(best.tmax)}°C (Open-Meteo)` });
+    prep(city, `dry show night ${shortDay(best.date)}`);
+    return { intel: `🌦️ Play ${shortDay(best.date)}: ${best.rain}% chance of rain.`, loot: { fact: `Best show night in ${esc(city.name)}: <b>${shortDay(best.date)}</b>, ${best.rain}% rain, ${Math.round(best.tmax)}°C.`, receipts: ["Open-Meteo 7-day"], xp: 30, mapChange: `night pinned to ${city.name}${room ? ` (${room.venue})` : ""}`, questChange: objIs("city") && city.name === G.objCity ? "a night in your new city" : "goes in your calendar", realMove: null } };
   },
-  async spy(city) {
-    const names = [G.player.name, ...[...G.fac.values()].map((f) => f.name)];
-    const r = await api(`/api/fame?names=${encodeURIComponent(names.join("|"))}`);
-    if (r.status === "ok") for (const p of r.people) G.fame.set(p.name, p);
-    const it = G.intents[0], f = it && G.fac.get(it.fid);
-    factions(); renderThreats();
-    const fm = (n) => { const p = G.fame.get(n); return p?.views != null ? `${esc(n)} ${kfmt(p.views)}${p.momentum != null ? ` ${p.momentum >= 0 ? "▲" : "▼"}${Math.abs(p.momentum)}%` : ""}` : `${esc(n)} n/a`; };
-    if (it) G.intel.set(it.city, [...(G.intel.get(it.city) ?? []), `🕵️ ${f?.name} attacks here Sunday. Fortify or strike first.`]);
-    return { line: `<span class="api">Wikipedia · 30-day views</span> ${names.map(fm).join(" · ")}${it ? ` → <span class="rv">${esc(f?.name)} hits ${esc(it.city)} Sunday</span>` : " → no attack planned this week"}` };
+  async trend(city) {
+    const stc = STATE[city.name]; const got = await addTrends(stc ? `US-${stc}` : "US", city.name);
+    if (!got.length) return emptyJob(city, `Google Trends · ${stc ?? "US"}`);
+    const p = got[0]; G.offersNext.push({ id: "tw:" + p.title, kind: "trend", ref: p.title, title: `Trend wave: “${p.title}”`, text: `Trending in ${city.name} (Google Trends).`, reward: "+1 order next week" });
+    return { intel: `📈 Trending around ${city.name}: ${got.map((x) => x.title).join(", ")}.`, loot: { fact: `Rising around ${esc(city.name)}: <b>${got.map((x) => esc(x.title)).join(", ")}</b>.`, receipts: [`Google Trends · ${stc ?? "US"}`], xp: 30, mapChange: `trend badge on ${city.name}`, questChange: "a Trend wave offer next week", realMove: { title: `Post on “${p.title}”`, detail: `Trending in ${city.name} right now.` } } };
   },
   async scribe(city) {
     const tags = (G.player.aud?.tags || []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
     const tr = G.potions.find((p) => !p.used && p.where === city.name) ?? G.potions.find((p) => !p.used);
-    const draft = `${city.name}! If you grew up on ${tags[0] || "great comedy"}${tags[1] ? ` and ${tags[1]}` : ""}, this one's for you. ${tr ? `Got thoughts on ${tr.title}. ` : ""}New set, one night only. 🎤`;
-    const post = await aiWrite("caption", { name: G.player.name, city: city.name, tastes: tags, trend: tr?.title }, draft);
-    G.buzz = Math.min(BUZZ_MAX, G.buzz + 1); G.drafts.push(post);
-    try { await navigator.clipboard.writeText(post); } catch {}
-    return { line: `<span class="api">Qloo tags${tr ? " + Trends" : ""}</span> draft: “${esc(post)}” <span class="ok">+1 ⚡ · copied</span>`, intel: `✍️ Post ready: “${post}”`, float: "✍️ +⚡1" };
+    const draft = `${city.name}: if you grew up on ${tags[0] || "great comedy"}${tags[1] ? ` and ${tags[1]}` : ""}, this one's for you. ${tr ? `Got thoughts on ${tr.title}. ` : ""}New set, one night only.`;
+    const text = await aiWrite("caption", { name: G.player.name, city: city.name, tastes: tags, trend: tr?.title }, draft);
+    G.drafts.push(text); G.posts.add(city.name); G.bonusNext++;
+    return { loot: { fact: `Post ready: “${esc(text)}”`, receipts: [`Qloo tags${tr ? " + Google Trends" : ""}`], xp: 30, mapChange: "nothing changed", questChange: "+1 order next week", realMove: { title: `Post it in ${city.name}`, detail: text } } };
   },
   async showrunner(city) {
-    if (sideOf(city) !== "you") return { line: `<span class="rv">a festival needs a city you hold; ${esc(city.name)} isn't yours yet.</span>` };
-    const d = G.player.aud?.domains ?? {};
-    const venue = (G.intel.get(city.name) ?? []).find((t) => t.startsWith("🎟️"))?.replace(/^🎟️ Book /, "").replace(/ \(.*$|\.$/g, "") ?? (city.name === G.c.territory.target?.name ? G.c.venues?.[0]?.name : null) ?? "the biggest room in town";
-    const dj = d.artist?.[0]?.name, brand = G.sponsors[0]?.name ?? d.brand?.[0]?.name, host = d.podcast?.[0]?.name, film = d.movie?.[0]?.name;
-    const plan = `${venue} · DJ set in the spirit of ${dj ?? "your crowd's favourites"} · sponsored by ${brand ?? "a local brand"}${host ? ` · hosted with ${host}` : ""}${film ? ` · ${film} watch-party after` : ""}`;
-    G.gold += 200; G.conquest = Math.min(100, G.conquest + 3); G.morale = Math.min(5, G.morale + 0.2); boom(city.p, COL.you); ach("fest");
-    return { line: `<span class="api">Qloo · artists, brands, podcasts, films</span> festival night in <b>${esc(city.name)}</b>: ${esc(plan)} <span class="ok">+🪙200 · +3% · hype +0.2</span>`, intel: `🎪 Festival: ${plan}.`, float: "🎪 +🪙200 +3%" };
+    if (!isHeld(city)) return emptyJob(city, "Qloo artists, brands, podcasts, films");
+    const d = G.player.aud?.domains ?? {}, venue = roomOf(city.name)?.venue ?? "the biggest room in town";
+    const dj = d.artist?.[0]?.name, brand = G.sponsors[0]?.name ?? d.brand?.[0]?.name, host = d.podcast?.[0]?.name;
+    const plan = `${venue} · DJ set in the spirit of ${dj ?? "your crowd's favourites"} · sponsored by ${brand ?? "a local brand"}${host ? ` · hosted with ${host}` : ""}`;
+    G.gold += 200; G.morale = Math.min(5, G.morale + 0.2); boom(city.p, COL.you); ach("fest");
+    return { loot: { fact: `Festival night in ${esc(city.name)}: <b>${esc(plan)}</b>.`, receipts: ["Qloo artists, brands, podcasts"], gold: 200, xp: 100, mapChange: `festival badge on ${city.name}`, questChange: null, realMove: { title: "Book the line-up", detail: plan } } };
   },
 };
+// the unit's real job: the call, the loot, its XP and stars
+async function jobAt(id, city, order) {
+  const a = agentOf(id), st = starsOf(id); let out;
+  try { out = await AGENT_JOBS[id](city, st, order); } catch (e) { out = emptyJob(city, a.src); console.warn(`[${id}] job failed`, e); }
+  const L = out.loot; L.unit = id; L.city = city.name; L.xp = L.xp ?? 0;
+  if (L.xp) G.unitXp.set(id, (G.unitXp.get(id) ?? 0) + L.xp);
+  const after = starsOf(id); if (after > st) L.starUp = `${a.name} ${"★".repeat(st)} → ${"★".repeat(after)}`;
+  if (out.intel) G.intel.set(city.name, [...(G.intel.get(city.name) ?? []).filter((x) => x[0] !== out.intel[0]), out.intel]);
+  if (L.realMove) addRealMove(L.realMove, a.name, city.name);
+  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → <span class="api">${esc(L.receipts.join(" · "))}</span> ${L.fact}`); keepReport(id, city, { line: L.fact });
+  const u = G.army.get(id); if (u) u.lastLoot = L;
+  G.runs++;
+  return L;
+}
 
 // ---------------------------------------------------------------- the army on the map
-// Agents are units on the board, like citizens in Rise of Nations. Select one
-// (its tile, or the unit itself), then click a city or drag the unit onto it.
-// It marches on the world clock, does its job there with live data once a
-// week, and stays stationed, earning for you while it holds the city.
-const SPEED = 85; // map units per game hour: coast to coast in about half a day
-const YIELD = { sponsor: { gold: 12 }, showrunner: { gold: 8 }, scout: { gold: 3 }, booker: { gold: 4 }, reader: { gold: 3 }, oracle: { gold: 3 }, spy: { gold: 2 }, diplomat: { gold: 2 }, herald: { buzz: 1 }, trend: { buzz: 1 }, scribe: { buzz: 1 } };
-const absH = () => (G.week - 1) * 168 + G.hour;
+// Units wait where they are until END WEEK; then they march (1.2 s each,
+// staggered) inside the show, work, and stay stationed where they finished.
+const YIELD = { sponsor: { gold: 12 }, showrunner: { gold: 8 }, scout: { gold: 3 }, booker: { gold: 4 }, reader: { gold: 3 }, oracle: { gold: 3 }, spy: { gold: 2 }, diplomat: { gold: 2 } };
+const absH = () => (G.week - 1) * 168 + 12;
 const agentOf = (id) => AGENTS.find((a) => a.id === id);
-const yieldText = (id) => { const y = YIELD[id] ?? {}; return y.gold ? `+${y.gold} gold a day` : y.buzz ? `+${y.buzz} buzz a day` : ""; };
+// stationed units in cities you hold pay every week (their old daily yield × 7)
+const stationedGold = () => [...G.army.values()].filter((u) => u.state === "stationed" && isHeld(cityOf(u.at))).reduce((s, u) => s + (YIELD[u.id]?.gold ?? 0) * 7, 0);
 function spawnUnit(id) {
-  const cap = G.cities.find((c) => c.name === G.capital) ?? G.cities[0]; if (!cap) return;
+  const cap = cityOf(G.capital) ?? G.cities[0]; if (!cap) return;
   const i = G.army.size, p = [cap.p[0] + Math.cos(i * 1.3) * 26, cap.p[1] + Math.sin(i * 1.3) * 18];
-  G.army.set(id, { id, p, state: "idle", at: G.capital });
-  G.fx.push({ p, ring: true, r: 60, col: COL.you, t0: performance.now(), dur: 900 });
+  G.army.set(id, { id, p, state: "idle", at: G.capital, order: null });
 }
-function slotNear(city, id) { const n = [...G.army.values()].filter((u) => (u.at === city.name || u.toCity === city.name) && u.id !== id).length; return [city.p[0] + Math.cos(n * 1.7 + 0.6) * 20, city.p[1] + Math.sin(n * 1.7 + 0.6) * 14 - 14]; }
-function sendUnit(id, city) {
-  const u = G.army.get(id), a = agentOf(id); if (!u || !city || G.over) return;
-  if (u.state === "moving" && u.toCity === city.name) return;
-  if (u.state === "working") return toast(`${a.name} is busy working in ${u.at}.`);
-  if (u.at === city.name && u.state !== "moving") { if (G.crew.get(id)?.week !== G.week) return arrive(u, city); return toast(`${a.name} is already in ${city.name}. Its job runs again next week.`); }
-  const to = slotNear(city, id), dist = Math.hypot(to[0] - u.p[0], to[1] - u.p[1]);
-  Object.assign(u, { from: [...u.p], to, toCity: city.name, h0: absH(), dur: Math.max(1.5, dist / SPEED), state: "moving", at: null });
-  const eta = Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168));
-  Sound.play("select"); ops(`<span class="ag">${a.icon} ${a.name}</span> marching to <b>${esc(city.name)}</b> · ETA ${eta}`);
-  renderAgents(); renderSel();
+function slotNear(city, id) { const n = [...G.army.values()].filter((u) => u.at === city.name && u.id !== id).length; return [city.p[0] + Math.cos(n * 1.7 + 0.6) * 20, city.p[1] + Math.sin(n * 1.7 + 0.6) * 14 - 14]; }
+function marchUnit(u, city, delay = 0) {
+  Object.assign(u, { from: [...u.p], to: slotNear(city, u.id), toCity: city.name, t0: performance.now() + delay, ms: REDUCED ? 1 : 1200, state: "moving" });
 }
-async function arrive(u, city) {
-  const a = agentOf(u.id), c = G.crew.get(u.id);
-  u.p = [...(u.to ?? u.p)]; u.at = city.name; u.toCity = null;
-  if (c && c.week !== G.week) {
-    u.state = "working"; c.busy = true; c.week = G.week; renderAgents(); renderSel();
-    await jobAt(a, city);
-    c.busy = false;
-  }
-  u.state = sideOf(city) === "you" || sideOf(city) === "allied" ? "stationed" : "idle";
-  if (G.pop === u.id) renderUnitPop();
-  if (u.state === "stationed") ops(`<span class="ag">${a.icon} ${a.name}</span> stationed in ${esc(city.name)} · ${yieldText(u.id)}`);
-  hud(); renderAgents(); renderOrders(); renderSel(); council();
+function arrive(u, city) { u.p = [...(u.to ?? u.p)]; u.at = city.name; u.toCity = null; u.order = null; u.state = isHeld(city) ? "stationed" : "idle"; }
+// your tour route in your colour, through the stops in tour order; booked stops get a gold number
+function drawRoute(ctx, toS, d, now) {
+  if (!G) return;
+  const q = quest(), names = q.slots.map((s) => s.city).filter(Boolean); if (names.length < 2 && !names.some((n) => roomOf(n))) return;
+  const P = names.map((n) => cityOf(n)).filter(Boolean).map((c) => toS(c.p));
+  ctx.save(); ctx.strokeStyle = COL.you; ctx.globalAlpha = 0.8; ctx.lineWidth = 3 * d; ctx.lineJoin = "round"; ctx.shadowColor = COL.you; ctx.shadowBlur = 8 * d;
+  ctx.beginPath(); P.forEach(([X, Y], i) => (i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y))); ctx.stroke(); ctx.restore();
+  q.slots.forEach((s, i) => { const c = s.city && s.on && cityOf(s.city); if (!c) return; const [X, Y] = toS(c.p); ctx.fillStyle = "#f0c46a"; ctx.beginPath(); ctx.arc(X + 16 * d, Y - 16 * d, 9 * d, 0, 6.283); ctx.fill(); ctx.fillStyle = "#0b0d14"; ctx.font = `800 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(i + 1), X + 16 * d, Y - 15.5 * d); });
 }
-// the agent's real job (the call to Qloo, Trends, Wikipedia or Open-Meteo)
-async function jobAt(a, city) {
-  let out = null;
-  try { out = await AGENT_JOBS[a.id](city); } catch (e) { out = { line: `<span class="rv">came back empty-handed (${esc(e?.message ?? e)})</span>` }; }
-  ops(`<span class="ag">${a.icon} ${a.name}</span> @ ${esc(city.name)} → ${out.line}`); keepReport(a.id, city, out);
-  if (out.intel) G.intel.set(city.name, [...(G.intel.get(city.name) ?? []).filter((x) => x[0] !== out.intel[0]), out.intel]);
-  if (out.float) float(city.p, out.float, "#e1bdff");
-  if (out.night) G.nights.push(out.night);
-  Sound.play("potion"); G.missions++;
-}
-// every frame: units march, the day's yields land, caravans run
-function armyTick() {
-  if (!G || G.over) return;
-  const now = absH();
-  for (const u of G.army.values()) {
-    if (u.state !== "moving") continue;
-    if ((now - u.h0) / u.dur >= 1) { const city = G.cities.find((c) => c.name === u.toCity); if (city) arrive(u, city); else u.state = "idle"; }
-  }
-  const day = Math.floor(now / 24);
-  if (G.lastDay == null) G.lastDay = day;
-  if (day !== G.lastDay) {
-    G.lastDay = day; let gold = 0, buzz = 0;
-    for (const u of G.army.values()) {
-      if (u.state !== "stationed") continue;
-      const city = G.cities.find((c) => c.name === u.at), y = YIELD[u.id] ?? {};
-      if (!city || !(sideOf(city) === "you" || sideOf(city) === "allied")) { u.state = "idle"; continue; }
-      if (y.gold) { gold += y.gold; float(city.p, `🪙+${y.gold}`, "#ffe9b0", (Math.random() - 0.5) * 30); }
-      if (y.buzz) buzz += y.buzz;
-    }
-    if (gold || buzz) { G.gold += gold; G.buzz = Math.min(BUZZ_MAX, G.buzz + buzz); event(`🪙 Your stationed agents earned +${gold} gold${buzz ? ` and +${buzz} buzz` : ""}.`, "good"); hud(); renderAgents(); }
-  }
-  // caravans: ticket money and merch moving between the cities you hold
-  const mine = G.cities.filter((c) => sideOf(c) === "you"), cap = G.cities.find((c) => c.name === G.capital);
-  if (G.nextCaravan == null) G.nextCaravan = now + 4;
-  if (now >= G.nextCaravan && cap && mine.length >= 2) {
-    const to = mine.filter((c) => c !== cap)[Math.floor(Math.random() * (mine.length - 1))];
-    if (to) { const dist = Math.hypot(to.p[0] - cap.p[0], to.p[1] - cap.p[1]); G.caravans.push({ from: cap.p, to: to.p, city: to.name, h0: now, dur: 1 + dist / 70, back: Math.random() < 0.5 }); }
-    G.nextCaravan = now + 7 + Math.random() * 5;
-  }
-  for (const cv of [...G.caravans]) {
-    if ((now - cv.h0) / cv.dur < 1) continue;
-    G.caravans = G.caravans.filter((x) => x !== cv);
-    const g = 4 + Math.round(Math.hypot(cv.to[0] - cv.from[0], cv.to[1] - cv.from[1]) / 120);
-    G.gold += g; float(cv.back ? cv.from : cv.to, `🪙+${g}`, "#ffe9b0"); hud();
-  }
-}
-// draw the army, the caravans, and what a drag or a hover would do
-function drawTour(ctx, toS, d) {
-  const p = G?.tourPlan; if (!p) return;
-  const pt = (name) => { const c = G.cities.find((x) => x.name === name); return c ? toS(c.p) : null; };
-  const pts = [pt(p.input.home), ...p.stops.map((st) => pt(st.city))];
-  ctx.save(); ctx.strokeStyle = "rgba(255,233,176,.85)"; ctx.lineWidth = 2.2 * d; ctx.setLineDash([7 * d, 6 * d]); ctx.shadowColor = "#ffcf5a"; ctx.shadowBlur = 8 * d;
-  ctx.beginPath(); let started = false; for (const q of pts) { if (!q) continue; if (!started) { ctx.moveTo(q[0], q[1]); started = true; } else ctx.lineTo(q[0], q[1]); } ctx.stroke(); ctx.restore();
-  p.stops.forEach((st, i) => { const q = pts[i + 1]; if (!q) return; ctx.fillStyle = "#ffcf5a"; ctx.beginPath(); ctx.arc(q[0] + 16 * d, q[1] - 16 * d, 9 * d, 0, 6.283); ctx.fill(); ctx.fillStyle = "#1a1208"; ctx.font = `800 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.fillText(String(st.n), q[0] + 16 * d, q[1] - 12 * d); });
+// uncharted ground says what to do about it
+function fogLabel(ctx, toS, d) {
+  const fog = G.cities.filter((c) => c.state === "uncharted"); if (fog.length < 3) return;
+  const [X, Y] = toS([fog.reduce((s, c) => s + c.p[0], 0) / fog.length, fog.reduce((s, c) => s + c.p[1], 0) / fog.length]);
+  ctx.save(); ctx.font = `600 ${11 * d}px "Inter Tight", sans-serif`; if ("letterSpacing" in ctx) ctx.letterSpacing = `${1.1 * d}px`; ctx.textAlign = "center"; ctx.fillStyle = "#9a9db3"; ctx.shadowColor = "#000"; ctx.shadowBlur = 6 * d; ctx.fillText("UNCHARTED · SEND A SCOUT", X, Y + 34 * d); ctx.restore();
 }
 function drawArmy(ctx, toS, bez, at, d, s, now) {
-  drawTour(ctx, toS, d);
-  const H = absH();
-  for (const cv of G.caravans) {
-    const k = clamp01((H - cv.h0) / cv.dur), a0 = toS(cv.back ? cv.to : cv.from), b0 = toS(cv.back ? cv.from : cv.to), c0 = bez(a0, b0), [X, Y] = at(a0, c0, b0, k);
-    ctx.save(); ctx.strokeStyle = "rgba(255,233,176,.25)"; ctx.setLineDash([2 * d, 6 * d]); ctx.lineWidth = 1.2 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
-    ctx.fillStyle = "#ffe9b0"; ctx.shadowColor = "#f5b544"; ctx.shadowBlur = 10 * d; ctx.beginPath(); ctx.moveTo(X, Y - 5 * d); ctx.lineTo(X + 5 * d, Y); ctx.lineTo(X, Y + 5 * d); ctx.lineTo(X - 5 * d, Y); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
-  }
   const sel = G.selected?.type === "unit" ? G.army.get(G.selected.id) : null;
-  for (const u of G.army.values()) {
-    const a = agentOf(u.id), isSel = u === sel;
-    let P = u.p;
-    if (u.state === "moving") {
-      const k = clamp01((H - u.h0) / u.dur), a0 = toS(u.from), b0 = toS(u.to), c0 = bez(a0, b0), q = at(a0, c0, b0, k);
-      ctx.save(); ctx.strokeStyle = isSel ? "rgba(255,255,255,.7)" : "rgba(225,189,255,.55)"; ctx.setLineDash([4 * d, 5 * d]); ctx.lineDashOffset = -now / 30; ctx.lineWidth = 1.6 * d;
-      ctx.beginPath(); ctx.moveTo(q[0], q[1]); const c1 = bez(q, b0); ctx.quadraticCurveTo(c1[0], c1[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
-      ctx.strokeStyle = "#e1bdff"; ctx.lineWidth = 1.5 * d; ctx.beginPath(); ctx.arc(b0[0], b0[1], 7 * d, 0, 6.283); ctx.stroke();
-      ctx.fillStyle = "#e1bdff"; ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText(`ETA ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168)).toUpperCase()}`, b0[0], b0[1] - 12 * d);
-      u._s = q;
-    } else u._s = toS(P);
-    const [X, Y] = u._s, r = 15 * d, bob = u.state === "moving" ? Math.sin(now / 120) * 1.5 * d : 0;
-    if (isSel) { ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.6 * d; ctx.setLineDash([5 * d, 4 * d]); ctx.lineDashOffset = now / 40; ctx.beginPath(); ctx.arc(X, Y + bob, r + 6 * d, 0, 6.283); ctx.stroke(); ctx.restore(); }
-    if (u.state === "stationed") { ctx.fillStyle = "rgba(175,80,255,.18)"; ctx.beginPath(); ctx.arc(X, Y, r + 9 * d + Math.sin(now / 500) * 2 * d, 0, 6.283); ctx.fill(); }
-    ctx.fillStyle = "#0b0a10"; ctx.strokeStyle = isSel ? "#fff" : "#af50ff"; ctx.lineWidth = 2.2 * d; ctx.shadowColor = "#af50ff"; ctx.shadowBlur = 12 * d;
-    ctx.beginPath(); ctx.arc(X, Y + bob, r, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-    { const [g1, g2] = AG_COL[u.id] ?? ["#af50ff", "#4c1a91"], gr = ctx.createRadialGradient(X - r * 0.3, Y + bob - r * 0.4, 0, X, Y + bob, r); gr.addColorStop(0, g1); gr.addColorStop(1, g2); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(X, Y + bob, r - 1.5 * d, 0, 6.283); ctx.fill(); ctx.font = `${15 * d}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(a.icon, X, Y + bob + 1 * d); ctx.textBaseline = "alphabetic"; }
-    if (u.state === "working") { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.4 * d; ctx.beginPath(); ctx.arc(X, Y, r + 4 * d, now / 200, now / 200 + 1.8); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.font = `500 ${9 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText("WORKING", X, Y - r - 8 * d); }
-    if (isSel || u === G.hoverUnit) {
-      // a dark pill under the name so it stays readable over the city label
-      ctx.font = `italic 400 ${15 * d}px "Instrument Serif", serif`; ctx.textAlign = "center"; const w = ctx.measureText(a.name).width + 12 * d, ty = Y + r + 14 * d;
-      ctx.fillStyle = "rgba(8,7,11,.88)"; ctx.beginPath(); ctx.roundRect(X - w / 2, ty - 13 * d, w, 18 * d, 5 * d); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.fillText(a.name, X, ty);
-    }
+  // the plan before END WEEK: dashed green march lines to every ordered city
+  for (const o of G.orderQueue) {
+    const to = cityOf(o.city); if (!to || o.unitId.startsWith("offer")) continue;
+    const u = G.army.get(o.unitId), a0 = u ? toS(u.p) : toS(fromFor(to).p), b0 = toS(to.p);
+    ctx.save(); ctx.strokeStyle = "#3dff9a"; ctx.globalAlpha = 0.85; ctx.setLineDash([6 * d, 6 * d]); ctx.lineDashOffset = -now / 40; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(b0[0], b0[1]); ctx.stroke(); ctx.restore();
   }
-  // what a send would look like: from the selected unit to the hovered city (or the drag point)
-  const tgt = G.drag ? G.drag.pt : sel && G.hoverCity ? toS(G.hoverCity.p) : null;
-  if (sel && tgt && sel._s) {
-    ctx.save(); ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.setLineDash([6 * d, 5 * d]); ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(sel._s[0], sel._s[1]); ctx.lineTo(tgt[0], tgt[1]); ctx.stroke(); ctx.restore();
-    if (G.hoverCity) { const dist = Math.hypot(G.hoverCity.p[0] - sel.p[0], G.hoverCity.p[1] - sel.p[1]), hrs = Math.max(1.5, dist / SPEED); ctx.fillStyle = "#fff"; ctx.font = `500 ${10 * d}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.fillText(`SEND → ${G.hoverCity.name.toUpperCase()} · ${Math.round(hrs)}H`, tgt[0], tgt[1] - 26 * d); }
+  for (const u of G.army.values()) {
+    const ui = unitOf(u.id), isSel = u === sel;
+    if (u.state === "moving") {
+      const k = clamp01((now - u.t0) / u.ms), a0 = toS(u.from), b0 = toS(u.to), c0 = bez(a0, b0);
+      u._s = at(a0, c0, b0, ease(k));
+      ctx.save(); ctx.strokeStyle = "#3dff9a"; ctx.lineWidth = 2 * d; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.quadraticCurveTo(c0[0], c0[1], b0[0], b0[1]); ctx.stroke(); ctx.restore();
+    } else u._s = toS(u.p);
+    const [X, Y] = u._s, r = 13 * d;
+    if (isSel) { ctx.save(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.6 * d; ctx.setLineDash([5 * d, 4 * d]); ctx.lineDashOffset = now / 40; ctx.beginPath(); ctx.arc(X, Y, r + 6 * d, 0, 6.283); ctx.stroke(); ctx.restore(); }
+    const col = AG_COL[u.id]?.[0] ?? "#af50ff";
+    ctx.fillStyle = "#0b0d14"; ctx.strokeStyle = u.state === "ordered" || u.state === "moving" ? "#3dff9a" : col; ctx.lineWidth = 2 * d;
+    ctx.beginPath(); ctx.roundRect(X - r, Y - r, 2 * r, 2 * r, 7 * d); ctx.fill(); ctx.stroke();
+    drawIcon(ctx, ui?.ic ?? "star", X, Y, 15 * d, col, 2.2);
+    if (isSel || u === G.hoverUnit || u.state === "moving") {
+      const label = u.state === "moving" ? `${agentOf(u.id).name} → ${u.toCity}` : agentOf(u.id).name;
+      ctx.font = `600 ${11 * d}px "Inter Tight", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; const w = ctx.measureText(label).width + 12 * d, ty = Y + r + 12 * d;
+      ctx.fillStyle = "rgba(11,13,20,.88)"; ctx.beginPath(); ctx.roundRect(X - w / 2, ty - 9 * d, w, 18 * d, 6 * d); ctx.fill();
+      ctx.fillStyle = u.state === "moving" ? "#3dff9a" : "#fff"; ctx.fillText(label, X, ty);
+    }
   }
 }
 function unitAt(sx, sy, d) { let best = null, bd = 18 * d; for (const u of G.army.values()) { if (!u._s) continue; const q = Math.hypot(u._s[0] - sx, u._s[1] - sy); if (q < bd) { bd = q; best = u; } } return best; }
 
-// ---------------------------------------------------------------- selection (the Rise of Nations bottom-right panel)
+// ---------------------------------------------------------------- selection
 function select(sel) {
   if (sel?.type === "rival") { const f = G.fac.get(sel.id); G.selected = sel; renderRivalStrip(); if (f) rivalCard(f); return; }
-  G.selected = sel; renderSel(); renderAgents(); renderRivalStrip();
+  G.selected = sel; renderAgents(); renderRivalStrip();
 }
-function renderSel() {
-  if (!G) return;
-  const s = G.selected, t = $("#sel-title");
-  if (s?.type === "unit" && G.army.has(s.id)) { t.textContent = "Selected unit"; return unitPanel(G.army.get(s.id)); }
-  if (s?.type === "city") { const c = G.cities.find((x) => x.name === s.name); if (c) { t.textContent = "City"; return cityDeck(c); } }
-  t.textContent = "Next move"; renderPrimary();
-}
-function unitPanel(u) {
-  const a = agentOf(u.id), c = G.crew.get(u.id) ?? {}, tgt = G.cities.find((x) => x.name === G.pinned) ?? deployCity();
-  const status = u.state === "moving" ? `Marching to ${u.toCity} · ETA ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168))}` : u.state === "working" ? `Working in ${u.at}: calling ${a.src}…` : u.state === "stationed" ? `Stationed in ${u.at} · ${yieldText(u.id)}` : `Idle in ${u.at ?? "the field"}`;
-  const job = c.week === G.week ? "Job done this week · ready again Monday" : "Job ready: runs when it reaches a city";
-  $("#primary").innerHTML = `<div class="nm"><div class="ti">${a.icon}</div><div style="min-width:0"><div class="kk">AGENT · ${esc(a.src)}</div><h3>${esc(a.name)}</h3><div class="chips"><span>${esc(status)}</span></div></div>
-    <div class="why">${esc(a.role)}. ${esc(job)}. While stationed in a city you hold: ${esc(yieldText(u.id))}.</div>
-    <div class="steps3"><b>HOW</b> click any city on the map to send it <i>·</i> or drag the unit onto a city <i>·</i> right-click works too</div>
-    <div class="nmrow"><button class="go" id="u-send" ${tgt && u.state !== "working" ? "" : "disabled"}>${ICON.take} Send to ${esc(tgt?.name ?? "…")}</button><button class="ghostbtn" id="u-home" title="Back to your capital">⌂</button><button class="ghostbtn" id="u-x" title="Deselect (Esc)">✕</button></div></div>`;
-  $("#u-send").onclick = () => tgt && sendUnit(u.id, tgt);
-  $("#u-home").onclick = () => { const cap = G.cities.find((x) => x.name === G.capital); if (cap) sendUnit(u.id, cap); };
-  $("#u-x").onclick = () => select(null);
-}
-function cityDeck(ct) {
-  const key = sideOf(ct), f = G.fac.get(ct.owner), it = G.intents.find((x) => x.city === ct.name), oi = G.orders.findIndex((o) => !o.done && o.city === ct.name), o = G.orders[oi];
-  const owner = key === "you" ? `yours · ${ct.state}` : key === "allied" ? "allied ground" : key === "fog" ? "uncharted" : ct.state === "rival" ? `held by ${f?.name ?? "a rival"}` : `unclaimed · ${ct.state}`;
-  const here = [...G.army.values()].filter((u) => u.at === ct.name || u.toCity === ct.name).map((u) => agentOf(u.id).icon).join(" ");
-  const intel = (G.intel.get(ct.name) ?? []).slice(-2).map((x) => esc(x)).join(" · ");
-  const idle = [...G.army.values()].filter((u) => u.state !== "working" && u.at !== ct.name && u.toCity !== ct.name).slice(0, 4);
-  $("#primary").innerHTML = `<div class="nm"><div class="ti" style="color:${colOf(key)}">🏰</div><div style="min-width:0"><div class="kk">${esc(owner)}</div><h3>${esc(ct.name)}</h3><div class="chips"><span>${ct.you.toLocaleString()} fan signal</span><span>${ct.mean != null ? ct.mean + "/5" : "no read"}</span><span>${pts(ct)}% worth</span><span>${Clock.localLabel(ct)} local</span></div></div>
-    <div class="why">${intel || esc(STATE_TEXT[ct.state] ?? (f ? `${f.name}'s crowd is relatively stronger here.` : ""))}${here ? ` · here: ${here}` : ""}${it ? ` · ⚔ ${esc(G.fac.get(it.fid)?.name)} arrives Sunday` : ""}</div>
-    <div class="nmrow">${o ? `<button class="go" id="c-ord">${actionLabel(o, costOf(o), costOf(o) <= G.buzz && !G.busy)}</button>` : ""}${it && !G.forts.has(ct.name) ? `<button class="ghostbtn" id="c-fort" ${G.gold >= 80 ? "" : "disabled"}>🛡 Fortify 🪙80</button>` : ""}${idle.map((u) => `<button class="ghostbtn" data-send="${u.id}" title="Send ${esc(agentOf(u.id).name)} here">${agentOf(u.id).icon}</button>`).join("")}<button class="ghostbtn" id="c-x" title="Deselect (Esc)">✕</button></div></div>`;
-  $("#c-ord")?.addEventListener("click", () => execute(oi));
-  $("#c-fort")?.addEventListener("click", () => { fortify(ct.name); renderSel(); });
-  $$("[data-send]").forEach((b) => b.addEventListener("click", () => sendUnit(b.dataset.send, ct)));
-  $("#c-x").onclick = () => select(null);
-}
-function rivalPanel(f) {
-  const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), fm = G.fame.get(f.name), held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name), sc = strikeCity(f);
-  $("#primary").innerHTML = `<div class="nm"><div class="ti" style="padding:0;overflow:hidden">${avatar(f.img, f.name)}</div><div style="min-width:0"><div class="kk">${f.allied ? "allied" : f.strategy === "ally" ? "potential ally" : "nemesis"} · threat ${lv}</div><h3>${esc(f.name)}</h3><div class="chips">${fm?.views ? `<span>${kfmt(fm.views)} views/30d ${fm.momentum >= 0 ? "▲" : "▼"}${Math.abs(fm.momentum ?? 0)}%</span>` : ""}<span>${held.length} cities</span><span>barter ${f.plan.barter}/100</span></div></div>
-    <div class="why">${esc(it ? `Marching on ${it.city}: arrives Sunday midnight and starts a 2-week siege unless the walls are up.` : f.plan.reason)}${held.length ? ` Holds ${esc(held.slice(0, 3).join(", "))}.` : ""}</div>
-    <div class="nmrow">${f.allied ? "" : `${it ? `<button class="ghostbtn" id="r-fort" ${G.gold >= 80 && !G.forts.has(it.city) ? "" : "disabled"}>🛡 Fortify ${esc(it.city)}</button>` : ""}<button class="go" id="r-strike" ${sc && G.buzz >= 4 ? "" : "disabled"}>⚔ Strike ${esc(sc?.name ?? "")} · ⚡4</button><button class="ghostbtn" id="r-parley">🕊 Parley</button>`}<button class="ghostbtn" id="r-x" title="Deselect (Esc)">✕</button></div></div>`;
-  $("#r-fort")?.addEventListener("click", () => { fortify(it.city); renderSel(); });
-  $("#r-strike")?.addEventListener("click", () => strike(f.id));
-  $("#r-parley")?.addEventListener("click", () => parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }));
-  $("#r-x").onclick = () => select(null);
-}
-// rival portraits down the right edge of the map, and the scoreboard (Rise of Nations style)
+// rival portraits down the right edge of the map, and the scoreboard (Full view)
 function renderRivalStrip() {
   if (!G) return;
   $("#rivalstrip").innerHTML = [...G.fac.values()].map((f) => { const lv = threatLevel(f), on = G.selected?.type === "rival" && G.selected.id === f.id; return `<button class="rv${on ? " on" : ""}${lv === "HIGH" || lv === "SIEGE" ? " hi" : ""}" data-rv="${esc(f.id)}" style="--c:${f.allied ? COL.allied : f.col}" title="${esc(f.name)}: ${LV_LABEL[lv]}">${avatar(f.img, f.name, "fp")}<span class="lv ${lv}">${LV_LABEL[lv]}</span></button>`; }).join("");
   $$("[data-rv]").forEach((b) => b.addEventListener("click", () => { if (cardFor === b.dataset.rv) { $("#say .say-x")?.click(); return; } select({ type: "rival", id: b.dataset.rv }); }));
-  const rows = [{ name: G.player.name, col: COL.you, age: ageOf(G.conquest)[1], pct: G.conquest, sc: score() }]
+  const rows = [{ name: G.player.name, col: COL.you, age: levelOf(G.xp).roman, pct: G.conquest, sc: score() }]
     .concat([...G.fac.values()].map((f) => { const n = G.cities.filter((c) => c.owner === f.id && c.state === "rival").length, pct = Math.round((n / Math.max(1, ground())) * 100), fm = G.fame.get(f.name); return { name: f.name, col: f.allied ? COL.allied : f.col, age: ageOf(pct)[1], pct, sc: Math.round(pct * 100 + (fm?.views ?? 0) / 20) }; }))
     .sort((a, b) => b.sc - a.sc);
   $("#scoreboard").innerHTML = rows.map((r) => `<div style="color:${r.col}"><span>${esc(r.name)}</span><i>▶</i><b>${r.age}</b><em>${r.pct}%</em><u>${r.sc.toLocaleString()}</u></div>`).join("");
 }
-
-// ---------------------------------------------------------------- real-world missions
-// Every order you execute in the game becomes one real thing to do this week.
-// Tick it off when you've done it for real: the game pays you for real moves.
-function realTask(o) {
-  const name = o.rival ?? o.title.replace(/^Recruit /, "");
-  const venue = (G.intel.get(o.city) ?? []).find((t) => t.startsWith("🎟️"))?.replace(/^🎟️ Book /, "").replace(/\.$/, "") ?? (o.city === G.c.territory.target?.name ? G.c.venues?.[0]?.name : null);
-  switch (o.kind) {
-    case "take": return `Book ${venue ?? "a room"} in ${o.city} for a set: its crowd matches yours.`;
-    case "hold": return `Try a ${o.city}-tuned version of your material at an open mic or in a post aimed at ${o.city}.`;
-    case "rivalry": return `Put a show or a content push in ${o.city} the same weekend ${o.rival} is active there.`;
-    case "alliance": case "ally": return `Send ${name} the collab pitch (it's under “Deals to send”).`;
-    case "edit": return `Cut the slow stretches in “${G.c.stimulus?.label ?? "your bit"}” and re-record it.`;
-    case "defend": return `Post something for your ${o.city} fans this week, before a rival wins them over.`;
-  }
-  return o.title;
+// the always-on legend: you, the nemesis, open ground, your route (Full view: every rival)
+function renderLegend() {
+  const el = $("#maplegend"); if (!el || !G) return;
+  const full = !document.body.classList.contains("simple"), nem = nemesis();
+  const facs = full ? [...G.fac.values()].filter((f) => !f.allied) : nem ? [nem] : [];
+  el.innerHTML = `<span><i style="background:${COL.you}"></i>Yours</span>${facs.map((f) => `<span><i style="background:${f.col}"></i>${esc(f.name)}</span>`).join("")}<span><i style="background:${COL.open}"></i>Open</span><span><i class="rt"></i>Your tour route</span>`;
 }
-function addReal(o) {
-  const m = { id: "m" + G.real.length, text: realTask(o), src: o.receipt, city: o.city, week: G.week, done: false };
-  G.real.push(m); event(`📋 Real mission: ${m.text}`, "you"); ops(`<span class="ok">📋 real mission</span> ${esc(m.text)}`);
+// your simulated fans talk back along the bottom of the map
+function renderFanStrip() {
+  const el = $("#fanstrip"); if (!el || !G) return;
+  let fl = G.fanLine;
+  if (!fl?.text && G.week > 1) { const qs2 = G.c?.aggregate?.quotes ?? [], q = qs2.find((x) => x.persona?.includes(G.capital)) ?? qs2[0]; if (q) fl = { city: G.capital, text: q.text.replace(/\s*\(\d\/5\)\s*$/, ""), rating: cityOf(G.capital)?.mean }; }
+  if (!fl?.text) { el.hidden = true; return; }
+  el.hidden = false; el.innerHTML = `<span class="dots"><i></i><i></i><i></i></span><span><strong>Fans in ${esc(fl.city)}</strong> (simulated from Qloo): “${esc(fl.text)}”${fl.rating != null ? ` · ${fl.rating} of 5` : ""}</span>`;
+}
+// the quest bar: what you're playing for, the rule, and one slot per stop (or sponsor, DM, part of the city)
+let questHave = null;
+function renderQuestBar() {
+  const el = $("#quest"); if (!el || !G) return;
+  const q = quest(), grew = questHave != null && q.have > questHave; questHave = q.have;
+  el.innerHTML = `<span class="qb-top"><b>QUEST: ${esc(q.label)}</b><span>${q.have} of ${q.need} ${esc(q.unit)} · ${esc(q.rule)}</span></span><span class="qb-slots" style="--n:${q.slots.length}">${q.slots.map((s, i) => `<span class="qs${s.on ? " on" : s.held ? " held" : ""}${grew && s.on && i === q.slots.filter((x) => x.on).length - 1 ? " fill" : ""}"><b>${esc(s.label)}</b>${s.sub ? `<small>${esc(s.sub)}</small>` : ""}</span>`).join("")}</span>`;
+  el.setAttribute("aria-label", `Quest: ${q.label}, ${q.have} of ${q.need} ${q.unit}. Open the missions.`);
+}
+// what each unit would bring back from this city (the city hover card)
+function cityGets(ct) {
+  if (!G || G.busy) return "";
+  const rows = UNITS.filter((u) => unitReady(u.id)).map((u) => [u, chipsFor(u.id, true).find((c) => c.city === ct.name)]).filter(([, c]) => c).slice(0, 3);
+  return rows.length ? `<div class="ptitle" style="padding:8px 0 2px">What you'd get here</div>${rows.map(([u, c]) => `<p style="margin:2px 0"><b>${esc(unitName(u.id))}</b>: ${esc(c.get)}</p>`).join("")}` : "";
+}
+
+// ---------------------------------------------------------------- real-world moves
+// Every loot card creates one real thing to do this week. Tick it when it's done for real.
+function addRealMove(mv, src, city) {
+  if (!mv?.title || G.real.some((m) => m.text === mv.title && !m.done)) return;
+  G.real.push({ id: "m" + Date.now().toString(36) + G.real.length, text: mv.title, detail: mv.detail ?? "", src, city, week: G.week, done: false });
   hudReal();
 }
 function hudReal() { const done = G.real.filter((m) => m.done).length; $("#real-n").textContent = G.real.length ? `${done}/${G.real.length}` : ""; }
 function markReal(id) {
   const m = G.real.find((x) => x.id === id); if (!m || m.done) return;
-  m.done = true; G.realDone++; G.buzz = Math.min(BUZZ_MAX, G.buzz + 1); G.achPts += 200;
-  Sound.play("victory"); toast("Done for real. +1 buzz, +200 score. That's how you actually grow."); ach("real");
+  m.done = true; G.realDone++; G.realTicks = (G.realTicks ?? 0) + 1; G.achPts += 200;
+  Sound.play("victory"); toast(G.realTicks <= 2 ? "Done for real. +200 XP lands at END WEEK." : "Done for real. (Two a week count for XP; this one still counts for the win.)"); ach("real");
   hud(); hudReal(); Drawer.render();
 }
 // calendar file for the show nights the game found
@@ -1697,7 +1600,7 @@ function icsFile() {
   return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Conquest//EN", ...ev, "END:VCALENDAR"].join("\r\n");
 }
 function downloadIcs() {
-  if (!G.nights.length && !G.real.some((m) => m.city)) return toast("Nothing to schedule yet: execute an order or send the Weather oracle to a city.");
+  if (!G.nights.length && !G.real.some((m) => m.city)) return toast("Nothing to schedule yet: send the Booker or the Weather oracle to a city.");
   const url = URL.createObjectURL(new Blob([icsFile()], { type: "text/calendar" })), a = document.createElement("a");
   a.href = url; a.download = "conquest-show-nights.ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
@@ -1714,32 +1617,35 @@ function askMonday() {
   $("#mr-no").onclick = done;
   $("#mr-form").onsubmit = async (e) => { e.preventDefault(); syncCampaign(); await new Promise((r) => setTimeout(r, 1400)); const r = await post("/api/mail/subscribe", { campaignId: G.cid, email: $("#mr-email").value.trim(), firstName: $("#mr-name").value.trim(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone }, 15000); toast(r?.ok ? "Done: your first war report lands Monday at 8 am." : "Couldn't save that email."); done(); };
 }
-function intro() {
+// ---------------------------------------------------------------- screen 0: pick your objective
+// Before week 1: what do you want in 8 weeks? It becomes the quest bar, the
+// missions and the win screen. The missions sheet brings you back here later.
+function intro(change = false) {
   return new Promise((resolve) => {
-    const c = G.c, best = c.split?.top, tags = (G.player.aud?.tags ?? []).filter((t) => !/protagonist|fiction|animated|minions|dinosaur|zoo|organic|academic/i.test(t)).slice(0, 2);
-    const bestCity = best && G.cities.find((x) => x.name === best.metro); if (bestCity) G.prep.add(bestCity.name);
-    const facs = [...G.fac.values()], nem = facs.find((f) => f.strategy === "compete") ?? facs[0], pals = facs.filter((f) => f !== nem);
-    const [, an, aname] = ageOf(G.conquest), goal = AGES.find((x) => x[0] > G.conquest) ?? AGES.at(-1);
-    const card = (e, k, h, t) => `<div class="bp"><span class="bp-i emo">${e}</span><div><small>${k}</small><b>${esc(h)}</b><p>${esc(t)}</p></div></div>`;
-    $("#intro-body").innerHTML = `<div class="br">
-      <div class="br-k">CAMPAIGN BRIEFING · ${WEEKS} WEEKS ON THE CLOCK</div>
-      <div class="br-vs">
-        <div class="br-side you">${avatar(G.player.image, G.player.name)}<b>${esc(G.player.name)}</b><small>Age ${an} · ${esc(aname)} · ${G.conquest}%</small></div>
-        <div class="br-x">vs</div>
-        ${nem ? `<div class="br-side foe" style="--c:${nem.col}">${avatar(nem.img, nem.name)}<b>${esc(nem.name)}</b><small>Nemesis · same fans, same taste</small></div>` : "<div></div>"}
-      </div>
-      ${pals.length ? `<div class="br-pals"><small>Could be allies</small>${pals.map((f) => `<span style="--c:${f.col}">${avatar(f.img, f.name, "fp")}${esc(f.name)}</span>`).join("")}</div>` : ""}
-      <div class="br-goal"><div><small>Objective</small><b>Reach ${esc(goal[2])} (${goal[0]}%) before week ${WEEKS}</b></div><div class="xpbar"><i style="width:${Math.min(100, (G.conquest / goal[0]) * 100)}%"></i></div><span>${G.conquest}% → ${goal[0]}%</span></div>
-      <div class="br-pow">
-        ${best ? card("🏙️", "HOME TURF", best.metro, `Fans rate you ${best.mean.toFixed(1)}/5 here, your best city. It starts prepared: battles +30%.`) : ""}
-        ${tags.length ? card("🎯", "YOUR CROWD LOVES", tags.join(" · "), "From Qloo's taste graph. Your Copywriter and Scout lean on it.") : ""}
-        ${card("💰", "TREASURY", "⚡8 buzz · 🪙300 gold", "Cities pay 15 gold a week. Stationed agents and caravans pay more.")}
-      </div>
-      <div class="br-how"><span><b>1</b>Execute orders</span><i>→</i><span><b>2</b>Each becomes a real mission</span><i>→</i><span><b>3</b>Do it for real, tick it, get paid</span></div>
-      <button class="go ibegin" id="intro-go">Begin campaign</button>
-    </div>`;
-    $("#intro").hidden = false; G.modal = true;
-    $("#intro-go").onclick = () => { $("#intro").hidden = true; G.modal = false; Sound.play("ageup"); resolve(); };
+    const nem = nemesis(), fans = G.cities.reduce((s, c) => s + (c.you || 0), 0), box = $("#intro-body");
+    let sel = G.objective ?? "tour", city = G.objCity;
+    const picks = G.cities.filter((c) => !isHeld(c) && c.state !== "uncharted").sort((a, b) => b.you - a.you).slice(0, 5);
+    const ov = nem?.plan?.overlap ?? 0, ovp = ov > 1 ? Math.round(ov) : Math.round(ov * 100);
+    const foe = nem ? `${nem.name} shares ${ovp}% of your fans${nem.plan.holds?.length ? ` and holds ${nem.plan.holds.slice(0, 2).join(" and ")}` : ""}. ${lastName(nem.name)} will come for your cities.` : "No rival is fighting you for these fans yet.";
+    const draw = () => {
+      const o = objectiveOf(sel), ms = buildMissions(sel, { ...missionCtx(), objCity: city });
+      box.innerHTML = `<div class="obj-h"><div class="k">${esc(G.player.name)} · ${fans.toLocaleString()} fans found in ${G.cities.length} US cities (Qloo) · ${change ? `week ${G.week} of ${WEEKS}` : "before week 1"}</div>
+        <h1>What do you want in ${change ? `the next ${Math.max(1, WEEKS - G.week + 1)} weeks` : "8 weeks"}?</h1><p>Pick one. It becomes your quest on screen the whole game, your army gets missions for it, and the win screen hands you the real thing.</p></div>
+        <div class="obj-cards">${OBJECTIVES.map((x) => `<button class="ocard${x.id === sel ? " on" : ""}" data-obj="${x.id}" style="--oc:${x.col}" aria-pressed="${x.id === sel}"><span class="t">${x.tag}</span><span class="n">${esc(x.title)}</span><span class="b">${esc(x.blurb)}</span><span class="g">You get: ${esc(x.get)}</span></button>`).join("")}</div>
+        ${sel === "city" ? `<div class="obj-pick"><span>Which city? The biggest you don't hold yet:</span>${picks.map((c) => `<button class="chip2${c.name === city ? " on" : ""}" data-oc="${esc(c.name)}">${esc(c.name)} · ${kfmt(c.you)} fans</button>`).join("")}</div>` : ""}
+        <section class="obj-mis" aria-label="Your missions"><div><div class="hd"><h2>YOUR MISSIONS · ${esc(o.title.toUpperCase())}</h2><span>one per 2 weeks, each unlocks the next</span></div>
+          ${ms.map((m) => `<div class="mrow"><span class="wk">${m.wk.join("–")}</span><span><strong>${esc(m.title)}</strong><small>${esc(m.how)}</small><em>Done when: ${esc(m.done)}</em></span></div>`).join("")}</div>
+          <div><h2>YOUR ARMY FOR THIS</h2><div class="tx">${esc(o.army({ nem: nem?.name }))}</div><h2>HOW YOU WIN</h2><div class="tx">${esc(o.win)}</div><h2 class="foe">WHO'S IN YOUR WAY</h2><div class="tx">${esc(foe)}</div></div></section>
+        <div class="obj-f"><span>Change your objective any time from the quest bar. Your progress carries over.</span><button class="bigcta" id="intro-go" ${sel === "city" && !city ? "disabled title=\"Pick a city first\"" : ""}>${change ? "KEEP PLAYING" : "START WEEK 1"}</button></div>`;
+      $$("[data-obj]").forEach((b) => b.addEventListener("click", () => { sel = b.dataset.obj; if (sel === "city" && !city) city = picks[0]?.name ?? null; Sound.play("select"); draw(); }));
+      $$("[data-oc]").forEach((b) => b.addEventListener("click", () => { city = b.dataset.oc; Sound.play("select"); draw(); }));
+      $("#intro-go").onclick = () => {
+        setObjective(sel, city); box.classList.remove("obj"); $("#intro").hidden = true; G.modal = false; Sound.play("ageup");
+        ops(`<span class="ok">objective</span> ${esc(objectiveOf(sel).title)}${G.objCity ? ` · ${esc(G.objCity)}` : ""}`);
+        hud(); renderAgents(); MapView.relayer(); saveGame(); resolve();
+      };
+    };
+    box.classList.add("obj"); draw(); $("#intro").hidden = false; G.modal = true;
   });
 }
 
@@ -1769,6 +1675,7 @@ function rivalLine(f, kind, x = {}) {
     hot: [`My Wikipedia's up ${Math.abs(mo ?? 0)}% this month. Keep up.`, `Everyone's searching my name this month. Just saying.`],
     cold: [`Slow month for me. Don't get comfortable.`, `Quiet week. I'm writing.`],
     calm: [`Nice map, ${me}. Shame if someone took it.`, `Watching your ground. Always watching.`],
+    retreat: [`Fine. Keep your ${(G.player.aud?.tags ?? []).find((t) => t.length < 18 && !/protagonist|fiction|animated/i.test(t)) ?? "home"} crowd. I'm bringing ${x.next ?? "a bigger set"} next time.`],
   };
   let k = kind;
   if (k === "ambient") k = f.allied ? "allied" : sg ? "siege" : it ? "intent" : f.strategy === "ally" ? "ally" : mo > 10 ? "hot" : mo < 0 ? "cold" : "calm";
@@ -1802,34 +1709,29 @@ function placeSay(box, f) {
   if (btn && mw) { const r = btn.getBoundingClientRect(), m = mw.getBoundingClientRect(); box.style.top = Math.max(14, Math.min(m.height - box.offsetHeight - 14, r.top - m.top - 8)) + "px"; }
 }
 // your simulated fans speak too: real lines from the 1,000-fan panel, by city
-function fanSay(city) {
-  const qs2 = G.c?.aggregate?.quotes ?? []; if (!qs2.length) return;
-  const q = qs2.find((x) => x.persona?.includes(city)) ?? anyOf(qs2), who = (q.persona ?? "").split(" · ").slice(1, 3).join(", ");
-  say({ id: "fan", name: `A fan in ${city}`, role: who ? `Your fan · ${who}` : "Your fan", emoji: anyOf(["🧑", "👩", "🧔", "👱‍♀️", "🧑‍🦱"]), col: "#3dff9a" }, q.text.replace(/\s*\(\d\/5\)\s*$/, ""));
-}
 function rivalCard(f) {
   const box = $("#say"); if (!box || !G || !f) return;
   clearInterval(sayT); clearTimeout(sayT); sayQ = []; cardFor = f.id; sayOn = true;
   const lv = threatLevel(f), it = G.intents.find((x) => x.fid === f.id), sg = G.sieges.find((x) => x.fid === f.id), fm = G.fame.get(f.name), sc = strikeCity(f);
   const held = G.cities.filter((c) => c.owner === f.id && c.state === "rival").map((c) => c.name), cityOf = (n) => G.cities.find((c) => c.name === n);
-  const now = f.allied ? "Allied: fights at your side." : sg ? `Besieging your ${sg.city}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""}.` : it ? `Marching on ${it.city}${G.forts.has(it.city) ? ", but your walls are up" : ": arrives Sunday midnight"}.` : "No attack planned this week.";
+  const now = f.allied ? "Allied: fights at your side." : sg ? `Besieging your ${sg.city}: falls in ${sg.left} week${sg.left > 1 ? "s" : ""}.` : it ? `Marching on ${it.city}${G.forts.has(it.city) ? ", but your walls are up" : ": hits at END WEEK"}.` : "No attack planned this week.";
   const risk = sg ? `You lose ${sg.city} (−${pts(cityOf(sg.city))}%).` : it && !G.forts.has(it.city) ? `A 2-week siege starts (${pts(cityOf(it.city))}% at stake).` : "Nothing, for now.";
-  const di = sg ? G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city) : -1;
+  const di = sg ? 1 : -1;
   box.style.setProperty("--c", f.allied ? COL.allied : f.col); box.classList.add("card");
   box.innerHTML = `<div class="sp">${avatar(f.img, f.name)}</div><div style="min-width:0">
     <div class="sn"><b>${esc(f.name)}</b><small>${ROLE(f)}</small><small class="lvx ${lv}">${LV_LABEL[lv]}</small><button class="say-x" title="Close">✕</button></div>
     <p class="st"></p>
     <div class="say-chips">${fm?.views ? `<span>${kfmt(fm.views)} views/30d ${fm.momentum >= 0 ? "▲" : "▼"}${Math.abs(fm.momentum)}%</span>` : ""}<span>${held.length ? "holds " + esc(held.slice(0, 2).join(", ")) : "no cities yet"}</span></div>
     <dl class="say-dl"><dt>This week</dt><dd>${esc(now)}</dd><dt>If you wait</dt><dd class="${sg ? "bad" : it && !G.forts.has(it.city) ? "warn" : ""}">${esc(risk)}</dd></dl>
-    ${f.allied ? "" : `<div class="say-act">${di >= 0 ? `<button class="go" data-sa="def">🛡 Defend · ⚡${COST.defend}</button>` : ""}${it && !G.forts.has(it.city) ? `<button class="ghostbtn" data-sa="fort" ${G.gold >= 80 ? "" : "disabled"}>🛡 Walls · 🪙80</button>` : ""}<button class="${di >= 0 ? "ghostbtn" : "go"}" data-sa="strike" ${sc && G.buzz >= 4 ? "" : "disabled"} title="${sc ? "Strike first in " + esc(sc.name) : "They hold no city to hit yet"}">⚔ Strike · ⚡4</button><button class="ghostbtn" data-sa="parley">🕊 Deal</button></div>`}
+    ${f.allied ? "" : `<div class="say-act">${di >= 0 ? `<button class="go" data-sa="def">🛡 Defend · 1 order</button>` : ""}${it && !G.forts.has(it.city) ? `<button class="ghostbtn" data-sa="fort" ${G.gold >= 80 ? "" : "disabled"}>🛡 Walls · 80 gold</button>` : ""}<button class="${di >= 0 ? "ghostbtn" : "go"}" data-sa="strike" ${sc ? "" : "disabled"} title="${sc ? "Strike first in " + esc(sc.name) : "They hold no city to hit yet"}">⚔ Strike · 1 order</button><button class="ghostbtn" data-sa="parley">🕊 Diplomat · 1 order</button></div>`}
   </div>`;
   box.hidden = false; placeSay(box, f); Sound.play("select");
   const close = () => { cardFor = null; sayOn = false; box.hidden = true; box.classList.remove("card"); if (G.selected?.type === "rival") { G.selected = null; renderRivalStrip(); } sayNext(); };
   box.querySelector(".say-x").onclick = (e) => { e.stopPropagation(); close(); };
-  box.querySelector('[data-sa="def"]')?.addEventListener("click", () => { close(); execute(di); });
+  box.querySelector('[data-sa="def"]')?.addEventListener("click", () => { close(); defendOrder(sg.city); });
   box.querySelector('[data-sa="fort"]')?.addEventListener("click", () => { fortify(it.city); rivalCard(f); });
   box.querySelector('[data-sa="strike"]')?.addEventListener("click", () => { close(); strike(f.id); });
-  box.querySelector('[data-sa="parley"]')?.addEventListener("click", () => { close(); parley({ name: f.name, f, barter: f.plan.barter, netnew: f.plan.netnew, convert: f.plan.convert, city: f.plan.city }); });
+  box.querySelector('[data-sa="parley"]')?.addEventListener("click", () => { close(); parleyOrder(f.id); });
   const st = box.querySelector(".st"), text = rivalLine(f, "ambient"); let i = 0; box.classList.add("typing");
   sayT = setInterval(() => { i += 2; st.textContent = text.slice(0, i); if (i >= text.length) { clearInterval(sayT); box.classList.remove("typing"); } }, 26);
 }
@@ -1842,8 +1744,8 @@ function planIntents() {
   planIntentsRaw();
   G.intents.sort((a, b) => (G.fac.get(a.fid)?.strategy === "compete" ? 0 : 1) - (G.fac.get(b.fid)?.strategy === "compete" ? 0 : 1));
   G.intents = G.intents.slice(0, 2);
-  for (const it of G.intents) ops(`<span class="rv">📡 radar: ${esc(G.fac.get(it.fid)?.name)}</span> is massing toward <b>${esc(it.city)}</b> · arrives Sunday`);
-  const loud = G.intents[0] && G.fac.get(G.intents[0].fid); if (loud && G.week > 1) setTimeout(() => say(loud, rivalLine(loud, "intent", { city: G.intents[0].city })), 1800);
+  for (const it of G.intents) ops(`<span class="rv">📡 radar: ${esc(G.fac.get(it.fid)?.name)}</span> is massing toward <b>${esc(it.city)}</b> · hits at END WEEK`);
+  const loud = G.intents[0] && G.fac.get(G.intents[0].fid), at = G.intents[0]?.city; if (loud && G.week > 1) setTimeout(() => say(loud, rivalLine(loud, "intent", { city: at })), 1800);
 }
 function planIntentsRaw() {
   G.intents = [];
@@ -1868,15 +1770,19 @@ const SAVE_KEY = (name) => "conquest:v1:" + String(name).toLowerCase();
 let TOURING = false;
 function snapshot() {
   return {
-    v: 1, cid: G.cid, mailAsked: !!G.mailAsked, tourPlan: G.tourPlan ?? null, name: G.player.name, ts: Date.now(), over: G.over, week: G.week, hour: G.hour,
-    conquest: G.conquest, start: G.start, startHeld: G.startHeld, buzz: G.buzz, gold: G.gold, morale: G.morale,
-    allies: G.allies, taken: G.taken, saved: G.saved, lost: G.lost, missions: G.missions, achPts: G.achPts, realDone: G.realDone,
+    v: 2, cid: G.cid, mailAsked: !!G.mailAsked, tourPlan: G.tourPlan ?? null, name: G.player.name, ts: Date.now(), over: G.over, week: G.week,
+    conquest: G.conquest, start: G.start, startHeld: G.startHeld, gold: G.gold, morale: G.morale,
+    allies: G.allies, taken: G.taken, saved: G.saved, lost: G.lost, runs: G.runs, achPts: G.achPts, realDone: G.realDone,
     cities: G.cities.map((c) => [c.name, c.state, c.owner, c.contested]),
     fac: [...G.fac.values()].map((f) => [f.id, f.allied, f.last]),
     orders: G.orders, doneLog: G.doneLog, crew: [...G.crew], sponsors: G.sponsors, intel: [...G.intel], prep: [...G.prep], forts: [...G.forts],
     reports: G.reports ?? {}, intents: G.intents, sieges: G.sieges, used: G.potions.filter((p) => p.used).map((p) => p.title), nights: G.nights, drafts: G.drafts, pitches: G.pitches,
     real: G.real, ach: [...G.ach], parleyed: [...G.parleyed],
-    army: [...G.army.values()].map((u) => (u.state === "moving" ? { id: u.id, p: u.to, at: u.toCity, state: "idle" } : { id: u.id, p: u.p, at: u.at, state: u.state === "working" ? "stationed" : u.state })),
+    army: [...G.army.values()].map((u) => (u.state === "moving" ? { id: u.id, p: u.to, at: u.toCity, state: "stationed" } : { id: u.id, p: u.p, at: u.at, state: u.state === "working" ? "stationed" : u.state, order: u.order ?? null })),
+    objective: G.objective, objCity: G.objCity, missions: (G.missions ?? []).map((m) => ({ id: m.id, complete: !!m.complete })), ordersLeft: G.ordersLeft, orderQueue: G.orderQueue,
+    xp: G.xp, unitXp: [...G.unitXp], report: G.report, headline: G.headline, venues: G.venues,
+    dms: G.dms, guestSpots: G.guestSpots, posts: [...G.posts], scouted: [...G.scouted], proven: !!G.proven, sponsorPitches: G.sponsorPitches, venueMails: G.venueMails,
+    offers: G.offers, offersNext: G.offersNext, offersSeen: G.offersSeen ?? [], bonusNext: G.bonusNext, realTicks: G.realTicks ?? 0, fanLine: G.fanLine ?? null, readBonus: [...G.readBonus],
   };
 }
 function saveGame() { if (!G || G.tour || G.noSave) return; try { localStorage.setItem(SAVE_KEY(G.player.name), JSON.stringify(snapshot())); } catch {} syncCampaign(); }
@@ -1889,20 +1795,31 @@ function syncCampaign() {
       cities: G.cities.map((c) => ({ name: c.name, side: sideOf(c), owner: c.owner && c.owner !== "you" ? (G.fac.get(c.owner)?.name ?? null) : null })),
       intents: G.intents, sieges: G.sieges, rivals: [...G.fac.values()].map((f) => ({ id: f.id, name: f.name })),
       orders: G.orders.map((o) => ({ id: String(o.id), title: o.title, city: o.city ?? null, cost: costOf(o), gain: gainOf(o), done: !!o.done })),
+      objective: G.objective, objCity: G.objCity, xp: G.xp, level: levelOf(G.xp).name, headline: G.headline, report: G.report, quest: (({ label, have, need, unit }) => ({ label, have, need, unit }))(quest()),
       real: G.real.map((m) => ({ text: m.text, city: m.city ?? null, done: !!m.done })) };
     fetch("/api/campaign/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: G.cid, snap }) }).catch(() => {});
   }, 1200);
 }
-function loadSave(name) { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY(name)) || "null"); return s?.v === 1 ? s : null; } catch { return null; } }
+// v1 saves (the clock game) come back as v2: objective "tour", XP from conquest, a fresh week of orders
+function loadSave(name) { try { return migrateSave(JSON.parse(localStorage.getItem(SAVE_KEY(name)) || "null")); } catch { return null; } }
 function restore(s) {
-  for (const [name, state, owner, contested] of s.cities) { const c = G.cities.find((x) => x.name === name); if (c) Object.assign(c, { state, owner, contested }); }
+  s = migrateSave(s);
+  for (const [name, state, owner, contested] of s.cities) { const c = cityOf(name); if (c) Object.assign(c, { state, owner, contested }); }
   for (const [id, allied, last] of s.fac) { const f = G.fac.get(id); if (f) Object.assign(f, { allied, last }); }
   if (s.cid) G.cid = s.cid;
   G.mailAsked = !!s.mailAsked; G.tourPlan = s.tourPlan ?? null;
-  Object.assign(G, { week: s.week, hour: s.hour, conquest: s.conquest, start: s.start, startHeld: s.startHeld, buzz: s.buzz, gold: s.gold, morale: s.morale, allies: s.allies, taken: s.taken, saved: s.saved, lost: s.lost, missions: s.missions, achPts: s.achPts, realDone: s.realDone,
-    orders: s.orders, doneLog: s.doneLog, crew: new Map(s.crew.map(([k, v]) => [k, { ...v, busy: false }])), sponsors: s.sponsors, intel: new Map(s.intel), prep: new Set(s.prep), forts: new Set(s.forts),
-    reports: s.reports ?? {}, intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used) });
+  Object.assign(G, { week: s.week, hour: 60, conquest: s.conquest, start: s.start, startHeld: s.startHeld, gold: s.gold, morale: s.morale, allies: s.allies, taken: s.taken, saved: s.saved, lost: s.lost, runs: s.runs ?? 0, achPts: s.achPts, realDone: s.realDone,
+    orders: s.orders, doneLog: s.doneLog ?? [], crew: new Map(s.crew.map(([k, v]) => [k, { ...v, busy: false }])), sponsors: s.sponsors, intel: new Map(s.intel), prep: new Set(s.prep), forts: new Set(s.forts),
+    reports: s.reports ?? {}, intents: s.intents, sieges: s.sieges, nights: s.nights, drafts: s.drafts, pitches: s.pitches, real: s.real, ach: new Set(s.ach), parleyed: new Set(s.parleyed), usedTrends: new Set(s.used),
+    xp: s.xp ?? 0, unitXp: new Map(s.unitXp ?? []), ordersLeft: s.ordersLeft ?? 3, orderQueue: (s.orderQueue ?? []).filter((o) => o.unitId === "you" || o.unitId.startsWith("offer") || s.crew.some(([k]) => k === o.unitId)),
+    report: s.report ?? null, headline: s.headline ?? "", venues: s.venues ?? [], dms: s.dms ?? [], guestSpots: s.guestSpots ?? [], posts: new Set(s.posts ?? []), scouted: new Set(s.scouted ?? []), proven: !!s.proven,
+    sponsorPitches: s.sponsorPitches ?? [], venueMails: s.venueMails ?? [], offers: s.offers ?? [], offersNext: s.offersNext ?? [], offersSeen: s.offersSeen ?? [], bonusNext: s.bonusNext ?? 0, realTicks: s.realTicks ?? 0, fanLine: s.fanLine ?? null, readBonus: new Map(s.readBonus ?? []) });
   G.army = new Map(s.army.map((u) => [u.id, { ...u }]));
+  for (const id of BASE6) if (!G.crew.get(id)?.recruited) { G.crew.set(id, { recruited: true, week: 0, busy: false }); if (!G.army.has(id)) spawnUnit(id); }
+  for (const u of G.army.values()) if (u.state === "ordered" && !G.orderQueue.some((o) => o.unitId === u.id)) u.state = "idle";
+  G.objective = s.objective ?? "tour"; G.objCity = s.objCity ?? null;
+  setObjective(G.objective, G.objCity);
+  const done = new Set((s.missions ?? []).filter((m) => m.complete).map((m) => m.id)); for (const m of G.missions) if (done.has(m.id)) m.complete = true;
   assignStates(); G.layer = null;
 }
 // the welcome-back screen: what you committed to, and whether you did it
@@ -1911,21 +1828,21 @@ function welcomeBack(s) {
     const days = (Date.now() - s.ts) / 864e5, open = s.real.filter((m) => !m.done), ticked = new Set();
     const away = days < 1 / 24 ? "moments ago" : days < 1 ? `${Math.round(days * 24)} hours ago` : `${Math.round(days)} day${Math.round(days) === 1 ? "" : "s"} ago`;
     const box = $("#intro-body"); G.modal = true;
-    const [, an, aname] = ageOf(s.conquest), goal = AGES.find((x) => x[0] > s.conquest) ?? AGES.at(-1);
+    const LV = levelOf(s.xp ?? 0), an = LV.roman, aname = LV.name, goal = [LV.next?.at ?? LV.at, LV.next?.roman ?? LV.roman, LV.next?.name ?? LV.name];
     const held = (s.cities ?? []).filter(([, st]) => st === "stronghold" || st === "frontline").length, agents = (s.crew ?? []).filter(([, c]) => c?.recruited).length;
     const stat = (e, v, k) => `<div class="wb-stat"><span class="emo">${e}</span><b>${v}</b><small>${k}</small></div>`;
-    const bonus = days >= 0.5 ? "+⚡2 for coming back" : "Come back tomorrow: +⚡2";
+    const bonus = days >= 0.5 ? "+1 order this week for coming back" : "Come back tomorrow: +1 order";
     box.innerHTML = `<div class="br wb">
-      <div class="br-k">${s.over ? "CAMPAIGN COMPLETE" : "CAMPAIGN SAVED"} · WEEK ${s.week} OF ${WEEKS} · LAST PLAYED ${away.toUpperCase()}</div>
-      <div class="wb-hero">${avatar(G.player.image, G.player.name)}<div><small>Welcome back, Commander</small><b>${esc(G.player.name)}</b><span>Age ${an} · ${esc(aname)}${s.over ? ` · finished at ${s.conquest}%` : ""}</span></div></div>
-      <div class="br-goal"><div><small>${s.over ? "Final ground" : "Next age"}</small><b>${s.over ? `You took ${s.start}% → ${s.conquest}%` : `Reach ${esc(goal[2])} (${goal[0]}%)`}</b></div><div class="xpbar"><i style="width:${Math.min(100, (s.conquest / goal[0]) * 100)}%"></i></div><span>${s.conquest}% → ${goal[0]}%</span></div>
-      <div class="wb-stats">${stat("🏙️", held, "cities held")}${stat("⚡", s.buzz, "buzz")}${stat("🪙", s.gold, "gold")}${stat("🤖", agents, "agents")}${stat("🏆", s.realDone ?? 0, "real moves")}</div>
+      <div class="br-k">${s.over ? "CAMPAIGN COMPLETE" : "CAMPAIGN SAVED"} · WEEK ${Math.min(s.week, WEEKS)} OF ${WEEKS} · LAST PLAYED ${away.toUpperCase()}</div>
+      <div class="wb-hero">${avatar(G.player.image, G.player.name)}<div><small>Welcome back, Commander</small><b>${esc(G.player.name)}</b><span>Age ${an} · ${esc(aname)}${s.over ? ` · finished with ${s.xp ?? 0} XP` : ""}</span></div></div>
+      <div class="br-goal"><div><small>${s.over ? "Campaign" : `Quest: ${esc(objectiveOf(s.objective).title)}`}</small><b>${s.over ? (s.headline ? esc(s.headline) : "Finished") : LV.next ? `${LV.toNext} XP to Lv ${LV.next.roman} · ${esc(LV.next.name)}` : "Max level"}</b></div><div class="xpbar"><i style="width:${Math.round(LV.frac * 100)}%"></i></div><span>Lv ${an} · ${s.xp ?? 0} XP</span></div>
+      <div class="wb-stats">${stat("🏙️", held, "cities held")}${stat("⭐", s.xp ?? 0, "XP")}${stat("🪙", s.gold, "gold")}${stat("🤖", agents, "agents")}${stat("🏆", s.realDone ?? 0, "real moves")}</div>
       <div class="wb-rep"><div class="wb-k">📰 Your war report <span>week ${s.week} · live from Qloo, Google Trends and your map</span></div>
         <div class="wb-cols"><div class="wb-col"><h4>What changed</h4><ul id="wb-changes"><li class="none wb-load">Reading the map…</li></ul></div>
         <div class="wb-col"><h4>Your 3 moves</h4><div id="wb-moves" style="display:grid;gap:6px"><span class="wb-load">Asking your strategist…</span></div></div></div>
         <div class="wb-chips"><span class="wb-chip">${s.over ? "🏁 Finished: start a new one, your open missions come with you" : `⏳ Your agents held their posts${days >= 6 ? " · a real week passed, rivals moved" : ""}`}</span><span class="wb-chip${days >= 0.5 ? " good" : ""}">🎁 ${bonus}</span><span id="wb-tour"></span></div>
       </div>
-      <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +⚡1 · +200 score</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Execute orders in the game and each one becomes a real mission for your week.</p>`}</div>
+      <div class="wb-real"><div class="wb-k">Did you do these for real? <em>each pays +200 XP</em></div>${open.length ? open.map((m) => `<div class="move real"><button class="tick" data-wb="${m.id}" title="I did this in real life"></button><span>${esc(m.text)}<small>committed week ${m.week}</small></span></div>`).join("") : `<p>No open missions yet. Execute orders in the game and each one becomes a real mission for your week.</p>`}</div>
       <div class="wb-act">${s.over ? "" : `<button class="go ibegin" id="wb-go">▶ Continue campaign</button>`}<button class="ghostbtn" id="wb-new">New campaign</button></div>
     </div>`;
     $("#intro").hidden = false;
@@ -1967,7 +1884,7 @@ function applyReturn(r, s) {
   if (r.mode === "continue") {
     restore(s);
     for (const id of r.ticked) markReal(id);
-    if (r.days >= 0.5) { G.buzz = Math.min(BUZZ_MAX, G.buzz + 2); event("🔥 Returning bonus: +2 buzz.", "good"); }
+    if (r.days >= 0.5) { G.ordersLeft += 1; event("🔥 Returning bonus: +1 order this week.", "good"); }
     ops(`<span class="ok">campaign restored</span> · week ${G.week}, ${G.conquest}% · ${G.real.filter((m) => !m.done).length} real missions open`);
     if (r.days >= 6) setTimeout(() => { event("📅 A real week passed. Your rivals made their moves.", "bad"); endWeek(); }, 1500);
   } else {
@@ -1976,7 +1893,7 @@ function applyReturn(r, s) {
     G.real = carry; if (r.ticked.length) { G.realDone += r.ticked.length; G.achPts += 200 * r.ticked.length; ach("real"); }
     if (carry.length) ops(`<span class="ok">carried over</span> ${carry.length} real mission${carry.length > 1 ? "s" : ""} from your last campaign`);
   }
-  hud(); hudReal(); renderOrders(); renderAgents(); renderRivalStrip(); MapView.relayer();
+  hud(); hudReal(); renderAgents(); renderRivalStrip(); MapView.relayer();
 }
 addEventListener("beforeunload", saveGame);
 setInterval(() => { if (G && !$("#game").hidden) saveGame(); }, 12000);
@@ -2056,75 +1973,31 @@ let TOUR_T0 = 0, tourSpot = null;
 function spot(sel) { tourSpot?.classList.remove("spot"); tourSpot = sel ? $(sel) : null; tourSpot?.classList.add("spot"); }
 function stopTour() { TOURING = false; spot(null); const b = $("#tourbar"); if (b) b.hidden = true; if (G) { G.tour = false; Clock.reset(); } }
 async function runTour() {
-  if (TOURING) return; TOURING = true; document.body.classList.remove("simple"); TOUR_T0 = Date.now(); const N = 12, live = () => TOURING;
+  if (TOURING) return; TOURING = true; setView(false); TOUR_T0 = Date.now(); const N = 7, live = () => TOURING;
   try { localStorage.setItem("conquest-coached", "1"); } catch {}
-  caption(1, N, "Conquest is the growth agent you play like a strategy game. Watch a full week in two minutes.");
-  await sleep(4000); if (!live()) return;
+  caption(1, N, "Conquest is the growth agent you play like a strategy game. Watch a full week in a minute.");
+  await sleep(3500); if (!live()) return;
   openWho("Jason Calacanis");
   caption(2, N, "Type any name: Qloo finds you, with your photo and verified socials.");
-  await until(() => $('[data-me="0"]')); await sleep(2500); if (!live()) return;
+  await until(() => $('[data-me="0"]')); await sleep(2000); if (!live()) return;
   $('[data-me="0"]').click();
-  caption(3, N, "Agents scout your real audience: ~100 live Qloo calls and 1,000 simulated fans.");
-  await until(() => G && !$("#game").hidden && !$("#intro").hidden, 90000); if (!live()) return;
+  caption(2, N, "Agents scout your real audience: live Qloo calls and 1,000 simulated fans.");
+  await until(() => G && !$("#game").hidden && !$("#intro").hidden && $("#intro-go"), 90000); if (!live()) return;
   G.tour = true;
-  caption(4, N, "Your powers come from real data. Your rivals are the people your fans also follow.");
-  await sleep(5500); if (!live()) return; $("#intro-go")?.click();
-  await sleep(600);
-  caption(5, N, "This is your audience as territory. Violet is you. Rivals hold the rest.");
-  spot("#mapwrap"); await sleep(5000); spot(null); if (!live()) return;
-  // move an agent
-  const tgt = G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => sideOf(c) !== "you") ?? G.cities[0];
-  if (!G.crew.get("booker")?.recruited) { G.gold = Math.max(G.gold, 200); recruit("booker"); }
-  select({ type: "unit", id: "booker" }); spot("#slot-army");
-  caption(6, N, `Agents are units. Send the Booker to ${tgt.name}: it marches on the world clock, then makes a live Qloo call.`);
-  await sleep(1500); spot(null); sendUnit("booker", tgt); Clock.fast();
-  await until(() => G.crew.get("booker")?.week === G.week && !G.crew.get("booker")?.busy && G.army.get("booker")?.state !== "moving", 30000); Clock.fast(); if (!live()) return;
-  caption(6, N, `Back with a real stage: ${(G.intel.get(tgt.name) ?? []).find((t) => t.startsWith("🎟️"))?.replace(/^🎟️ /, "") ?? "a venue its crowd fits"}`);
-  await sleep(3500); if (!live()) return;
-  // take a city → real mission
-  const oi = G.orders.findIndex((o) => !o.done && ["take", "hold", "edit"].includes(o.kind) && costOf(o) <= G.buzz);
-  if (oi >= 0) {
-    caption(7, N, "Execute the next move. The city floods violet…");
-    spot("#slot-next"); await sleep(1500); spot(null); await execute(oi); await sleep(1200);
-    caption(7, N, "…and it becomes a real mission for your week. Tick it when you've done it for real.");
-    Drawer.open("moves"); await sleep(5000); Drawer.close(); if (!live()) return;
-  }
-  // the radar
-  ensureThreat(); hud(); const it = G.intents[0], foe = it && G.fac.get(it.fid);
-  caption(8, N, foe ? `The radar sees ${foe.name} marching on ${it.city}, days ahead. Fortify, strike first, or parley.` : "The radar sees rivals coming days ahead.");
-  spot("#slot-radar"); if (foe) select({ type: "rival", id: foe.id }); await sleep(4500); spot(null); if (!live()) return;
-  if (foe && it && G.gold >= 80) { fortify(it.city); await sleep(1200); }
-  // a battle
-  const enemy = [...G.fac.values()].find((f) => !f.allied && strikeCity(f));
-  if (enemy) {
-    G.buzz = Math.max(G.buzz, 4);
-    caption(9, N, `Battle ${enemy.name} for ${strikeCity(enemy).name}. Odds come from real numbers: your fans and hype vs their footprint and Wikipedia momentum.`);
-    strike(enemy.id); await until(() => !$("#battle").hidden, 5000); await sleep(2500); $("#charge")?.click(); await until(() => $("#bdone"), 9000); await sleep(1800); $("#bdone")?.click(); await sleep(1500);
-  }
-  if (!live()) return;
-  // a parley
-  const pal = [...G.fac.values()].find((f) => !f.allied && f.strategy === "ally") ?? [...G.fac.values()].find((f) => !f.allied);
-  if (pal) {
-    G.buzz = Math.max(G.buzz, 3);
-    caption(10, N, `Or turn a rival into a co-headliner. Conquest finds the smallest offer that works and writes the pitch.`);
-    parley({ name: pal.name, f: pal, barter: pal.plan.barter, netnew: pal.plan.netnew, convert: pal.plan.convert, city: pal.plan.city });
-    await until(() => !$("#parley").hidden, 5000); await sleep(3000); ($(".offer.best:not(:disabled)") ?? $(".offer:not(:disabled)"))?.click(); await until(() => $("#pdone"), 6000); await sleep(1800); $("#pdone")?.click(); await sleep(1200);
-  }
-  if (!live()) return;
-  // the content x-ray: the brain and the fan panel on their real videos
-  caption(11, N, "And it reads your real content: your latest YouTube videos, played to your 1,000 fans and the brain model.");
-  Clock.toggle(); Drawer.open("xray");
-  await until(() => (G.xray && !G.xrayBusy) || !live(), 45000); if (!live()) return;
-  if (G.xray?.status === "ok") {
-    const top = [...G.xray.videos].sort((a, b) => b.mean - a.mean)[0];
-    caption(11, N, `${G.xray.channel}: best taste fit is “${top.title.slice(0, 48)}${top.title.length > 48 ? "…" : ""}” (${top.mean}/5). It even tells you when views follow news hooks, not taste.`);
-  }
-  await sleep(7000); Drawer.close(); Clock.toggle(); if (!live()) return;
-  // the week ends
-  caption(12, N, "Sunday: income lands, rivals strike, and next week's real missions are waiting. Then share it.");
-  Clock.finishWeek(); await until(() => G.week >= 2 && !G.busy, 25000); await sleep(1200);
+  caption(3, N, "First, the objective: what do you want in 8 weeks? A tour. It becomes your quest bar, your missions and the win screen.");
+  await sleep(4500); if (!live()) return; $("#intro-go")?.click(); await sleep(900);
+  caption(4, N, "Three orders a week. Send the Booker for a real room, and march on the city that's ripe.");
+  spot("#army-rail"); selectUnit("booker", true); await sleep(1800); if (!live()) return;
+  const bc = chipsFor("booker")[0]; if (bc) queueOrder("booker", bc); await sleep(1400);
+  selectUnit("you", true); await sleep(1400);
+  const yc = chipsFor("you").find((c) => c.kind === "take") ?? chipsFor("you")[0]; if (yc) queueOrder("you", yc); await sleep(1400); spot(null); if (!live()) return;
+  caption(5, N, "Nothing moves until END WEEK. Then the army marches, makes the live calls and comes back with loot; the battle resolves; the rival answers.");
+  spot("#endweek"); await sleep(1600); spot(null); endWeek();
+  await until(() => $("#ws-go") || !live(), 60000); await sleep(4000); if (!live()) return;
+  caption(6, N, "From week 1 you can see what winning looks like: the tour pack, with rooms, nights, emails and a calendar.");
+  victory(true); await sleep(6000); $("#victory").hidden = true; Show.close(); if (!live()) return;
+  caption(7, N, "Share it. That's Conquest: every move in the game is a real growth move. Your turn.");
   await openShare(); spot(null);
-  caption(12, N, "That's Conquest: a game whose every move is a real growth move. Your turn.");
   $("#tb-x").textContent = "Play it yourself";
   G.tour = false; TOURING = false;
 }
@@ -2296,95 +2169,11 @@ function bindXray() {
 // Clicking one opens a mission card on the map: what it does, where it could
 // go (with why, how long, and what you get), or what it costs to hire.
 const AG_COL = { scout: ["#1fb6a6", "#0b5c63"], booker: ["#ff8a3d", "#a3381a"], diplomat: ["#5aa8ff", "#1f4fa8"], sponsor: ["#f5c542", "#a36c12"], herald: ["#ff5fa8", "#9c1f63"], reader: ["#b27dff", "#5a2aa8"], trend: ["#3ddc84", "#13804a"], oracle: ["#7ad1ff", "#2a6fa8"], spy: ["#8a93a6", "#2c3240"], scribe: ["#ff7a6b", "#a3332a"], showrunner: ["#ff4d6d", "#8c1235"], listener: ["#ff6a2b", "#8c2c0a"] };
-const AG_GAIN = { scout: "what your fans there also love · city prepared", booker: "the best stage there · city prepared", diplomat: "a partner and a written pitch", sponsor: "a sponsor paying you every week", herald: "a podcast guest spot · +2 buzz", reader: "real reactions, fan by fan · city prepared", trend: "trending searches there → potions", oracle: "the driest show night · city prepared", spy: "rivals' fame and their next attack", scribe: "a ready-to-post caption · +1 buzz", showrunner: "a whole festival night · +200 gold", listener: "what Reddit says (connect first)" };
 const agentGrad = (id) => { const [a, b] = AG_COL[id] ?? ["#af50ff", "#4c1a91"]; return `--g1:${a};--g2:${b}`; };
-// three places worth sending this agent, each with a reason
-function missionTargets(id) {
-  const out = [], add = (c, why) => { if (c && !out.some((x) => x.c === c)) out.push({ c, why }); };
-  const o = G.orders[G.primary], sg = G.sieges[0], it = G.intents.find((x) => !G.forts.has(x.city));
-  if (sg) add(G.cities.find((c) => c.name === sg.city), `under siege by ${G.fac.get(sg.fid)?.name}`);
-  if (it) add(G.cities.find((c) => c.name === it.city), `${G.fac.get(it.fid)?.name} arrives Sunday`);
-  if (o?.city) add(G.cities.find((c) => c.name === o.city), `your next move: ${o.title}`);
-  const t = G.c.territory.target?.name; add(G.cities.find((c) => c.name === t), "ripe for conquest");
-  if (YIELD[id]?.gold || YIELD[id]?.buzz) add(G.cities.find((c) => c.name === G.capital), `station it home: ${yieldText(id)}`);
-  const rv = [...G.fac.values()].map((f) => strikeCity(f)).find(Boolean); add(rv, "a rival's city: prepare a strike");
-  return out.slice(0, 3);
-}
-function openUnitPop(id) {
-  if (!G) return; G.pop = id; renderUnitPop(); Sound.play("select");
-}
-function closeUnitPop() { if (!G) return; G.pop = null; $("#unitpop").hidden = true; }
-// What each agent is, in plain words: the job, what you get to use in real
-// life, and what it does on the board.
-const AGENT_EXPLAIN = {
-  scout: ["Finds what your fans in a city also love: shows, brands, music.", "A list of things to mention in your posts and shows there", "City prepared: moves there cost ⚡1 less, battles +30%"],
-  booker: ["Finds the venue in a city whose crowd matches yours.", "A venue to book, plus a backup", "City prepared: moves there cost ⚡1 less, battles +30%"],
-  diplomat: ["Finds a performer whose fans would also like you, and opens a deal.", "A collab partner and a message ready to send", "An ally who fights at your side"],
-  sponsor: ["Finds a brand your fans already love.", "A sponsor to pitch, with the email drafted", "Gold every week"],
-  herald: ["Finds a podcast your fans listen to.", "A guest spot to pitch", "+2 buzz and more hype"],
-  reader: ["Shows how fans in a city react to your material.", "Who loved it and who didn't, fan by fan", "City prepared"],
-  trend: ["Checks what's trending in a city right now (Google Trends).", "A topic to post about while it's hot", "New trends to ride for buzz"],
-  oracle: ["Checks the 7-day weather for a city.", "The best dry night for a show", "City prepared, more hype"],
-  spy: ["Checks your rivals' fame and who attacks next (Wikipedia).", "Their search trends and their next move", "Warning before an attack"],
-  scribe: ["Writes a post for your fans in a city.", "A post ready to publish", "+1 buzz"],
-  showrunner: ["Plans a whole show night in a city you hold.", "A night plan: venue, music, sponsor, host", "+200 gold"],
-  listener: ["Reads what Reddit says about you.", "What fans really say about you", "Locked until you connect Reddit"],
-};
 function keepReport(id, city, out) {
   const d = document.createElement("div"); d.innerHTML = out.intel ?? out.line ?? "";
   G.reports ??= {}; G.reports[id] = { city: city.name, text: d.textContent.trim().slice(0, 220), week: G.week };
 }
-function renderUnitPop() {
-  const id = G?.pop, el = $("#unitpop"); if (!id) { el.hidden = true; return; }
-  const a = agentOf(id), c = G.crew.get(id), u = G.army.get(id), [does, get, game] = AGENT_EXPLAIN[id] ?? [a.role, AG_GAIN[id], ""];
-  const head = `<div class="up-h" style="${agentGrad(id)}"><span class="up-face emo">${a.icon}</span><div><b>${esc(a.name)}</b><small>${esc(does)}</small></div><button class="up-x" title="Close">✕</button></div>`;
-  const gives = `<div class="up-gets"><div><small>You get</small><span>${esc(get)}</span></div><div><small>In the game</small><span>${esc(game)}</span></div></div>`;
-  const rep = G.reports?.[id];
-  const last = rep ? `<div class="up-rep"><small>Last report · ${esc(rep.city)}${rep.week === G.week ? " · this week" : ""}</small><span>${esc(rep.text)}</span></div>` : "";
-  let body;
-  if (a.locked) body = gives + `<p class="note">Reddit blocks anonymous apps. Connect your Reddit account to hire the Listener.</p>`;
-  else if (!c?.recruited) body = gives + `<button class="go up-go" id="up-hire" ${G.gold >= a.cost ? "" : "disabled"}>Hire for 🪙${a.cost}</button>${G.gold < a.cost ? `<p class="note">You have 🪙${G.gold}. Cities, caravans and sponsors bring more gold.</p>` : `<p class="note">After hiring: send it to a city. It travels on the clock, then calls ${esc(a.src)} and reports back.</p>`}`;
-  else if (u?.state === "moving") body = gives + `<p class="up-st">🚶 On the way to <b>${esc(u.toCity)}</b> · arrives ${Clock.fmt(Math.min(167.9, (u.h0 + u.dur) - (G.week - 1) * 168))}. Then it calls ${esc(a.src)}.</p>` + last;
-  else if (u?.state === "working") body = gives + `<p class="up-st">⚙️ Working in <b>${esc(u.at)}</b>: calling ${esc(a.src)} right now…</p>` + last;
-  else {
-    const used = c.week === G.week;
-    body = gives + last + (used ? `<p class="up-st done">✓ Done for this week. Next report: Monday. You can still send it to guard a city.</p>` : "") +
-      `<p class="up-q">Send it to</p>` + missionTargets(id).map(({ c: ct, why }) => { const dist = Math.hypot(ct.p[0] - (u?.p[0] ?? ct.p[0]), ct.p[1] - (u?.p[1] ?? ct.p[1])), hrs = Math.max(1.5, dist / SPEED); return `<button class="up-t" data-goto="${esc(ct.name)}"><span><b>${esc(ct.name)}</b><small>${esc(why)}</small></span><em>${u?.at === ct.name ? "it's here" : "arrives in " + Math.round(hrs) + "h"}</em></button>`; }).join("") +
-      `<p class="note">Or click any city on the map, or drag the agent onto it.</p>`;
-  }
-  el.innerHTML = head + `<div class="up-b">${body}</div>`; el.hidden = false;
-  el.querySelector(".up-x").onclick = closeUnitPop;
-  $("#up-hire")?.addEventListener("click", () => { recruit(id); openUnitPop(id); });
-  $$("[data-goto]").forEach((b) => b.addEventListener("click", () => { const ct = G.cities.find((x) => x.name === b.dataset.goto); if (ct) { sendUnit(id, ct); renderUnitPop(); } }));
-  placeUnitPop();
-}
-// keep the card next to its unit (or the capital, before it's hired)
-function placeUnitPop() {
-  const el = $("#unitpop"); if (!G?.pop || el.hidden) return;
-  const u = G.army.get(G.pop), cap = G.cities.find((c) => c.name === G.capital);
-  const p = u?._s ? MapView.css(u._s) : cap ? MapView.screen(cap.p) : [200, 200];
-  const box = $("#mapwrap").getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
-  let x = p[0] + 26, y = p[1] - h / 2; if (x + w > box.width - 80) x = p[0] - w - 26;
-  el.style.left = `${Math.max(10, Math.min(box.width - w - 10, x))}px`; el.style.top = `${Math.max(10, Math.min(box.height - h - 10, y))}px`;
-}
-
-// ---------------------------------------------------------------- the strategist's one-click advice
-function adviceAction() {
-  const open = G.orders.filter((o) => !o.done), sg = G.sieges.slice().sort((a, b) => a.left - b.left)[0];
-  const inc = G.intents.find((it) => !G.forts.has(it.city) && !G.fac.get(it.fid)?.allied);
-  const afford = open.filter((o) => costOf(o) <= G.buzz && o.gain), best = afford.sort((a, b) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a))[0];
-  if (sg) { const i = G.orders.findIndex((o) => !o.done && o.kind === "defend" && o.city === sg.city); if (i >= 0) return { label: `🛡 Defend ${sg.city}`, fn: () => execute(i) }; }
-  if (inc && G.gold >= 80) return { label: `🛡 Fortify ${inc.city} · 🪙80`, fn: () => fortify(inc.city) };
-  if (best) return { label: `🚩 ${best.title}`, fn: () => execute(G.orders.indexOf(best)) };
-  if (G.potions.some((p) => !p.used)) return { label: "🧪 Ride a trend for buzz", fn: () => Drawer.open("trends") };
-  return { label: "⌛ End the week", fn: () => Clock.finishWeek() };
-}
-function renderAdvice() {
-  const b = $("#council-do"); if (!b || !G) return;
-  const step = G.aiPlan?.week === G.week ? G.aiPlan.plan?.steps?.[0] : null, oi = step?.order_id ? G.orders.findIndex((o) => o.id === step.order_id && !o.done) : -1;
-  const act = oi >= 0 ? { label: `🚩 ${G.orders[oi].title}`, fn: () => execute(oi) } : adviceAction(); b.textContent = act.label; b.onclick = () => { if (!G.busy && !G.modal) act.fn(); };
-}
-
 // ---------------------------------------------------------------- the landing hook
 // A lighter opener: you and the fans who would love you, both too shy to make the
 // first move 👉👈. Then the fingertips touch, and Conquest makes it.
@@ -2417,78 +2206,6 @@ function playHook() {
   run();
 }
 
-// ---------------------------------------------------------------- orders, forecasts, previews
-const FORECAST = {
-  take: (o) => [["Mon", `Booker holds ${G.c.venues?.[0]?.name ?? "a room"} in ${o.city}`], ["Thu", `Show night in ${o.city}`], ["Sun", `${o.city} flips to you · +${gainOf(o)}%`]],
-  hold: (o) => [["Tue", `Test a ${o.city}-tuned version on its fans`], ["Fri", "Play the new version"], ["Sun", `${o.city} secured · +${gainOf(o)}%`]],
-  rivalry: (o) => [["Mon", `Book against ${o.rival} in ${o.city}`], ["Sat", "Head-to-head: a battle with real odds"], ["Sun", `Win it: ${o.city} is yours, +${gainOf(o)}%`]],
-  alliance: (o) => [["Mon", `Parley with ${o.rival}: pick an offer`], ["Wed", "Collab post goes live"], ["Sun", `Their fans meet you · +${gainOf(o)}% · +1 ⚡/week`]],
-  ally: (o) => [["Mon", `Parley with ${o.title.replace(/^Recruit /, "")}: pick an offer`], ["Wed", "Shout-out swap goes live"], ["Sun", `+${gainOf(o)}% · +1 ⚡ every week`]],
-  edit: () => [["Mon", "Cut the slow stretches the brain model flagged"], ["Wed", "Re-test on 1,000 fans"], ["Fri", "Hype +0.3 · the brain lights up · more buzz weekly"]],
-  defend: (o) => [["Tue", `Drop content aimed at ${o.city}`], ["Thu", "Battle to break the siege"], ["Sun", "Win it: the city stays yours"]],
-};
-function skipText(o) {
-  const nem = [...G.fac.values()].find((f) => f.strategy === "compete" && !f.allied);
-  if (o.kind === "defend") { const sg = G.sieges.find((s) => s.city === o.city), ct = G.cities.find((c) => c.name === o.city); return `If you ignore it: ${o.city} falls in ${sg?.left ?? 1} week${(sg?.left ?? 1) > 1 ? "s" : ""}, −${ct ? pts(ct) : 0}% conquest.`; }
-  if (o.kind === "take") return `If you wait: ${nem ? `${nem.name} may get there first` : "the crowd cools off"}.`;
-  if (o.kind === "hold") return `If you wait: ${o.city} stays shaky, an easy siege for a rival.`;
-  if (o.kind === "rivalry") return `If you wait: ${o.rival} digs in deeper.`;
-  if (o.kind === "edit") return "If you skip it: weaker material means less buzz every week.";
-  return "If you wait: they may pick a different co-headliner.";
-}
-function sparkline(o) {
-  const W = 260, H = 44, wk = G.week, g = o.kind === "defend" ? 0 : gainOf(o), cur = G.conquest;
-  const sg = G.sieges.find((s) => s.city === o.city), loss = o.kind === "defend" && sg ? pts(G.cities.find((c) => c.name === o.city)) : 0;
-  const withP = [], without = [];
-  for (let w = wk; w <= WEEKS; w++) { withP.push(cur + (w > wk ? g : 0)); without.push(cur - (loss && w >= wk + (sg?.left ?? 1) ? loss : 0)); }
-  const lo = Math.min(...withP, ...without) - 2, hi = Math.max(...withP, ...without) + 2, n = Math.max(1, withP.length - 1);
-  const P = (arr) => arr.map((v, i) => `${(i / n) * (W - 40) + 4},${H - 6 - ((v - lo) / (hi - lo)) * (H - 14)}`).join(" ");
-  return `<svg viewBox="0 0 ${W} ${H}" aria-label="Projected conquest with and without this order"><polyline points="${P(without)}" fill="none" stroke="#5f5f66" stroke-width="1.5" stroke-dasharray="4 3"/><polyline points="${P(withP)}" fill="none" stroke="#ffb829" stroke-width="2.2"/><text x="${W - 34}" y="12" fill="#ffb829" font-size="10" font-family="IBM Plex Mono">${withP.at(-1)}%</text><text x="${W - 34}" y="${H - 4}" fill="#8a8f99" font-size="10" font-family="IBM Plex Mono">${without.at(-1)}%</text></svg>`;
-}
-// the tutorial's first move is one that lands right away: no battle, no negotiation
-function tutorialPick() {
-  const open = G.orders.map((o, i) => [o, i]).filter(([o]) => !o.done && !["defend", "rivalry", "alliance", "ally"].includes(o.kind));
-  const aff = open.filter(([o]) => costOf(o) <= G.buzz).sort(([a], [b]) => gainOf(b) - gainOf(a));
-  return (aff[0] ?? open[0])?.[1] ?? recommended();
-}
-function recommended() {
-  const open = G.orders.map((o, i) => [o, i]).filter(([o]) => !o.done);
-  const d = open.find(([o]) => o.kind === "defend"); if (d) return d[1];
-  const aff = open.filter(([o]) => costOf(o) <= G.buzz && o.gain).sort(([a], [b]) => gainOf(b) / costOf(b) - gainOf(a) / costOf(a));
-  return (aff[0] ?? open[0])?.[1] ?? -1;
-}
-function actionLabel(o, c, can) {
-  const ct = o.city && G.cities.find((x) => x.name === o.city), foe = (o.kind === "rivalry" || o.kind === "defend") && ct;
-  return can ? (foe ? `⚔ To battle · ⚡${c}` : o.kind === "alliance" || o.kind === "ally" ? "🕊 Open parley" : `🚩 Execute · ⚡${c}`) : G.busy ? "…" : `Need ⚡${c}`;
-}
-function renderPrimary() {
-  const rec = recommended(), i = G.sel >= 0 && G.orders[G.sel] && !G.orders[G.sel].done ? G.sel : rec, o = G.orders[i];
-  G.primary = i;
-  if (!o) { $("#primary").innerHTML = '<div class="nm"><div class="ti">✓</div><div><div class="kk">ALL CLEAR</div><h3>Every order is done</h3></div><div class="why">Let the week run out, or end it. Rivals still move on Sunday.</div></div>'; return; }
-  const c = costOf(o), g = gainOf(o), can = c <= G.buzz && !G.busy && !G.over, ct = o.city && G.cities.find((x) => x.name === o.city);
-  const foe = (o.kind === "rivalry" || o.kind === "defend") && ct && (facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid));
-  const steps = (FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => "<b>" + d + "</b> " + esc(t)).join(" <i>→</i> ");
-  $("#primary").innerHTML = '<div class="nm"><div class="ti">' + (ICON[o.kind] ?? "🚩") + '</div><div style="min-width:0"><div class="kk">' + (o.kind === "edit" ? "sharpen" : o.kind) + (i === rec ? ' · <span class="rec">recommended</span>' : "") + (o.city && G.prep.has(o.city) ? " · prepared ✓" : "") + "</div><h3>" + esc(o.title) + '</h3><div class="chips">' + (g ? '<span class="g">+' + g + "%</span>" : "<span>holds ground</span>") + "<span>⚡" + c + "</span>" + (foe ? "<span>" + Math.round(oddsFor(ct, foe).p * 100) + "% odds</span>" : "") + '</div></div><div class="why">' + esc(o.detail) + '</div><div class="steps3">' + steps + '</div><div class="nmrow"><button class="go" id="p-exec" ' + (can ? "" : "disabled") + ">" + actionLabel(o, c, can) + '</button><button class="ghostbtn" id="p-prev" title="Show what happens on the map">▶</button></div></div>';
-  $("#p-exec").onclick = () => execute(i); $("#p-prev").onclick = () => preview(o);
-}
-function renderOrders() {
-  renderSel();
-  $("#ocount").textContent = `· ${G.orders.filter((o) => !o.done).length}`;
-  $("#endturn").disabled = G.busy || G.over;
-  if (Drawer.mode === "orders") Drawer.render();
-}
-function ordersHtml() {
-  return `<div class="orders">` + G.orders.map((o, i) => {
-    const c = costOf(o), g = gainOf(o), can = !o.done && c <= G.buzz && !G.busy && !G.over, prepped = o.city && G.prep.has(o.city);
-    const ct = o.city && G.cities.find((x) => x.name === o.city), foe = (o.kind === "rivalry" || o.kind === "defend") && ct && (facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid));
-    const odds = foe ? ` · ${Math.round(oddsFor(ct, foe).p * 100)}% odds` : "";
-    return `<div class="order${o.done ? " done" : ""}${i === G.sel ? " sel" : ""}${o.kind === "defend" && !o.done ? " defend" : ""}">
-      <button class="ohead" data-o="${i}"><span class="oi">${ICON[o.kind] ?? "•"}</span><span><span class="ok">${i + 1} · ${o.kind === "edit" ? "sharpen" : o.kind}${prepped ? ' · <span style="color:#7fd8ff">prepared ✓</span>' : ""}</span><h4>${esc(o.title)}</h4><span class="og">${g ? `+${g}% conquest` : "keeps your ground"}${odds}</span></span><span class="cost${c <= G.buzz ? "" : " no"}">⚡${c}</span></button>
-      <div class="obody"><div class="gen">${GENERAL}<div>${esc(o.detail)}<span class="rc">Source: ${esc(o.receipt)}${g ? ` · +${g}% conquest (projected)` : ""}</span></div></div>
-      ${o.done ? "" : `<div class="fc"><b>WHAT HAPPENS</b><ol>${(FORECAST[o.kind]?.(o) ?? []).map(([d, t]) => `<li><span>${d}</span>${esc(t)}</li>`).join("")}</ol><div class="skip">${esc(skipText(o))}</div>${sparkline(o)}</div>
-      <div class="orow"><button class="go" data-x="${i}" ${can ? "" : "disabled"}>${can ? (foe ? `⚔ To battle · ⚡${c}` : o.kind === "alliance" || o.kind === "ally" ? "🕊 Open parley" : `Execute · ⚡${c}`) : G.busy ? "…" : `Need ⚡${c}`}</button><button class="ghostbtn" data-pv="${i}">▶ Preview</button></div>`}</div></div>`;
-  }).join("") + "</div>";
-}
 // the right-hand drawer: all orders, live trends, or this week's real-world moves
 const Drawer = {
   mode: null,
@@ -2497,91 +2214,81 @@ const Drawer = {
   render() {
     if (!G || !this.mode) return;
     const b = $("#drawer-b");
-    if (this.mode === "orders") {
-      $("#drawer-t").textContent = "All orders"; b.innerHTML = ordersHtml();
-      $$("#drawer-b [data-o]").forEach((x) => x.addEventListener("click", () => selectOrder(+x.dataset.o))); // open the card in place; the drawer stays
-      $$("#drawer-b [data-x]").forEach((x) => x.addEventListener("click", () => { this.close(); execute(+x.dataset.x); }));
-      $$("#drawer-b [data-pv]").forEach((x) => x.addEventListener("click", () => preview(G.orders[+x.dataset.pv])));
-    } else if (this.mode === "trends") { $("#drawer-t").textContent = "Trend potions"; renderTrends(); }
+    if (this.mode === "missions") { $("#drawer-t").textContent = "Missions"; b.innerHTML = missionsHtml(); $("#m-change").onclick = () => { this.close(); intro(true); }; }
     else if (this.mode === "tour") { $("#drawer-t").textContent = "Tour Planner"; b.innerHTML = tourHtml(); bindTour(); }
     else if (this.mode === "radar") { $("#drawer-t").textContent = "Threat report"; b.innerHTML = threatReport(); bindThreats(); }
     else if (this.mode === "xray") { $("#drawer-t").textContent = "Content X-ray"; b.innerHTML = xrayHtml(); bindXray(); if (!G.xray && !G.xrayBusy && !G.xrayAuto) { G.xrayAuto = true; ensureChannel().then(() => { if (G.xrayHandle) runXray(G.xrayHandle); else this.render(); }); } }
     else if (this.mode === "intel") { $("#drawer-t").textContent = "Intel"; b.innerHTML = '<div class="player" id="player"></div><div class="dgroup">FACTIONS · FAME (WIKIPEDIA, 30 DAYS)</div><div class="factions" id="factions"></div><div class="dgroup">YOUR MATERIAL · SOURCES</div><div class="intel" id="intel"></div>'; playerCard(); factions(); }
-    else if (this.mode === "moves") { $("#drawer-t").textContent = "This week's moves"; b.innerHTML = movesHtml(); $$("[data-real]").forEach((x) => x.addEventListener("click", () => markReal(x.dataset.real))); $("#moves-ics").onclick = downloadIcs; $("#moves-copy").onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } }; }
+    else if (this.mode === "moves") { $("#drawer-t").textContent = "Real moves"; b.innerHTML = movesHtml(); bindMoves(); }
   },
 };
-// the real-world to-do list, built from everything the agents and orders found
+// the missions sheet: four missions, the win rule, and a way back to the objective screen
+function missionsHtml() {
+  const o = objectiveOf(G.objective), q = quest(), cur = (G.missions ?? []).find((m) => !m.complete);
+  return `<div class="msheet"><div class="win"><b>QUEST: ${esc(q.label)}</b> · ${q.have} of ${q.need} ${esc(q.unit)}<br>How you win: ${esc(o.win)}</div>
+    ${(G.missions ?? []).map((m) => `<div class="mrow${m.complete ? " done" : m.late ? " late" : ""}"><span class="wk">${m.complete ? "✓" : m.wk.join("–")}</span><span><span class="st">${m.complete ? "Done" : m === cur ? (m.late ? "Now · late, no penalty" : "Now") : "Next"} · weeks ${m.wk.join("–")}</span><strong>${esc(m.title)}</strong><small>${esc(m.how)}</small><em>Done when: ${esc(m.done)}</em></span></div>`).join("")}
+    <button class="vbtn" id="m-change">Change objective (progress carries over)</button></div>`;
+}
+// the real-world to-do list and every asset the army wrote: emails, pitches, DMs, posts
 function movesHtml() {
-  const rec = G.orders[recommended()];
-  const row = (ic, t, src) => `<div class="move">${ic}<span>${esc(t)}${src ? `<small>${esc(src)}</small>` : ""}</span></div>`;
-  const doNow = rec ? [row("🚩", `${rec.title}: ${rec.detail}`, rec.receipt)] : [];
-  const done = G.doneLog.map((o) => row("✓", `${o.title}: ${o.detail}`, o.receipt));
-  const intel = [...G.intel.entries()].flatMap(([city, ts]) => ts.map((t) => row("📡", `${city}: ${t.replace(/^\S+\s/, "")}`, "agent intel")));
-  const money = G.sponsors.map((x) => row("💼", `Pitch ${x.name} a sponsored post (+${x.perWeek} gold a week in-game).`, "Qloo brands your fans love"));
-  const posts = G.drafts.map((x) => row("✍️", `Post: ${x}`, "Copywriter"));
-  const deals = G.pitches.map((x) => row("🕊", x, "Parley pitch"));
-  const trends = G.potions.filter((p) => p.used).map((p) => row("🧪", `Post a take on “${p.title}” (trending in ${p.where}).`, "Google Trends"));
+  const row = (t, src) => `<div class="move"><span>${esc(t)}${src ? `<small>${esc(src)}</small>` : ""}</span></div>`;
   const grp = (t, a) => (a.length ? `<div class="dgroup">${t}</div>${a.join("")}` : "");
-  const reals = G.real.map((m) => `<div class="move real${m.done ? " done" : ""}"><button class="tick" data-real="${m.id}" ${m.done ? "disabled" : ""} title="I did this in real life">${m.done ? "✓" : ""}</button><span>${esc(m.text)}<small>${m.done ? "done for real · +200 score" : `week ${m.week} · ${esc(m.src ?? "")}`}</small></span></div>`);
-  return `<div class="moves">${grp("Real missions · tick them when done", reals)}${G.real.length ? "" : `<p class="note">Execute an order and it becomes a real mission here.</p>`}${grp("Do next", doNow)}${grp("You committed to", done)}${grp("Deals to send", deals)}${grp("Money", money)}${grp("Posts", [...posts, ...trends])}${grp("Intel from your agents", intel)}</div>
+  const reals = G.real.map((m) => `<div class="move real${m.done ? " done" : ""}"><button class="tick" data-real="${m.id}" ${m.done ? "disabled" : ""} title="I did this in real life">${m.done ? "✓" : ""}</button><span>${esc(m.text)}<small>${m.done ? "done for real" : `week ${m.week} · ${esc(m.src ?? "")}`}</small></span></div>`);
+  const intel = [...G.intel.entries()].flatMap(([city, ts]) => ts.map((t) => row(`${city}: ${t.replace(/^\S+\s/, "")}`, "agent intel")));
+  return `<div class="moves">${grp("Real moves · tick them when done", reals)}${G.real.length ? "" : `<p class="note">Send a unit at END WEEK and its report becomes a real move here.</p>`}
+    ${grp("Venue emails", G.venueMails.map((m) => row(`${m.venue} (${m.city}): ${m.text}`, "Booker")))}${grp("Sponsor pitches", G.sponsorPitches.map((p) => row(`${p.brand}: ${p.text}`, "Sponsor scout")))}
+    ${grp("DMs to send", G.dms.map((d) => row(`${d.name}${d.yes ? " (said yes)" : ""}: ${d.text}`, "Diplomat")))}${grp("Podcasts", G.guestSpots.map((g) => row(`Pitch ${g.name}`, `Herald · ${g.city}`)))}
+    ${grp("Posts", G.drafts.map((x) => row(x, "Copywriter")))}${grp("Intel from your agents", intel)}</div>
     <div class="orow"><button class="go" id="moves-copy" style="margin-top:12px">Copy my battle plan</button><button class="ghostbtn" id="moves-ics" style="margin-top:12px">📅 Add show nights to calendar</button></div><p class="note">Every line came from live data or your simulated fans. Do them for real.</p>`;
 }
-function preview(o) {
-  if (!o) return;
-  const city = o.city ?? G.capital, g = gainOf(o);
-  G.preview = { city, t0: performance.now(), label: o.kind === "defend" ? "HOLDS" : g ? `+${g}%` : "+⚡", col: o.kind === "alliance" || o.kind === "ally" ? COL.allied : COL.you };
+function bindMoves(again) {
+  $$("[data-real]").forEach((x) => x.addEventListener("click", () => { markReal(x.dataset.real); again?.(); }));
+  const ics = $("#moves-ics"), cp = $("#moves-copy");
+  if (ics) ics.onclick = downloadIcs;
+  if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } };
 }
-function selectOrder(i) {
-  if (!G || G.busy || !G.orders[i]) return; G.sel = i; Sound.play("select"); renderOrders(); renderAgents(); preview(G.orders[i]);
+// the same list over the win screen
+function openAssets() {
+  const box = $("#intro-body"); box.classList.remove("obj");
+  box.innerHTML = `<div class="ibanner">Your emails, pitches and DMs</div><div style="padding:14px 22px">${movesHtml()}<button class="ghostbtn" id="as-x" style="margin-top:10px">Close</button></div>`;
+  $("#intro").hidden = false; bindMoves(openAssets); $("#as-x").onclick = () => { $("#intro").hidden = true; };
 }
-// fast-forward the whole plan as ghosts on the map
-async function simulatePlan() {
-  if (!G || G.busy || G.simulating) return;
-  const open = G.orders.filter((o) => !o.done); if (!open.length) return toast("No orders left to simulate.");
-  G.simulating = true; let c = G.conquest;
-  ops(`<span class="api">simulation</span> running your remaining ${open.length} orders…`);
-  for (const o of open) { preview(o); c = Math.min(100, c + gainOf(o)); event(`▶ ${o.title}: conquest → ${c}%`, "you"); Sound.play("tick"); await sleep(1100); }
-  const [, n, name] = ageOf(c);
-  banner(`PROJECTED: ${c}%`, `Age ${n} · ${name}, if you execute every order`); Sound.play("ageup");
-  ops(`<span class="ok">simulation</span> all orders → <b>${c}%</b> conquest, Age ${n} · ${name} (battles and rivals not counted)`);
-  G.simulating = false;
-}
+function openTourFromQuest() { const first = quest().slots.find((s) => s.city)?.city, d = tourDefaults(); G.tourForm = { ...d, home: METROS[first] ? first : d.home, maxCities: 6 }; Drawer.open("tour"); }
 
 // ---------------------------------------------------------------- the game
-async function startGame(c, player) {
+async function startGame(c, player, opts = {}) {
   await Atlas.ready;
   const cities = c.territory.cities.filter((x) => METROS[x.name]).map((x) => ({ ...x, p: ALB(METROS[x.name]) })).filter((x) => x.p);
   const fac = new Map(c.rivals.map((r, i) => [r.id, { id: r.id, name: r.name, col: RIVAL_COLS[i % 3], strategy: r.strategy, allied: false, plan: r, img: qlooImg(r.id), last: r.holds.length ? `Holds ${r.holds.slice(0, 2).join(", ")}` : "Scouting your fans" }]));
-  G = { c, player, cities, fac, week: 1, hour: 9, conquest: c.territory.conquest, start: c.territory.conquest, startHeld: 0, orders: c.missions.map((m) => ({ ...m, done: false })), sel: 0, allies: 0, taken: 0, saved: 0, lost: 0, missions: 0, buzz: 8, gold: 300, morale: c.aggregate.mean, sieges: [], intents: [], forts: new Set(), quests: [], nextQuest: 14, potions: [], sponsors: [], fx: [], temp: [], units: [], floats: [], anim: null, busy: false, over: false, simulating: false, modal: false, capital: c.territory.capital?.name, pinned: null, last: "Took the field", prep: new Set(), intel: new Map(), fame: new Map(), crew: new Map(), parleyed: new Set(), reactions: new Map(), drafts: [], pitches: [], doneLog: [], army: new Map(), caravans: [], nights: [], real: [], realDone: 0, selected: null, hoverCity: null, hoverUnit: null, drag: null, lastDay: null, nextCaravan: null, opsN: 0, allAgents: false, coach: false, sheet: null, ach: new Set(), achPts: 0, preview: null, rng: mulberry([...player.name].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7)) };
-  assignStates(); G.startHeld = held(); G.layer = null; lastOrb = {};
+  G = { c, player, cities, fac, week: 1, hour: 60, conquest: c.territory.conquest, start: c.territory.conquest, startHeld: 0, orders: c.missions.map((m) => ({ ...m, done: false })), allies: 0, taken: 0, saved: 0, lost: 0, runs: 0, gold: 300, morale: c.aggregate.mean, sieges: [], intents: [], forts: new Set(), potions: [], sponsors: [], fx: [], temp: [], floats: [], anim: null, busy: false, over: false, modal: false, capital: c.territory.capital?.name, pinned: null, last: "Took the field", prep: new Set(), intel: new Map(), fame: new Map(), crew: new Map(), parleyed: new Set(), reactions: new Map(), drafts: [], pitches: [], doneLog: [], army: new Map(), nights: [], real: [], realDone: 0, selected: null, hoverCity: null, hoverUnit: null, opsN: 0, coach: false, ach: new Set(), achPts: 0, rng: mulberry([...player.name].reduce((s, ch) => (s * 31 + ch.charCodeAt(0)) >>> 0, 7)),
+    objective: null, objCity: null, missions: [], ordersLeft: 3, orderQueue: [], xp: opts.xp ?? startXp(c.territory.conquest), unitXp: new Map(), report: null, headline: "", events: [], venues: [],
+    dms: [], guestSpots: [], posts: new Set(), scouted: new Set(), proven: false, sponsorPitches: [], venueMails: [], offers: [], offersNext: [], offersSeen: [], bonusNext: 0, realTicks: 0, fanLine: null, readBonus: new Map(), showT: 0 };
+  assignStates(); G.startHeld = held(); G.layer = null;
+  for (const id of BASE6) { G.crew.set(id, { recruited: true, week: 0, busy: false }); spawnUnit(id); } // the first six march from week 1
+  G.ordersLeft = ordersPerWeek(lvl(), 0);
   for (const f of fac.values()) portrait(f.img); portrait(player.image);
-
-  $("#site").hidden = true; $("#scan").hidden = true; $("#game").hidden = false; scrollTo(0, 0);
+  $("#site").hidden = true; $("#scan").hidden = true; $("#game").hidden = false; $("#weekshow").hidden = true; scrollTo(0, 0);
   Field.setMode("off"); Neuro.play(c.tribe); brainNote();
-  $("#legend").innerHTML = [["You", COL.you], ...[...fac.values()].map((f) => [f.name, f.col]), ["Allied", COL.allied], ["Open ground", COL.open], ["Uncharted", COL.fog]].map(([n, col]) => `<span><i style="background:${col}"></i>${esc(n)}</span>`).join("") + `<span style="color:#3dff9a">◯ ripe to take</span>`;
-  $("#ops").innerHTML = ""; $("#quests").innerHTML = ""; $("#ops-count").textContent = ""; Clock.reset(); Drawer.close(); tab("agents");
-  $("#legend").classList.remove("hide"); setTimeout(() => $("#legend").classList.add("hide"), 4000);
+  $("#ops").innerHTML = ""; $("#ops-count").textContent = ""; Drawer.close();
   planIntents();
-  playerCard(); renderTrends(); hud(); renderOrders(); renderAgents(); $("#cityp").hidden = true; $("#victory").hidden = true;
-  const nem = c.rivals.find((r) => r.strategy === "compete");
-  council(); setTimeout(aiPlan, 1500); // three short points now; the AI plan replaces them when the AI layer is on
-  ops(`<span class="api">Qloo</span> mapped ${cities.length} cities, ${c.rivals.length} rivals, ${c.missions.length} orders · ${c.receipts?.length ?? 0} live calls`);
-  const ev = [[`Commander ${player.name} has taken the field.`, "you"], [`Your capital is ${G.capital ?? "not yet chosen"}.`, "info"], [`${c.rivals.length} rivals spotted fighting for your fans.`, "bad"], [`${c.territory.target ? `Scouts report ${c.territory.target.name} is ripe for conquest.` : "Scouts are still reading the map."}`, "good"]];
-  ev.forEach(([t, k], i) => setTimeout(() => event(t, k), 400 + i * 900));
+  playerCard(); setObjective("tour"); hud(); renderAgents(); $("#cityp").hidden = true; $("#victory").hidden = true;
+  setTimeout(aiPlan, 1500);
+  ops(`<span class="api">Qloo</span> mapped ${cities.length} cities, ${c.rivals.length} rivals · ${c.receipts?.length ?? 0} live calls`);
   Sound.play("ageup");
   loadTrends();
-  renderSel(); renderRivalStrip();
+  renderRivalStrip();
   if (TOURING) { G.tour = true; G.noSave = true; } // a tour campaign is a demo: never saved
-  const saved = TOURING ? null : loadSave(player.name);
+  const saved = TOURING || opts.fresh ? null : loadSave(player.name);
   G.cid = saved?.cid ?? (crypto.randomUUID?.() ?? String(Date.now())).replace(/-/g, "").slice(0, 16);
   let fresh = !saved;
   if (saved) { const r = await welcomeBack(saved); applyReturn(r, saved); if (r.mode === "new") { fresh = true; await intro(); } }
   else await intro();
   // new campaigns: offer the Monday war report once, before the tutorial
   if (fresh && !TOURING && !G.mailAsked) await new Promise((res) => { askMonday(); const iv = setInterval(() => { if ($("#intro").hidden) { clearInterval(iv); res(); } }, 300); });
-  renderOrders(); saveGame();
+  if (!G.offers.length) G.offers = buildOffers();
+  hud(); renderAgents(); saveGame();
   let coached = false; try { coached = localStorage.getItem("conquest-coached") === "1"; } catch {}
-  if (!coached && !TOURING && !saved) setTimeout(() => Coach.start(), 500);
+  if (!coached && !TOURING && fresh) setTimeout(() => Coach.start(), 500);
   api(`/api/rehearse?${qs(player.q)}`).then((r) => { for (const [id, s] of r?.reactions ?? []) G.reactions.set(id, s); }).catch(() => {});
   api(`/api/fame?names=${encodeURIComponent([player.name, ...[...fac.values()].map((f) => f.name)].join("|"))}`).then((r) => {
     if (r?.status === "ok") for (const p of r.people) G.fame.set(p.name, p);
@@ -2598,135 +2305,255 @@ function boom(p, col) {
   for (let i = 0; i < 70; i++) { const a = Math.random() * 6.283, v = 30 + Math.random() * 90; G.fx.push({ p, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, col: [col, "#fff", "#ff5ec4", "#8052ff"][i % 4], t0: now, dur: 1200 + Math.random() * 600 }); }
 }
 
-async function execute(i) {
-  const o = G?.orders[i]; if (!o || o.done || G.busy || G.over || G.modal) return;
-  const cost = costOf(o), gain = gainOf(o);
-  if (cost > G.buzz) { const ob = $("#orb-buzz"); ob.classList.remove("short"); void ob.offsetWidth; ob.classList.add("short"); Sound.play("nope"); toast(`Not enough buzz: this needs ⚡${cost}. Claim an opportunity, drink a potion or let the week end.`); return; }
-  const ct = o.city ? G.cities.find((c) => c.name === o.city) : null;
-  let paid = false;
-  // fights are battles with real odds; partnerships are negotiations
-  if (o.kind === "rivalry" || o.kind === "defend") {
-    const foe = facByName(o.rival) ?? G.fac.get(G.sieges.find((s) => s.city === o.city)?.fid) ?? [...G.fac.values()][0];
-    if (ct && foe) { const r = await battle({ city: ct, f: foe, cost, title: o.kind === "defend" ? `Break the siege · ${ct.name}` : `Battle for ${ct.name}` }); if (r !== "win") { hud(); renderOrders(); council(); Coach.executed(o, ct, true); return; } paid = true; }
-  } else if (o.kind === "alliance" || o.kind === "ally") {
-    const name = o.rival ?? o.title.replace(/^Recruit /, ""), f = facByName(name), a = (G.c.allies || []).find((x) => x.name === name);
-    const r = await parley({ name, f, barter: f?.plan.barter ?? a?.barter, netnew: f?.plan.netnew ?? a?.netnew, convert: f?.plan.convert ?? a?.convert, city: o.city ?? f?.plan.city });
-    if (r !== "accept") { hud(); renderOrders(); council(); return; }
-    paid = true; G.allies--; // parley already counted the ally
+// ---------------------------------------------------------------- your own orders: take, defend, lay groundwork
+const ripeName = () => G.cities.find((c) => !isHeld(c) && (c.state === "beachhead" || (c.state === "rival" && G.prep.has(c.name))))?.name ?? null;
+function flipToYou(ct) {
+  ct.state = "stronghold"; ct.owner = "you"; ct.contested = null; G.sieges = G.sieges.filter((s) => s.city !== ct.name);
+  G.conquest = Math.min(100, G.conquest + pts(ct)); MapView.flip(ct.p); boom(ct.p, COL.you);
+}
+function fall(ct, f, R) {
+  ct.state = "rival"; ct.owner = f.id; ct.contested = null; G.lost++; G.sieges = G.sieges.filter((s) => s.city !== ct.name);
+  G.conquest = Math.max(0, G.conquest - pts(ct)); MapView.flip(ct.p); boom(ct.p, f.col); f.last = `Took ${ct.name} from you`;
+  R.lost ??= { city: ct.name, rival: lastName(f.name) };
+  ops(`<span class="rv">💀 ${esc(f.name)} took ${esc(ct.name)}</span>`);
+}
+function resolveYouOrder(o, R) {
+  const ct = cityOf(o.city); if (!ct) return null;
+  if (o.kind === "groundwork") {
+    prep(ct, "groundwork");
+    const L = { unit: "you", city: ct.name, title: `Groundwork laid in ${ct.name}`, fact: `Your crew worked the room in <b>${esc(ct.name)}</b>. Next week's strike starts at +30%.`, receipts: ["your agents' groundwork"], xp: 20, mapChange: `${ct.name} prepared · ripe ring`, questChange: "a strike there now takes 1 order", realMove: { title: `Post something aimed at your ${ct.name} fans`, detail: `Warm up ${ct.name} before you strike.` } };
+    addRealMove(L.realMove, "You", ct.name); R.loot.push(L); return { loot: L };
   }
-  G.busy = true; o.done = true; if (!paid) G.buzz -= cost;
-  const before = ageOf(G.conquest);
-  let title = "", sub = gain ? `+${gain}% conquest (projected)` : "";
   if (o.kind === "defend") {
-    G.sieges = G.sieges.filter((s) => s.city !== o.city); if (ct) ct.contested = null; G.saved++; ach("wall");
-    title = `${o.city} holds!`; sub = "The siege is broken"; event(`🛡️ ${o.city} holds. The siege is broken.`, "you"); Sound.play("conquer");
-  } else if (o.kind === "take" || o.kind === "hold" || o.kind === "rivalry") {
-    if (ct) { if (ct.state === "rival") G.taken++; ct.state = "stronghold"; ct.owner = "you"; ct.contested = null; G.sieges = G.sieges.filter((s) => s.city !== ct.name); }
-    title = o.kind === "rivalry" ? `${o.city} taken from ${o.rival}` : o.kind === "hold" ? `${o.city} secured` : `${o.city} conquered`;
-    event(`🚩 ${title}!`, "you"); Sound.play("conquer"); ach("blood");
-  } else if (o.kind === "alliance" || o.kind === "ally") {
-    const name = o.rival ?? o.title.replace(/^Recruit /, "");
-    if (ct) { if (ct.state === "beachhead" || ct.state === "hard" || ct.state === "uncharted") ct.state = "allied"; ct.contested = null; }
-    G.allies++; title = `${name} joins your cause`; sub += " · +1 buzz every week"; event(`🤝 Alliance formed with ${name}.`, "good");
-  } else {
-    G.morale = Math.min(5, G.morale + 0.3); sharpenBrain();
-    title = "Material sharpened"; sub += " · the brain lights up, hype up"; event("✍️ Material sharpened: every city hits harder.", "you"); Sound.play("conquer");
-    for (const c of G.cities.filter((c) => sideOf(c) === "you")) G.fx.push({ p: c.p, ring: true, r: 60, col: COL.you, t0: performance.now() + Math.random() * 500, dur: 1100 });
+    const sg = G.sieges.find((s) => s.city === ct.name), f = sg && G.fac.get(sg.fid); if (!f) return null;
+    const res = fight(ct, f), other = G.cities.find((c) => sideOf(c) === "you" && c !== ct)?.name;
+    // a lost defence doesn't hand the city over: the siege runs on, and you can defend again next week
+    if (res.win) { G.sieges = G.sieges.filter((s) => s !== sg); ct.contested = null; G.saved++; ach("wall"); R.held ??= { city: ct.name, rival: lastName(f.name), ripe: ripeName() }; }
+    const B = { res, title: `BATTLE FOR ${ct.name.toUpperCase()}`, stamp: res.win ? "REPELLED" : "LOST", good: res.win, xp: res.win ? 60 : 0, line: rivalLine(f, res.win ? "retreat" : "won", { city: ct.name, next: other }), note: res.win ? `${lastName(f.name)} retreats · +60 XP` : `The siege goes on: ${sg.left > 1 ? "falls after next END WEEK" : "falls tonight"} unless you win it back` };
+    R.battles.push(B); R.battle ??= { won: res.win, city: ct.name, rival: lastName(f.name), kind: "defend" }; return B;
   }
-  if (ct && gain > 0) setTimeout(() => fanSay(ct.name), 2400);
-  G.doneLog.push(o); addReal(o); G.last = title; ops(`<span class="ok">order</span> ${esc(o.title)} <span class="ok">${gain ? `+${gain}%` : "done"}</span>${paid ? "" : ` · ⚡${cost}`}`);
-  const p = ct?.p ?? capP();
-  MapView.flip(p); if (p) { boom(p, o.kind === "alliance" || o.kind === "ally" ? COL.allied : COL.you); if (gain) float(p, `+${gain}%`); }
-  G.conquest = Math.min(100, G.conquest + gain);
-  banner(title.toUpperCase(), sub);
-  G.sel = -1; hud(gain); renderOrders();
-  await sleep(1700);
-  const after = ageOf(G.conquest);
-  if (after !== before) { banner(`THE ${after[2].toUpperCase()} AGE`, `You advanced to Age ${after[1]}`); Sound.play("ageup"); event(`👑 You advanced to the ${after[2]} age.`, "you"); ach("rising"); await sleep(1900); }
-  G.busy = false;
-  Coach.executed(o, ct);
-  if (!G.orders.some((x) => !x.done && x.kind !== "defend")) { renderOrders(); setTimeout(victory, 700); return; }
-  G.sel = -1; renderOrders(); renderAgents(); council();
+  const f = o.fid ? G.fac.get(o.fid) : ct.state === "rival" ? G.fac.get(ct.owner) : rivalIn(ct);
+  if (isHeld(ct)) return null;
+  if (!f || f.allied) {
+    flipToYou(ct); ach("blood");
+    const L = { unit: "you", city: ct.name, title: `You took ${ct.name}`, fact: `Nobody held <b>${esc(ct.name)}</b>: your ${kfmt(ct.you)} fans there (Qloo) are your ground now.`, receipts: ["Qloo fan footprint"], xp: 60, mapChange: `${ct.name} flips to your colour`, questChange: objIs("tour") ? "a new city to book" : null, realMove: { title: `Post something for your ${ct.name} fans`, detail: `They're yours now. Say hello.` } };
+    addRealMove(L.realMove, "You", ct.name); R.loot.push(L); R.battle ??= { won: true, city: ct.name, rival: "nobody", kind: "take" }; return { loot: L };
+  }
+  const res = fight(ct, f), wasRival = ct.state === "rival";
+  if (res.win) { flipToYou(ct); if (wasRival) { G.taken++; f.last = `Lost ${ct.name} to you`; } G.intents = G.intents.filter((x) => !(x.fid === f.id && x.city === ct.name)); ach("blood"); addRealMove({ title: `Play ${ct.name} and post your best clip there`, detail: res.best.say }, "You", ct.name); }
+  const B = { res, title: `BATTLE FOR ${ct.name.toUpperCase()}`, stamp: res.win ? "TAKEN" : "HELD", good: res.win, xp: res.win ? 80 : 0, line: rivalLine(f, res.win ? "beaten" : "won", { city: ct.name }), note: res.win ? `${ct.name} is yours · +80 XP` : `${lastName(f.name)} held. Send the Room reader first next time (+30%).` };
+  R.battles.push(B); if (!R.battle || res.win) R.battle = { won: res.win, city: ct.name, rival: lastName(f.name), kind: "take" }; return B;
 }
 
-// end the week: armies arrive, sieges resolve, income lands, buzz recharges
+// ---------------------------------------------------------------- END WEEK: the show
+// About six seconds: marches, loot cards one at a time, the battle, the rival's
+// move, the tally and the headline. Then it stays as the week's report until
+// you press GIVE ORDERS. Click anywhere to jump to the end.
+const Show = (() => {
+  let fast = false;
+  const wait = (ms) => (fast || REDUCED ? Promise.resolve() : sleep(ms));
+  const lootCard = (L) => {
+    const u = unitOf(L.unit), col = AG_COL[L.unit]?.[0] ?? (L.unit === "you" ? "#af50ff" : "#f0c46a");
+    const right = L.unit === "sponsor" && L.gold ? `+${L.gold} gold${L.starUp ? " · " + L.starUp : ""}` : L.xp ? `+${L.xp} XP${L.starUp ? " · " + L.starUp : ""}` : L.gold ? `+${L.gold} gold` : "";
+    const title = L.title ?? `${unitName(L.unit)} came back from ${L.city}`;
+    return `<div class="lcard${L.empty ? " empty" : ""}" style="--lc:${L.empty ? "#3a4060" : col}"><span class="utile" style="--g1:${col}">${I(u?.ic ?? "star")}</span><div class="lb"><div class="l1"><strong>${esc(title)}</strong><span>${esc(right)}</span></div>
+      <div class="fact">${L.fact} <span class="lrc" data-rc="${esc(L.unit)}|${esc(L.city)}" title="Show the live call">(${esc(L.receipts.join(" · "))})</span></div>
+      ${L.mapChange ? `<div class="chg${L.mapChange === "nothing changed" ? " none" : ""}">Map: ${esc(L.mapChange)}</div>` : ""}${L.questChange ? `<div class="chg">Quest: ${esc(L.questChange)}</div>` : ""}${L.realMove ? `<div class="mv">Real move: ${esc(L.realMove.title)}</div>` : ""}${L.action ? `<button class="act" data-act="${L.action.run}">${esc(L.action.label)}</button>` : ""}</div></div>`;
+  };
+  function open(week) {
+    fast = false;
+    $("#ws-in").innerHTML = `<header class="ws-hd"><div class="k">Sunday night · Week ${week} of ${WEEKS}</div><h1 id="ws-h"></h1><div class="s">Your weekly headline, written from what actually happened.</div></header>
+      <div class="ws-body"><section class="ws-left" id="ws-left"></section>
+        <section class="ws-right"><div class="ws-sec"><h2>YOUR ARMY REPORTS BACK</h2><span>each one real data, each one changes the map</span></div><div id="ws-cards" style="display:flex;flex-direction:column;gap:12px"></div><div class="wstrip" id="ws-strip"></div><div class="woffers" id="ws-offers"></div></section></div>
+      <footer class="ws-ft" id="ws-ft"><div class="ws-skip" style="flex:1">Click anywhere to skip ahead</div></footer>`;
+    const w = $("#weekshow"); w.hidden = false; w.scrollTop = 0;
+    w.onclick = (e) => { if (!e.target.closest("button,.rc")) fast = true; };
+    // receipts open the live call behind them
+    $("#ws-in").onclick = (e) => { const r = e.target.closest("[data-rc]"); if (!r) return; const [id, city] = r.dataset.rc.split("|"), a = agentOf(id); const line = [...$$("#ops > div")].find((x) => x.textContent.includes(city) && (!a || x.textContent.includes(a.name))); if (line && !r.nextElementSibling?.classList?.contains("opsline")) r.insertAdjacentHTML("afterend", `<div class="lrc opsline" style="display:block;text-decoration:none">${esc(line.textContent)}</div>`); };
+  }
+  function waiting(on) { const c = $("#ws-cards"), w = $("#ws-wait"); if (on && !w) c.insertAdjacentHTML("beforeend", `<div class="lwait" id="ws-wait">Your army is working: live calls to Qloo, Wikipedia, Open-Meteo and the fan panel…</div>`); else if (!on) w?.remove(); }
+  function loot(L) { const html = lootCard(L), w = $("#ws-wait"); if (w) w.insertAdjacentHTML("beforebegin", html); else $("#ws-cards").insertAdjacentHTML("beforeend", html); }
+  async function battle(B) {
+    if (B.loot) { loot(B.loot); Sound.play("conquer"); await wait(400); return; }
+    const r = B.res, f = r.f, host = $("#ws-left"), id = "bc" + host.children.length;
+    host.insertAdjacentHTML("beforeend", `<section class="bcard" id="${id}"><div class="bh"><h2>${esc(B.title)}</h2><span class="wstamp ${B.good ? "good" : "bad"}">${esc(B.stamp)}</span></div>
+      <div class="bvs"><div class="bface" style="--fc:#af50ff">${avatar(G.player.image, G.player.name)}</div><div class="bmeter"><div class="t"><span>The crowd · 1,000 fans in the room</span><b class="pc">50% yours</b></div><div class="bar"><i></i></div></div><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div></div>
+      <ol class="brounds">${r.rounds.map((x, i) => `<li><span><i>Round ${i + 1} · ${esc(x.k)}</i> · ${esc(x.say)}</span><span class="${x.s >= 0.5 ? "w" : "l"}">${x.s >= 0.5 ? "you" : esc(lastName(f.name))} +${Math.max(1, Math.round(Math.abs(x.s - 0.5) * 40))}</span></li>`).join("")}</ol>
+      <div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(B.line)}”<div>${esc(B.note ?? "")}</div></div></div></section>`);
+    const el = $("#" + id), pct = Math.round(r.share * 100); Sound.play("threat");
+    await wait(60); el.querySelector(".bar i").style.width = pct + "%"; el.querySelector(".pc").textContent = `${pct}% yours`;
+    for (const li of el.querySelectorAll(".brounds li")) { li.classList.add("on"); Sound.play("tick"); await wait(200); }
+    if (fast || REDUCED) el.querySelectorAll(".brounds li").forEach((li) => li.classList.add("on"));
+    await wait(300); el.querySelector(".wstamp").classList.add("on"); Sound.play(B.good ? "conquer" : "lost"); await wait(400);
+  }
+  function lost(city, f, fought) { $("#ws-left").insertAdjacentHTML("beforeend", `<section class="bcard"><div class="bh"><h2>BATTLE FOR ${esc(city.toUpperCase())}</h2><span class="wstamp bad on">LOST</span></div><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(rivalLine(f, "won", { city }))}”<div>${fought ? "You fought and lost, and the siege ran out." : "You sent nobody."} ${esc(f.name)} takes ${esc(city)} and its tour stop.</div></div></div></section>`); Sound.play("lost"); }
+  function rival(f, line, status, title) { $("#ws-left").insertAdjacentHTML("beforeend", `<section class="rcard"><h2>${esc(title)}</h2><div class="rline"><div class="bface" style="--fc:${f.col}">${avatar(f.img, f.name)}</div><div class="bub">“${esc(line)}”<div>${esc(status)}</div></div></div></section>`); }
+  function banner(html) { $("#ws-left").insertAdjacentHTML("beforeend", `<div class="lvup">${html}</div>`); Sound.play("ageup"); }
+  function strip(R) {
+    const L = levelOf(G.xp), q = quest(), ripe = G.cities.filter((c) => !isHeld(c) && (c.state === "beachhead" || (c.state === "rival" && G.prep.has(c.name)))).length;
+    $("#ws-strip").innerHTML = `<div><b>+<span data-to="${R.income.gold}">0</span></b><small>gold</small></div><div><b>+<span data-to="${R.xp.gained}">0</span></b><small>XP${L.next ? ` · ${L.toNext} to Lv ${L.next.roman}` : ""}</small></div><div><b class="ok">${q.have} / ${q.need}</b><small>${esc(q.unit)}</small></div><div><b class="vi">${ripe}</b><small>cit${ripe === 1 ? "y" : "ies"} ripe to take</small></div>`;
+    $$("#ws-strip [data-to]").forEach((b) => (REDUCED || fast ? (b.textContent = (+b.dataset.to).toLocaleString()) : countTo(b, +b.dataset.to)));
+  }
+  function offers(list) {
+    const el = $("#ws-offers"); if (!el) return;
+    el.innerHTML = list.length ? `<h3>Offers for next week · 1 order each, gone after a week</h3>${list.map((o) => { const on = G.orderQueue.some((q) => q.offer === o.id); return `<div class="offer2"><span><b>${esc(o.title)}</b> · ${esc(o.text)} <em>${esc(o.reward)}</em></span><button class="chip2${on ? " on" : ""}" data-wclaim="${esc(o.id)}">${on ? "Claimed" : "Claim · 1 order"}</button></div>`; }).join("")}` : "";
+    $$("#ws-offers [data-wclaim]").forEach((b) => (b.onclick = () => claimOffer(b.dataset.wclaim)));
+  }
+  function footer() {
+    const moves = G.real.filter((m) => !m.done).slice(-3), over = G.week > WEEKS;
+    $("#ws-ft").innerHTML = `<div class="rm"><div>Do it for real this week (unlocks +200 XP when ticked)</div>${moves.length ? moves.map((m, i) => `<div class="rmv" data-rm="${m.id}"><button title="I did this for real" aria-label="Mark done"></button><span>${i + 1}. ${esc(m.text)}</span></div>`).join("") : `<div class="rmv"><span>Nothing new: send a unit and its report becomes a real move.</span></div>`}</div>
+      <div class="bt"><button class="ghost2" id="ws-peek">Peek: what winning looks like</button><button class="bigcta" id="ws-go">${over ? "SEE YOUR TOUR PACK" : `WEEK ${G.week} · GIVE ORDERS`}</button></div>`;
+    $$("#ws-ft [data-rm]").forEach((r) => (r.querySelector("button").onclick = () => { markReal(r.dataset.rm); r.classList.add("done"); r.querySelector("button").textContent = "✓"; }));
+    $("#ws-peek").onclick = () => victory(true);
+    $("#ws-go").onclick = () => { close(); if (over) victory(); };
+    $$("#ws-in [data-act]").forEach((b) => (b.onclick = () => { const k = b.dataset.act; close(); if (k === "xray") Drawer.open("xray"); else if (k === "tour") openTourFromQuest(); }));
+    Coach.loot?.(null);
+  }
+  function close() { $("#weekshow").hidden = true; renderPrimary(); }
+  return { open, wait, waiting, loot, battle, lost, rival, banner, strip, offers, footer, close, headline: (t) => typeInto($("#ws-h"), t) };
+})();
+
+// END WEEK: everything you ordered happens, in this order: marches → jobs →
+// your battles → sieges → rival attacks → income → XP and level → missions →
+// offers → the headline. Then the week turns over.
 async function endWeek() {
   if (!G || G.busy || G.over) return;
-  G.busy = true; renderOrders(); Sound.play("week");
-  banner(`WEEK ${G.week} ENDS`, "The rivals make their moves", false);
-  ops(`<span class="rv">— week ${G.week} ends · rivals move —</span>`);
-  await sleep(1200);
+  G.busy = true; G.selected = null; G.pinned = null; $("#cityp").hidden = true; renderAgents(); Sound.play("week");
+  const wk = G.week, xp0 = G.xp, lv0 = levelOf(G.xp), have0 = quest().have, held0 = new Set(heldNames()), real0 = G.real.length;
+  const R = { week: wk, loot: [], battles: [], battle: null, rival: null, income: {}, xp: {}, quest: {}, missions: { completed: [] }, realMoves: [], offers: [], mapDiff: [] };
+  G.hour = 164; G.showT = performance.now(); Show.open(wk); Coach.ended?.();
+  ops(`<span class="rv">— END WEEK ${wk} —</span>`);
+  const queue = G.orderQueue.splice(0);
+  await Show.wait(300);
+  // marches, then the real calls in parallel, revealed one at a time as they land
+  const unitQ = queue.filter((o) => G.army.has(o.unitId) && cityOf(o.city));
+  unitQ.forEach((o, i) => marchUnit(G.army.get(o.unitId), cityOf(o.city), i * 250));
+  if (unitQ.length) Show.waiting(true);
+  let chain = Promise.resolve();
+  await Promise.all(unitQ.map(async (o, i) => {
+    const u = G.army.get(o.unitId), c = cityOf(o.city), job = jobAt(o.unitId, c, o); // the live call runs while the unit marches
+    await Show.wait(1200 + i * 250); arrive(u, c); u.state = "working";
+    const L = await job; u.state = isHeld(c) ? "stationed" : "idle";
+    R.loot.push(L);
+    chain = chain.then(async () => { Show.loot(L); Sound.play(L.empty ? "nope" : "potion"); MapView.relayer(); hud(); Coach.loot?.(L); await Show.wait(400); });
+  }));
+  await chain; Show.waiting(false);
+  // your own orders: battles, groundwork; then claimed offers
+  for (const o of queue.filter((o) => o.unitId === "you")) { const B = resolveYouOrder(o, R); if (B) { await Show.battle(B); hud(); } }
+  for (const o of queue.filter((o) => o.unitId.startsWith("offer"))) { const L = applyOffer(o); if (L) { R.loot.push(L); Show.loot(L); await Show.wait(300); } }
+  // sieges you left alone
   for (const sg of [...G.sieges]) {
-    sg.left--;
-    if (sg.left > 0) continue;
-    const ct = G.cities.find((c) => c.name === sg.city), f = G.fac.get(sg.fid);
-    G.sieges = G.sieges.filter((s) => s !== sg);
-    G.orders = G.orders.filter((o) => !(o.kind === "defend" && o.city === sg.city && !o.done));
+    sg.left--; if (sg.left > 0) continue;
+    const ct = cityOf(sg.city), f = G.fac.get(sg.fid); G.sieges = G.sieges.filter((s) => s !== sg);
     if (!ct || !f || sideOf(ct) !== "you") continue;
-    const loss = pts(ct);
-    ct.state = "rival"; ct.owner = f.id; ct.contested = null; G.lost++;
-    G.conquest = Math.max(0, G.conquest - loss); MapView.flip(ct.p); boom(ct.p, f.col); float(ct.p, `−${loss}%`, "#ff4d6d");
-    f.last = `Took ${ct.name} from you`;
-    G.orders.push({ id: `retake-${ct.name}`, kind: "rivalry", city: ct.name, rival: f.name, title: `Rivalry: take back ${ct.name}`, detail: `${f.name} took ${ct.name} while you were busy. Your fans are still there: book a room and win them back.`, receipt: "Qloo footprints + panel reaction", gain: loss, done: false });
-    banner(`${ct.name.toUpperCase()} HAS FALLEN`, `${f.name} takes it · −${loss}% conquest`, false); Sound.play("lost"); event(`💀 ${ct.name} fell to ${f.name}. −${loss}% conquest.`, "bad");
-    ops(`<span class="rv">💀 ${esc(f.name)} took ${esc(ct.name)} · −${loss}%</span>`);
-    hud(-loss); await sleep(2000);
+    fall(ct, f, R); Show.lost(ct.name, f, R.battles.some((b) => b.res?.city === ct.name)); hud(); await Show.wait(600);
   }
-  // the armies on the radar arrive
+  // the rivals' armies arrive
   for (const it of G.intents) {
-    const f = G.fac.get(it.fid), prey = G.cities.find((c) => c.name === it.city);
-    if (!f || !prey) continue;
-    if (f.allied) continue;
-    if (G.forts.has(prey.name)) { setTimeout(() => say(f, rivalLine(f, "bounced", { city: prey.name })), 900); f.last = `Bounced off ${prey.name}`; event(`🛡 ${f.name}'s attack on ${prey.name} bounced off your walls.`, "good"); ops(`<span class="ok">🛡 ${esc(prey.name)} held</span> against ${esc(f.name)}`); float(prey.p, "🛡 HELD", "#3dff9a"); G.saved++; ach("wall"); await sleep(700); continue; }
+    const f = G.fac.get(it.fid), prey = cityOf(it.city); if (!f || !prey || f.allied) continue;
+    if (G.forts.has(prey.name)) {
+      f.last = `Bounced off ${prey.name}`; G.saved++; ach("wall"); R.battles.push({ xp: 60 }); R.held ??= { city: prey.name, rival: lastName(f.name), ripe: ripeName() };
+      Show.rival(f, rivalLine(f, "bounced", { city: prey.name }), `${f.name}'s attack bounced off your walls · +60 XP`, `ATTACK ON ${prey.name.toUpperCase()} · REPELLED`); Sound.play("conquer"); await Show.wait(600); continue;
+    }
     if (sideOf(prey) !== "you" || G.sieges.some((s) => s.city === prey.name)) continue;
-    G.sieges.push({ city: prey.name, fid: f.id, left: 2 });
-    G.orders.push({ id: `defend-${prey.name}-${G.week}`, kind: "defend", city: prey.name, title: `Defend ${prey.name}`, detail: `${f.name} is pulling your ${prey.name} fans their way. Win a battle there within 2 weeks, or lose ${pts(prey)}% conquest.`, receipt: `Qloo footprints: ${f.name} vs you in ${prey.name}`, gain: 0, done: false });
-    f.last = `Besieging ${prey.name}`; G.temp.push({ from: it.from, to: prey.p, col: f.col, t0: performance.now() });
-    banner(`${prey.name.toUpperCase()} UNDER SIEGE`, `${f.name} attacks · 2 weeks to break it`, false);
-    event(`⚔ ${f.name} lays siege to ${prey.name}! 2 weeks to break it.`, "bad"); Sound.play("threat");
-    setTimeout(() => say(f, rivalLine(f, "siege", { city: prey.name, left: 2 })), 900);
-    ops(`<span class="rv">⚔ ${esc(f.name)}</span> besieges <b>${esc(prey.name)}</b>`); hud(); await sleep(1500);
+    G.sieges.push({ city: prey.name, fid: f.id, left: 2 }); f.last = `Besieging ${prey.name}`; G.temp.push({ from: it.from, to: prey.p, col: f.col, t0: performance.now() });
+    Show.rival(f, rivalLine(f, "siege", { city: prey.name, left: 2 }), `${prey.name} is under siege · 2 weeks to break it: send You to defend it`, `${prey.name.toUpperCase()} UNDER SIEGE`); Sound.play("threat"); await Show.wait(600);
   }
+  // the other rivals, quietly (Full view's live calls)
   for (const f of G.fac.values()) {
     if (f.allied || G.intents.some((x) => x.fid === f.id)) continue;
     const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival");
     if (f.strategy === "ally" && G.rng() < 0.5) { f.last = `Open to a co-bill${theirs[0] ? ` in ${theirs[0].name}` : ""}`; ops(`<span class="ag">🕊️ ${esc(f.name)}</span> signals a co-bill`); }
     else { const where = theirs[(G.week + f.name.length) % Math.max(1, theirs.length)]?.name; f.last = where ? `Dug in at ${where}` : "Building an audience"; ops(`<span class="rv">🏴 ${esc(f.name)}</span> ${where ? `fortifies ${esc(where)}` : "builds an audience"}`); }
   }
-  // income and recharge
-  const gold = income(), gain = regen();
-  G.gold += gold; G.buzz = Math.min(BUZZ_MAX, G.buzz + gain); float(capP(), `+🪙${gold}`, "#ffcf5a", -30); float(capP(), `+⚡${gain}`, "#7fd8ff", 40);
-  ops(`<span class="ok">income</span> +🪙${gold} (${G.cities.filter((c) => sideOf(c) === "you").length} cities × 15${G.sponsors.length ? ` + ${G.sponsors.length} sponsor${G.sponsors.length > 1 ? "s" : ""}` : ""}) · +⚡${gain}`);
-  G.week++; G.hour = 9; G.forts.clear();
-  // the clock restarts at Monday 09:00: open opportunities keep their remaining time
-  G.nextQuest = Math.max(12, G.nextQuest - 159);
-  G.busy = false;
-  if (G.week > WEEKS) { G.week = WEEKS; hud(); renderOrders(); setTimeout(victory, 600); return; }
-  planIntents();
-  event(`📅 Week ${G.week} begins. +⚡${gain} +🪙${gold}.`, "you"); aiPlan();
-  const urgent = G.orders.findIndex((o) => !o.done && o.kind === "defend");
-  G.sel = urgent >= 0 ? urgent : -1;
-  hud(); renderOrders(); renderAgents(); council();
+  // income, XP, level, missions
+  const gold = income(); G.gold += gold; R.income = { gold };
+  const ticks = Math.min(2, G.realTicks ?? 0); G.realTicks = 0;
+  const got = checkMissions();
+  G.xp += R.loot.reduce((s, L) => s + (L.xp ?? 0), 0) + R.battles.reduce((s, b) => s + (b.xp ?? 0), 0) + ticks * 200 + got.length * 150;
+  const lv1 = levelOf(G.xp); R.xp = { gained: G.xp - xp0, total: G.xp, level: lv1.name, levelUp: lv1.n > lv0.n };
+  for (const m of got) { Show.banner(`MISSION COMPLETE<small>${esc(m.title)} · +150 XP</small>`); await Show.wait(400); }
+  R.missions.completed = got.map((m) => m.title);
+  if (R.xp.levelUp) { Show.banner(`LEVEL UP · LV ${lv1.roman} · ${esc(lv1.name.toUpperCase())}<small>${lv1.n === 3 ? "Herald, Weather oracle, Trend hunter, Copywriter and Showrunner can join your army. +1 order a week." : lv1.n === 2 ? "Every unit gets a 4th target." : "Bigger rooms, bigger rivals."}</small>`); ach("rising"); await Show.wait(600); }
+  // the week turns over
+  G.week++; G.forts.clear(); G.hour = 60; G.showT = 0;
+  G.ordersLeft = ordersPerWeek(levelOf(G.xp).n, G.allies, G.bonusNext); G.bonusNext = 0; R.income.orders = G.ordersLeft;
+  const q1 = quest(); R.quest = { have: q1.have, need: q1.need, unit: q1.unit };
+  R.mapDiff = G.cities.filter((c) => held0.has(c.name) !== isHeld(c)).map((c) => ({ city: c.name, from: held0.has(c.name) ? "you" : "other", to: isHeld(c) ? "you" : sideOf(c) }));
+  R.realMoves = G.real.slice(real0).map((m) => ({ id: m.id, title: m.text, detail: m.detail, xp: 200 }));
+  G.offers = [...G.offersNext, ...buildOffers()].filter((o, i, a) => a.findIndex((x) => x.id === o.id) === i).slice(0, 2); G.offersNext = []; R.offers = G.offers;
+  if (G.week <= WEEKS) planIntents();
+  const nem = nemesis(), nit = nem && G.intents.find((i) => i.fid === nem.id);
+  if (nem) {
+    const line = nit ? rivalLine(nem, "intent", { city: nit.city }) : rivalLine(nem, "retreat", { next: G.cities.find((c) => sideOf(c) === "you")?.name });
+    R.rival = { name: nem.name, line, next: nit ? { city: nit.city, when: "next END WEEK" } : null };
+    Show.rival(nem, line, nit ? `Marching on ${nit.city} · hits next END WEEK` : `${lastName(nem.name)} retreats to ${strikeCity(nem)?.name ?? "home ground"}`, `${nem.name.toUpperCase()} · NEXT WEEK`);
+  }
+  const stopL = R.loot.filter((L) => L.stopN).at(-1), spL = R.loot.find((L) => L.unit === "sponsor" && L.brand);
+  const top = stripTags(R.loot.find((L) => !L.empty)?.fact ?? "").replace(/\.$/, "");
+  R.headline = headlineFor({ you: shortName(), battle: R.battle?.rival === "nobody" ? null : R.battle, held: R.held, lost: R.lost, stop: stopL && q1.have > have0 ? { city: stopL.city, n: q1.have, m: q1.need } : null, sponsor: spL ? { brand: spL.brand, gold: spL.gold } : null, levelUp: R.xp.levelUp ? lv1.name : null, topFact: top ? (top.length > 80 ? top.slice(0, 79) + "…" : top) : null });
+  G.headline = R.headline;
+  G.report = JSON.parse(JSON.stringify({ ...R, battles: R.battles.filter((b) => b.res).map((b) => ({ city: b.res.city, rival: b.res.f.name, stamp: b.stamp, odds: Math.round(b.res.odds.p * 100), xp: b.xp })) }));
+  Show.strip(R); await Show.wait(300); Show.headline(R.headline); Show.offers(G.offers); Show.footer();
+  G.busy = false; hud(); renderAgents(); saveGame();
+  if (G.week <= WEEKS) aiPlan();
 }
 
-function victory() {
-  if (G.over) return;
-  G.over = true; renderOrders(); renderAgents();
-  const [, n, name] = ageOf(G.conquest), grew = G.conquest - G.start;
-  $("#v-title").textContent = grew >= 20 ? "VICTORY" : grew > 0 ? "CAMPAIGN COMPLETE" : "DEFEAT";
-  $("#v-stats").innerHTML = [
-    ["Weeks played", G.week],
-    ["Conquest", `${G.start}% → ${G.conquest}%`],
-    ["Cities held", `${G.startHeld} → ${held()}`],
-    ["Agent missions (real calls)", G.missions],
-    ["Allies · sponsors", `${G.allies} · ${G.sponsors.length}`],
-    ["Cities taken from rivals", G.taken],
-    ["Attacks held / cities lost", `${G.saved} / ${G.lost}`],
-    ["Achievements", `${G.ach.size} / ${Object.keys(ACH).length}`],
-    ["Age reached", `${n} · ${name}`],
-    ["Final score", score().toLocaleString()],
-  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-  $("#victory").hidden = false; Sound.play(grew > 0 ? "victory" : "lost"); saveGame();
+// ---------------------------------------------------------------- the win screen is the deliverable: your tour pack
+// Also opens mid-game as a preview ("Peek: what winning looks like") with the empty cells greyed.
+function drawPackMap(cv, slots) {
+  if (!cv || !Atlas.nation) return;
+  fit(cv, 2); const W = cv.width, H = cv.height, x = cv.getContext("2d"), d = cv._dpr || 1;
+  const s = Math.min(W / MW, H / MH) * 0.92, ox = (W - MW * s) / 2, oy = (H - MH * s) / 2 - 20 * d, S = (p) => [ox + p[0] * s, oy + p[1] * s];
+  x.clearRect(0, 0, W, H); x.save(); x.setTransform(s, 0, 0, s, ox, oy); const P = d3.geoPath(null, x);
+  x.beginPath(); P(Atlas.nation); x.fillStyle = "#141827"; x.fill();
+  for (const st of Atlas.states) { const g = G.gov.get(st.id); if (!g || !isHeld(g.city)) continue; x.beginPath(); P(st.f); x.globalAlpha = 0.35 * g.k; x.fillStyle = COL.you; x.fill(); }
+  x.globalAlpha = 1; x.beginPath(); P(Atlas.inner); x.strokeStyle = "rgba(247,249,250,.08)"; x.lineWidth = 0.8 / s; x.stroke(); x.restore();
+  const pts = slots.map((sl, i) => ({ i, c: sl.city && cityOf(sl.city) })).filter((p) => p.c);
+  x.strokeStyle = "#f0c46a"; x.lineWidth = 3 * d; x.lineJoin = "round"; x.beginPath(); pts.forEach((p, k) => { const [X, Y] = S(p.c.p); k ? x.lineTo(X, Y) : x.moveTo(X, Y); }); x.stroke();
+  for (const p of pts) {
+    const [X, Y] = S(p.c.p), on = !!roomOf(p.c.name);
+    x.fillStyle = on ? "#f0c46a" : "#262c40"; x.beginPath(); x.arc(X, Y, 15 * d, 0, 6.283); x.fill();
+    x.fillStyle = on ? "#0b0d14" : "#9a9db3"; x.font = `900 ${13 * d}px Cinzel, serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(p.i + 1), X, Y + 1);
+    x.fillStyle = "#e9e7f2"; x.font = `500 ${10 * d}px "Inter Tight", sans-serif`; x.fillText(p.c.name.toUpperCase(), X, Y + 26 * d);
+  }
+}
+// great-circle miles between two metros
+function miles(a, b) { const [lo1, la1] = METROS[a] ?? [0, 0], [lo2, la2] = METROS[b] ?? [0, 0], r = Math.PI / 180, h = Math.sin(((la2 - la1) * r) / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(((lo2 - lo1) * r) / 2) ** 2; return 3959 * 2 * Math.asin(Math.sqrt(h)); }
+function victory(preview = false) {
+  if (!G) return;
+  if (!preview) { if (G.over) return; G.over = true; renderAgents(); }
+  const f = questFacts(), tq = questState({ ...f, objective: "tour" }), q = quest(), obj = objectiveOf(G.objective), L = levelOf(G.xp), have = tq.have, won = !preview && q.won;
+  const title = preview ? "WHAT WINNING LOOKS LIKE" : won ? (obj.id === "tour" ? "YOUR TOUR IS BOOKED" : `QUEST COMPLETE · ${obj.title.toUpperCase()}`) : G.realDone >= 5 ? "GROUNDWORK DONE" : `YOUR TOUR: ${have} OF 6 STOPS`;
+  const sub = preview ? "Your pack so far. Every grey row is a stop your army can still fill." : "Every stop below came from an order you gave. This is the thing you played for: a plan your manager would have taken a month to make, with the emails already written.";
+  const rows = tq.slots.map((s, i) => {
+    if (!s.city) return `<div class="vp-row empty"><span class="n">${i + 1}</span><span><strong>Stop ${i + 1}</strong><br><small>take a city, then send the Booker</small></span><span>—</span><span>—</span><span>—</span><span>—</span></div>`;
+    const r = roomOf(s.city), n = G.nights.find((x) => x.city === s.city && x.venue) ?? G.nights.find((x) => x.city === s.city);
+    const opener = G.dms.find((dm) => dm.yes && dm.city === s.city)?.name ?? [...G.fac.values()].find((x) => x.allied && x.plan.city === s.city)?.name ?? null, sp = G.sponsors.find((x) => x.city === s.city);
+    return `<div class="vp-row${r ? "" : " empty"}"><span class="n">${i + 1}</span><span title="${esc(n?.why ?? "")}"><strong>${esc(s.city)}</strong><br><small>${n ? esc(shortDay(n.date)) : "no night yet"}</small></span><span title="Qloo places × ${esc(s.city)}">${r ? `${esc(r.venue)}<br><span class="fit">${r.fit}% crowd fit</span>` : "— <small>send the Booker</small>"}</span><span class="c" title="Qloo taste overlap">${opener ? esc(opener) : "—"}</span><span class="c" title="Qloo brands your fans love">${sp ? `${esc(sp.name)} · +${sp.perWeek}/wk` : "—"}</span><span class="c" title="Copywriter (Qloo tags)">${G.posts.has(s.city) ? "drafted" : "—"}</span></div>`;
+  }).join("");
+  const stops = tq.slots.filter((s) => s.city && roomOf(s.city)).map((s) => s.city), legs = stops.slice(1).map((c, i) => miles(stops[i], c));
+  const dates = stops.map((c) => roomOf(c).date).sort(), md = (iso) => shortDay(iso).replace(/^\w+,? /, "");
+  const summary = stops.length ? `${dates.length ? `${md(dates[0])} – ${md(dates.at(-1))} · ` : ""}${Math.round(legs.reduce((a, b) => a + b, 0)).toLocaleString()} miles · ${legs.filter((m) => m > 500).length} fly leg${legs.filter((m) => m > 500).length === 1 ? "" : "s"} · ${stops.length} night${stops.length === 1 ? "" : "s"}` : "No stops booked yet";
+  const allyNames = [...G.fac.values()].filter((x) => x.allied).map((x) => x.name), pl = (n, a, b = a + "s") => `${n} ${n === 1 ? a : b}`;
+  const camp = `${pl(G.taken, "city", "cities")} taken · ${pl(G.saved, "attack")} held · ${pl(G.allies, "ally", "allies")}${allyNames.length ? ` (${allyNames.slice(0, 2).join(", ")})` : ""} · ${pl(G.sponsors.length, "sponsor")} · ${pl(G.realDone, "real move")} done`;
+  const nIcs = G.nights.length;
+  $("#vpack").innerHTML = `<header class="vp-hd"><div class="k">Week ${Math.min(G.week, WEEKS)} of ${WEEKS} · Lv ${L.roman} ${esc(L.name)} reached · ${have} of 6 stops booked</div><h1>${esc(title)}</h1><p>${esc(sub)}</p></header>
+    <div class="vp-body"><section class="vp-map" aria-label="Tour route"><canvas id="vp-cv"></canvas><div class="sum">${esc(summary)}</div><div class="camp"><strong>Campaign:</strong> ${esc(camp)}</div></section>
+      <section class="vp-stops" aria-label="The six stops"><div class="vp-row hd"><span>#</span><span>City · night</span><span>Room (Booker)</span><span>Opener (Diplomat)</span><span>Sponsor (Sponsor scout)</span><span>Post (Copywriter)</span></div>${rows}<div class="vp-note">Every cell has a receipt (hover it): Qloo places and brands, Open-Meteo, the fan panel. Fan counts and fits are real; opener and sponsor replies are up to you.</div></section></div>
+    <footer class="vp-ft"><div><button class="vbtn" id="vp-ics" ${nIcs ? "" : "disabled title=\"Book a room or send the Weather oracle first\""}>Calendar (.ics, ${pl(nIcs, "night")})</button><button class="vbtn" id="vp-briefs" ${stops.length && G.cid ? "" : "disabled"}>${pl(stops.length, "City Brief")} (PDF)</button><button class="vbtn" id="vp-assets">${pl(G.venueMails.length, "venue email")} · ${pl(G.sponsorPitches.length, "sponsor pitch", "sponsor pitches")} · ${pl(G.dms.length, "DM")}</button>${have >= 4 ? `<button class="vbtn" id="vp-tour">Tour Planner: route it</button>` : ""}<button class="vbtn" id="vp-share">Share card</button></div>
+      <div>${preview ? `<button class="bigcta" id="vp-back">BACK TO THE WEEK</button>` : `<button class="ghost2" id="vp-map">Examine the map</button><button class="bigcta gold" id="vp-new">NEW CAMPAIGN · LV ${L.roman}</button>`}</div></footer>`;
+  $("#victory").hidden = false; $("#victory").scrollTop = 0; Sound.play(preview ? "select" : won ? "victory" : "week");
+  requestAnimationFrame(() => drawPackMap($("#vp-cv"), tq.slots));
+  $("#vp-ics").onclick = downloadIcs;
+  $("#vp-briefs").onclick = async (e) => { const b = e.currentTarget; b.disabled = true; let n = 0; for (const c of stops) { b.textContent = `${c}… (${++n}/${stops.length})`; await post("/api/brief", { campaignId: G.cid, city: c }, 60000); } b.textContent = "Briefs ready"; b.disabled = false; openDoc(`/briefs/${encodeURIComponent(G.cid)}`, "City Briefs"); };
+  $("#vp-assets").onclick = openAssets;
+  $("#vp-tour")?.addEventListener("click", () => { $("#victory").hidden = true; Show.close(); openTourFromQuest(); });
+  $("#vp-share").onclick = () => openShare();
+  $("#vp-back")?.addEventListener("click", () => { $("#victory").hidden = true; });
+  $("#vp-map")?.addEventListener("click", () => { $("#victory").hidden = true; });
+  $("#vp-new")?.addEventListener("click", () => { const xp = G.xp; $("#victory").hidden = true; startGame(G.c, G.player, { fresh: true, xp }); });
+  if (!preview) { ops(`<span class="ok">campaign complete</span> · ${have} of 6 stops · ${G.xp} XP`); saveGame(); }
 }
 
 function battlePlan() {
@@ -2739,118 +2566,72 @@ function battlePlan() {
     G.potions.length ? `Trending now: ${G.potions.map((p) => `${p.title} (${p.where})`).join(", ")}` : ""].filter(Boolean).join("\n");
 }
 
-$("#endturn").addEventListener("click", () => { if (G && !G.busy && !G.over) { Clock.finishWeek(); } });
-$("#cpause").addEventListener("click", () => Clock.toggle());
-$("#cfast").addEventListener("click", () => Clock.fast());
-$("#sound").addEventListener("click", () => { $("#sound").textContent = Sound.toggle() ? "🔊" : "🔇"; });
-$("#exit").addEventListener("click", toSite);
-// stats live behind one button, so the top bar stays calm
-$("#stats-btn").addEventListener("click", (e) => {
-  e.stopPropagation(); const p = $("#mini"), r = e.currentTarget.getBoundingClientRect(); p.hidden = !p.hidden;
-  // the top bar blurs its backdrop, which traps fixed children: lift the popover into #game
-  if (p.parentElement !== $("#game")) $("#game").appendChild(p);
-  p.style.top = r.bottom + 8 + "px"; p.style.left = Math.max(8, Math.min(innerWidth - 226, r.left)) + "px";
+// ---------------------------------------------------------------- the war room's controls
+$("#endweek").addEventListener("click", () => {
+  if (!G || G.busy || G.over) return;
+  const b = $("#endweek");
+  if (!G.orderQueue.length && !b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Send nobody? Your rivals still move · End anyway"; setTimeout(() => { delete b.dataset.sure; renderAgents(); }, 4000); return; }
+  delete b.dataset.sure; endWeek();
 });
-addEventListener("click", (e) => { if (!e.target.closest(".statsw, #mini")) $("#mini").hidden = true; });
-function setView(full, remember) { document.body.classList.toggle("simple", !full); $("#view-btn").textContent = full ? "Simple view" : "Full view"; if (remember) try { localStorage.setItem("conquest-view2", full ? "full" : "simple"); } catch {} if (G) { renderAgents(); MapView.relayer?.(); } }
+$("#quest").addEventListener("click", () => (Drawer.mode === "missions" ? Drawer.close() : Drawer.open("missions")));
+$("#more-btn").addEventListener("click", (e) => { e.stopPropagation(); const m = $("#more-menu"); m.hidden = !m.hidden; $("#more-btn").setAttribute("aria-expanded", String(!m.hidden)); });
+addEventListener("click", (e) => { if (!e.target.closest(".morew")) $("#more-menu").hidden = true; });
+$("#more-menu").addEventListener("click", (e) => { if (e.target.closest("button")) $("#more-menu").hidden = true; });
+$("#sound").addEventListener("click", () => { $("#sound").textContent = `Sound: ${Sound.toggle() ? "on" : "off"}`; });
+$("#exit").addEventListener("click", toSite);
+// Simple view is the default (three colours, the army rail); Full view adds the radar, the brain, live calls and every rival
+function setView(full, remember) { document.body.classList.toggle("simple", !full); $("#view-btn").textContent = full ? "Simple view" : "Full view"; if (remember) try { localStorage.setItem("conquest-view3", full ? "full" : "simple"); } catch {} if (G) { hud(); renderAgents(); MapView.relayer?.(); } }
 $("#view-btn").addEventListener("click", () => setView(document.body.classList.contains("simple"), true));
-// full view first; the choice is remembered only once someone switches
-{ let v = "full"; try { v = localStorage.getItem("conquest-view2") || "full"; } catch {} setView(v === "full" || new URLSearchParams(location.search).has("tour")); }
-$("#v-map").addEventListener("click", () => ($("#victory").hidden = true));
-$("#v-share").addEventListener("click", () => { $("#victory").hidden = true; openShare(); });
-$("#share-btn").addEventListener("click", openShare);
+{ let v = "simple"; try { v = localStorage.getItem("conquest-view3") || "simple"; } catch {} setView(v === "full" && !new URLSearchParams(location.search).has("tour")); }
+$("#share-btn").addEventListener("click", () => openShare());
 $("#xray-btn").addEventListener("click", () => (Drawer.mode === "xray" ? Drawer.close() : Drawer.open("xray")));
 $("#tour-btn").addEventListener("click", () => (Drawer.mode === "tour" ? Drawer.close() : Drawer.open("tour")));
+$("#radar-btn").addEventListener("click", () => (Drawer.mode === "radar" ? Drawer.close() : Drawer.open("radar")));
 // closed panels open on click; the brain opens the X-ray once it's open
 $("#slot-brain").addEventListener("click", (e) => { const sec = $("#slot-brain"); if (!sec.classList.contains("open")) { sec.classList.add("open"); return; } if (e.target.closest(".stitle")) { sec.classList.remove("open"); return; } Drawer.open("xray"); });
-$("#council .chead").addEventListener("click", (e) => { if (e.target.closest("#trends-btn")) return; $("#council").classList.toggle("open"); });
-$("#council-more").addEventListener("click", () => $("#council").classList.toggle("open"));
-$("#goalbar").addEventListener("click", () => $("#goalbar").classList.toggle("open"));
-// on desktop the world clock sits at the top of the right column, above the radar; phones keep it top centre
-function placeClock() { const c = $("#clock"), side = $("#mapside"), mw = $("#mapwrap"); if (!c || !side || !mw) return; if (innerWidth > 900) { if (c.parentElement !== side) side.prepend(c); } else if (c.parentElement !== mw) mw.appendChild(c); }
-placeClock(); addEventListener("resize", placeClock);
 $$("[data-tour]").forEach((b) => b.addEventListener("click", runTour));
-$("#v-again").addEventListener("click", () => { $("#victory").hidden = true; startGame(G.c, G.player); });
-$("#v-site").addEventListener("click", () => { $("#victory").hidden = true; toSite(); });
-$("#v-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(battlePlan()); toast("Battle plan copied. Go make it real."); } catch { toast("Couldn't reach the clipboard."); } });
-$("#simulate").addEventListener("click", simulatePlan);
-$("#all-orders").addEventListener("click", () => (Drawer.mode === "orders" ? Drawer.close() : Drawer.open("orders")));
-$("#trends-btn").addEventListener("click", () => (Drawer.mode === "trends" ? Drawer.close() : Drawer.open("trends")));
 $("#cmd-btn").addEventListener("click", () => (Drawer.mode === "intel" ? Drawer.close() : Drawer.open("intel")));
 $("#plan-btn").addEventListener("click", () => (Drawer.mode === "moves" ? Drawer.close() : Drawer.open("moves")));
 $("#drawer-x").addEventListener("click", () => Drawer.close());
 $("#help").addEventListener("click", () => { try { localStorage.removeItem("conquest-coached"); } catch {} Coach.start(); });
 $("#ops-toggle").addEventListener("click", () => { const p = $("#p-ops"); p.classList.toggle("collapsed"); $("#ops-toggle").setAttribute("aria-expanded", String(!p.classList.contains("collapsed"))); });
-$("#legend").addEventListener("mouseenter", () => $("#legend").classList.remove("hide"));
-function tab(name) { if (!$("#tab-agents")) return; $$(".seg button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name)); for (const t of ["agents", "brain", "intel"]) $(`#tab-${t}`).hidden = t !== name; }
-$$(".seg button").forEach((b) => b.addEventListener("click", () => tab(b.dataset.tab)));
-// phones: rails become bottom sheets, picked from a tab bar
-function sheet(name) {
-  if (!G) return; G.sheet = G.sheet === name ? null : name;
-  $("#rail-left").classList.remove("open"); $("#rail-right").classList.remove("open"); $("#p-ops").classList.remove("open");
-  $$("#tabbar button").forEach((b) => b.classList.toggle("on", b.dataset.sheet === G.sheet));
-  const n = G.sheet; if (!n) return;
-  if (n === "orders") $("#rail-right").classList.add("open");
-  else if (n === "log") $("#p-ops").classList.add("open");
-  else { $("#rail-left").classList.add("open"); if (n === "agents" || n === "brain") tab(n); ($(n === "threats" ? "#p-threats" : "#p-tabs")).scrollIntoView({ block: "start" }); }
-}
-$$("#tabbar button").forEach((b) => b.addEventListener("click", () => sheet(b.dataset.sheet)));
+document.body.appendChild($("#coach")); // above the END WEEK show, for the coach's last step
 
-// ---------------------------------------------------------------- the guided first turn
-// Five beats, clock paused: your ground, your first move (a real agent call
-// follows it), a rival on the radar, the three resources, then the board is yours.
+// ---------------------------------------------------------------- the first 60 seconds
+// Four beats: the quest bar, one Booker order, END WEEK, and the first loot card inside the show.
 const Coach = (() => {
-  let step = -1, dim = null, spotEl = null;
-  const mobile = () => innerWidth < 1180;
+  let step = -1, dim = null, spotEl = null, waitLoot = false;
   const STEPS = [
-    { spot: () => "#mapwrap", go: "Continue", t: () => `This is your ground. Fans already live here. ${G.capital ?? "Your capital"} is your capital and you hold ${held()} cit${held() === 1 ? "y" : "ies"}.`, enter: () => { const p = capP(); if (p) { boom(p, COL.you); float(p, "👑 YOUR CAPITAL"); } } },
-    { spot: () => "#slot-next", go: null, t: () => { const o = G.orders[tutorialPick()]; return o ? `Your first move: “${o.title}”. Cost ⚡${costOf(o)}${gainOf(o) ? `, projected +${gainOf(o)}% conquest` : ""}. Press the button.` : "Pick an order and press Execute."; }, enter: () => { const i = tutorialPick(); if (i >= 0) { G.sel = i; renderOrders(); preview(G.orders[i]); } } },
-    { spot: () => "#rivalstrip", go: "Continue", t: () => { const it = G.intents[0], f = it && G.fac.get(it.fid); return f ? `A rival is moving: ${f.name} is marching on ${it.city} and arrives Sunday. Fortify the city or strike first.` : "Rivals show up on the radar days before they strike. Fortify or strike first."; }, enter: () => { ensureThreat(); hud(); } },
-    { spot: () => "#orbs", go: "Continue", t: () => "Three resources run your campaign. ⚡ Buzz = your actions this week. ❤ Hype = how hard your material hits. 🪙 Gold = money for agents and walls.", enter: () => ["#orb-buzz", "#orb-hype", "#orb-gold"].forEach((id, k) => setTimeout(() => { const e = $(id); e.classList.remove("pulse"); void e.offsetWidth; e.classList.add("pulse"); }, k * 450)) },
-    { spot: () => "#slot-army", go: "Got it", t: () => "Your agents are units. Recruit one here, click it, then click any city on the map (or drag it there). It marches on the clock, works with live data, and earns while stationed." },
-    { spot: () => "#plan-btn", go: "Play", t: () => "Every order you execute becomes a real mission in “Real moves”. Do it for real, tick it off, and the game pays you. The board is yours: the clock starts now." },
+    { spot: "#quest", go: "Continue", t: () => ((G.objective ?? "tour") === "tour" ? "This is what you're playing for: a 6-stop tour. Every slot you fill here is a real date." : `This is what you're playing for: ${objectiveOf(G.objective).title.toLowerCase()}. Every slot you fill here is real.`) },
+    { spot: "#army-rail", go: null, enter: () => selectUnit("booker", true), t: () => { const c = chipsFor("booker")[0]; return `Your army does the work. The Booker finds a room${c ? ` in ${c.city}` : ""}: real venue, real crowd fit. Click the chip.`; } },
+    { spot: "#endweek", go: null, t: () => "Nothing moves until you press this. Press it and watch the week play out." },
+    { spot: null, go: "Play", t: (L) => (L && !L.empty && L.questChange ? `That's real data, and it just did this for your quest: ${L.questChange}. Three orders a week. Go.` : "That's real data from your army. Three orders a week. Go.") },
   ];
   function clear() { spotEl?.classList.remove("spot"); spotEl = null; }
-  function show() {
+  function show(arg) {
     clear(); const s = STEPS[step]; s.enter?.();
-    $("#coach-step").textContent = `Step ${step + 1} of ${STEPS.length}`; $("#coach-t").textContent = s.t();
-    $("#coach-go").hidden = !s.go; $("#coach-go").textContent = s.go ?? "";
-    const sel = s.spot(); spotEl = sel ? $(sel) : null; spotEl?.classList.add("spot");
-    if (!dim) { dim = document.createElement("div"); dim.className = "coachdim"; $("#game").appendChild(dim); }
+    $("#coach-step").textContent = `Step ${step + 1} of ${STEPS.length}`; $("#coach-t").textContent = s.t(arg);
+    $("#coach-go").hidden = !s.go; $("#coach-go").textContent = s.go ?? ""; $("#coach").hidden = false;
+    spotEl = s.spot ? $(s.spot) : null; spotEl?.classList.add("spot");
+    if (s.spot && !dim) { dim = document.createElement("div"); dim.className = "coachdim"; $("#game").appendChild(dim); }
+    if (!s.spot) { dim?.remove(); dim = null; }
   }
-  function end() { clear(); dim?.remove(); dim = null; $("#coach").hidden = true; step = -1; if (G) { G.coach = false; council(); } try { localStorage.setItem("conquest-coached", "1"); } catch {} }
-  function next() { step++; if (step >= STEPS.length) return end(); show(); }
-  $("#coach-go").addEventListener("click", next);
+  function end() { clear(); dim?.remove(); dim = null; $("#coach").hidden = true; step = -1; waitLoot = false; if (G) G.coach = false; try { localStorage.setItem("conquest-coached", "1"); } catch {} }
+  function next(arg) { step++; if (step >= STEPS.length) return end(); show(arg); }
+  $("#coach-go").addEventListener("click", () => next());
   $("#coach-skip").addEventListener("click", end);
   return {
-    start() { if (!G || G.over) return; G.coach = true; step = -1; $("#coach").hidden = false; Drawer.close(); next(); },
-    // after the first order lands, a free Booker proves it's real data
-    async executed(o, ct, failed) {
-      if (step !== 1 || !G.coach) return;
-      if (failed) { $("#coach-t").textContent = "Battles can be lost: prepare the city first and the odds go up. On to the next step."; clear(); await sleep(2200); return next(); }
-      $("#coach-t").textContent = "Watch: your Booker is calling Qloo for a real stage there…"; clear();
-      const city = ct ?? G.cities.find((c) => c.name === G.c.territory.target?.name) ?? G.cities.find((c) => c.name === G.capital);
-      if (city) await runAgent(AGENTS.find((a) => a.id === "booker"), city);
-      toast("Real data. Real venues. This is what you'll do for real.");
-      await sleep(1200); next();
-    },
+    start() { if (!G || G.over) return; G.coach = true; step = -1; Drawer.close(); next(); },
+    ordered(id) { if (step === 1 && id === "booker") next(); },
+    // END WEEK pressed: the last beat waits for the first loot card
+    ended() { if (step < 0) return; clear(); dim?.remove(); dim = null; $("#coach").hidden = true; waitLoot = true; step = 2; },
+    loot(L) { if (!waitLoot) return; waitLoot = false; next(L); },
   };
 })();
-// make sure there's a rival on the radar for the tutorial to point at
-function ensureThreat() {
-  if (G.intents.length) return;
-  const f = [...G.fac.values()].find((x) => !x.allied && x.strategy === "compete") ?? [...G.fac.values()].find((x) => !x.allied); if (!f) return;
-  const prey = preyOf(f) ?? G.cities.find((c) => sideOf(c) === "you"); if (!prey) return;
-  const theirs = G.cities.filter((c) => c.owner === f.id && c.state === "rival");
-  G.intents.push({ fid: f.id, city: prey.name, from: nearest(theirs, prey)?.p ?? [Math.max(20, Math.min(MW - 20, prey.p[0] + (prey.p[0] > MW / 2 ? 260 : -260))), Math.max(20, prey.p[1] - 180)] });
-}
 addEventListener("keydown", (e) => {
-  if (!G || $("#game").hidden || G.modal || e.target.closest("input,textarea")) return;
-  if (/^[1-9]$/.test(e.key) && G.orders[+e.key - 1]) selectOrder(+e.key - 1);
-  if ((e.key === "Enter" || e.key === "e" || e.key === "E") && G.primary >= 0) { e.preventDefault(); execute(G.primary); }
-  if (e.key === " ") { e.preventDefault(); Clock.toggle(); }
-  if (e.key === "Escape") { select(null); closeUnitPop(); }
-  const hk = HOTKEYS.indexOf(e.key.toUpperCase()); if (hk >= 0 && AGENTS[hk] && e.key.length === 1) unitAction(AGENTS[hk].id);
+  if (!G || $("#game").hidden || G.modal || !$("#weekshow").hidden || e.target.closest("input,textarea,select")) return;
+  if (e.key === "Escape") { G.selected = null; renderAgents(); }
+  const k = HOTKEYS.indexOf(e.key); if (k >= 0) $$("#army-list .urow")[k]?.click();
 });
 function toSite() { $("#game").hidden = true; $("#scan").hidden = true; $("#site").hidden = false; Field.setMode("site"); Neuro.reset(); if (G) G.over = true; }
 

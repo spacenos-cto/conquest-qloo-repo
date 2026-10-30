@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conquest</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Noto+Color+Emoji&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@200;300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&family=Cinzel:wght@700;900&family=Noto+Color+Emoji&display=swap">
 <style>
 /* Two worlds. The site is a black void with a constellation brain (one violet
    action, amber labels, huge light type). The game is a war room: a dark
@@ -1528,6 +1528,205 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 @media (max-width:640px){.mr-f{grid-template-columns:1fr}}
 .tcard{border-color:rgba(255,207,90,.35)!important}
 .conf{display:block;font-size:11px;color:var(--ash);margin-top:4px}
+
+/* ================================================================ Conquest v2: guided mode (turn-based, army-first, outcome-first) */
+#game{--c-bg:#0b0d14;--c-p:#141827;--c-p2:#0f1220;--c-b:#262c40;--c-t:#e9e7f2;--c-m:#9a9db3;--c-you:#af50ff;--c-nem:#ff5c7a;--c-sf:#f0c46a;--c-ok:#3dff9a;--c-open:#4a4e58;--cz:"Cinzel",Georgia,serif;background:var(--c-bg);grid-template-rows:auto minmax(0,1fr)!important;color:var(--c-t)}
+#game .hud{height:auto!important;min-height:72px;padding:12px 16px!important;gap:16px!important;flex-wrap:nowrap;align-items:center;background:var(--c-p2);border-bottom:1px solid var(--c-b);backdrop-filter:none;overflow:visible}
+.hhero{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--c-t);padding:0;cursor:pointer;min-width:250px;text-align:left}
+.hero-face{width:48px;height:48px;border-radius:50%;overflow:hidden;border:2px solid var(--c-sf);flex-shrink:0;display:block;background:#2a1a4a}
+.hero-face img,.hero-face .ph{width:100%;height:100%;object-fit:cover;display:grid;place-items:center;font-family:var(--cz);color:var(--c-sf)}
+.hero-b{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hero-n{font-size:15px;font-weight:700;white-space:nowrap}.hero-n span{color:var(--c-m);font-weight:500}.hero-n span::before{content:"· "}
+.hero-l{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-m);white-space:nowrap}
+.lvpill{font-family:var(--cz);color:var(--c-sf);font-weight:700}
+.xpbar2{width:110px;height:6px;border-radius:3px;background:var(--c-b);overflow:hidden;display:inline-block}.xpbar2 i{display:block;height:100%;background:var(--c-sf);width:0;transition:width .6s ease-out}
+.questbar{flex:1 1 480px;min-width:0;display:flex;flex-direction:column;gap:6px;background:none;border:0;padding:0;color:var(--c-t);cursor:pointer;text-align:left}
+.qb-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.qb-top b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-sf);font-weight:700;white-space:nowrap}
+.qb-top span{font-size:12px;color:var(--c-m);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-slots{display:grid;grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:6px}
+.qs{height:36px;border-radius:8px;background:var(--c-p);border:1px solid var(--c-b);display:flex;flex-direction:column;justify-content:center;padding:0 10px;min-width:0;color:#6f7390;font-size:12px}
+.qs b{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qs small{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs.on{background:#2a1a4a;border-color:var(--c-you);color:var(--c-t)}.qs.on small{color:#c9a8ff}
+.qs.held{background:#1c1730;border:1px dashed var(--c-you);color:var(--c-t)}.qs.held small{color:var(--c-sf)}
+.qs.fill{animation:qsfill .6s ease-out}@keyframes qsfill{0%{transform:scale(.9);box-shadow:0 0 0 0 rgba(240,196,106,.8)}100%{transform:none;box-shadow:0 0 0 10px rgba(240,196,106,0)}}
+.questbar:hover .qs{border-color:#3a4060}
+.tile{text-align:center;padding:6px 14px;border-radius:10px;background:var(--c-p);border:1px solid var(--c-b);flex-shrink:0}
+.tile b{display:block;font-family:var(--mono);font-size:22px;font-weight:600;color:var(--c-sf);line-height:1}
+.tile small{font-size:11px;color:var(--c-m);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.tile.ord b{color:var(--c-ok)}.tile.ord.empty b{color:var(--c-nem)}
+.tile.pulse{animation:tpulse .5s ease-out 2}@keyframes tpulse{50%{border-color:var(--c-nem);box-shadow:0 0 0 4px rgba(255,92,122,.35)}}
+#game .hgrp.quiet{display:flex;gap:6px;align-items:center;margin-left:0}
+#game .icobtn{height:40px;min-width:40px;border-radius:8px;border:1px solid var(--c-b);background:none;color:var(--c-m);font-size:13px}
+#game .icobtn:hover{color:var(--c-t);border-color:#3a4060}
+.morew{position:relative}
+.moremenu{position:absolute;right:0;top:46px;z-index:70;min-width:200px;display:flex;flex-direction:column;padding:6px;background:var(--c-p);border:1px solid var(--c-b);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.moremenu[hidden]{display:none}
+.moremenu button{background:none;border:0;color:var(--c-t);text-align:left;padding:10px 12px;border-radius:8px;font:500 14px var(--sans);cursor:pointer}
+.moremenu button:hover{background:#1e1535}.moremenu b{color:var(--c-sf);font-family:var(--mono);font-weight:600}
+#game .stage{display:grid!important;grid-template-columns:minmax(0,1fr) clamp(400px,30vw,460px)!important;grid-template-rows:minmax(0,1fr)!important;gap:20px;padding:18px 24px 22px;min-height:0}
+#game .stage .mapwrap{border:1px solid var(--c-b)!important;border-radius:16px!important;background:#10131f;min-height:0}
+#game .deck,#game .clock,#game .council,#game .goalbar,#game #legend{display:none!important}
+body.simple #mapside,body.simple .rivalstrip,body.simple .scoreboard{display:none!important}
+.maplegend{position:absolute;left:16px;top:14px;z-index:5;display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--c-m);align-items:center;background:rgba(11,13,20,.7);padding:6px 10px;border-radius:8px;pointer-events:none}
+.maplegend span{display:inline-flex;align-items:center;gap:6px}.maplegend i{width:10px;height:10px;border-radius:50%;display:inline-block}.maplegend i.rt{width:18px;height:0;border-radius:0;border-top:3px solid var(--c-you)}
+.fanstrip{position:absolute;left:16px;right:16px;bottom:14px;z-index:5;display:flex;gap:10px;align-items:center;background:rgba(11,13,20,.85);border:1px solid var(--c-b);border-radius:10px;padding:10px 14px;font-size:13px;color:#c9cbd8}
+.fanstrip[hidden]{display:none}
+.fanstrip strong{color:var(--c-t)}.fanstrip .dots{display:inline-flex;gap:4px;flex-shrink:0}.fanstrip .dots i{width:22px;height:22px;border-radius:50%;background:#5a3a8a}.fanstrip .dots i:nth-child(2){background:#8a5a3a}.fanstrip .dots i:nth-child(3){background:#3a6a8a}
+body:not(.simple) .fanstrip{right:300px}
+.arail{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+.rail-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rail-h h2{margin:0;font-family:var(--cz);font-size:16px;letter-spacing:.1em;color:var(--c-sf)}
+.rail-h span{font-size:12px;color:var(--c-m);text-align:right}
+.rail-list{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;padding:3px 4px 3px 3px;flex:1 1 auto}
+.urow{text-align:left;cursor:pointer;border-radius:12px;padding:10px 12px;background:var(--c-p);border:2px solid var(--c-b);color:var(--c-t);display:flex;gap:12px;align-items:flex-start;width:100%;font:inherit;transition:border-color .2s ease-out,background .2s ease-out;flex-shrink:0}
+.urow:hover{background:#181d30}.urow.sel{background:#1e1535;border-color:var(--c-you)}
+.urow.dim{opacity:.62}.urow.next{box-shadow:0 0 0 3px rgba(175,80,255,.35)}
+.utile{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--g1,#af50ff);overflow:hidden}
+.utile .ic{width:22px;height:22px;stroke:#0b0d14;fill:none;stroke-width:2.2}
+.utile img{width:100%;height:100%;object-fit:cover}
+.utile.busy{background-image:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);background-size:200% 100%;animation:shim 1s linear infinite}@keyframes shim{to{background-position:-200% 0}}
+.ub{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.ub1{display:flex;justify-content:space-between;gap:8px}
+.ub1 b{font-size:15px;font-weight:700}.ub1 b em{font-style:normal;color:var(--c-sf);font-size:12px;margin-left:4px}
+.ub1 span{font-size:12px;white-space:nowrap;color:var(--c-m)}.ub1 span.ok{color:var(--c-ok)}.ub1 span.sf{color:var(--c-sf)}.ub1 span.vi{color:#c9a8ff}
+.ub .d{font-size:12px;color:#c9cbd8}.ub .g{font-size:12px;color:var(--c-ok)}.ub .d i,.ub .g i{font-style:normal;color:var(--c-m)}
+.obox{border-radius:12px;padding:12px 14px;background:#1e1535;border:1px solid var(--c-you);display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.obox > div:first-child{font-size:13px}
+.chips2{display:flex;gap:8px;flex-wrap:wrap}
+.chip2{cursor:pointer;border-radius:999px;padding:8px 12px;background:var(--c-p);border:1px solid #3a4060;color:var(--c-t);font:500 13px var(--sans);display:inline-flex;gap:6px;align-items:center;transition:background .2s ease-out}
+.chip2:hover{background:#1c2238}.chip2.on{background:var(--c-you);border-color:var(--c-you);color:#0b0d14}
+.chip2:disabled{opacity:.4;cursor:not-allowed}.chip2 small{font-size:10px;color:var(--c-sf);letter-spacing:.06em;text-transform:uppercase}.chip2.on small{color:#0b0d14}
+.chip2.next{box-shadow:0 0 0 3px rgba(61,255,154,.45);animation:breathe2 3s ease-in-out infinite}
+@keyframes breathe2{50%{box-shadow:0 0 0 6px rgba(61,255,154,.25)}}
+.obox .get{font-size:12px;color:var(--c-ok)}
+.rail-lock{font-size:12px;color:#6f7390;padding:2px 4px}
+.rail-end{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.endweek{display:flex;align-items:center;justify-content:center;gap:10px;height:60px;border-radius:14px;background:var(--c-you);color:#0b0d14;border:0;cursor:pointer;font-family:var(--cz);font-size:20px;font-weight:900;letter-spacing:.1em;box-shadow:0 0 32px rgba(175,80,255,.45);animation:breathe 3s ease-in-out infinite}
+.endweek:disabled{opacity:.4;animation:none;cursor:wait}.endweek.next{outline:3px solid rgba(61,255,154,.5);outline-offset:2px}
+@keyframes breathe{50%{box-shadow:0 0 48px rgba(175,80,255,.75)}}
+.rail-end p{margin:0;text-align:center;font-size:12px;color:var(--c-m)}
+/* objective screen */
+.introsheet.obj{width:min(1280px,100%);background:radial-gradient(ellipse at 50% 0%,#1e1535 0%,#0b0d14 55%);border-color:#262c40;padding:36px 44px 26px;color:#e9e7f2;font-family:var(--sans);font-weight:400}
+.obj-h{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.obj-h .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9db3}
+.obj-h h1{margin:0;font-family:"Cinzel",serif;font-weight:900;font-size:38px;line-height:1.1;color:#f0c46a}
+.obj-h p{margin:0;font-size:15px;color:#c9cbd8;max-width:720px}
+.obj-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:26px}
+.ocard{text-align:left;cursor:pointer;border-radius:16px;padding:18px;background:#141827;border:2px solid #262c40;color:#e9e7f2;display:flex;flex-direction:column;gap:10px;min-height:180px;font:inherit}
+.ocard:hover{background:#181d30}.ocard.on{background:#1e1535;border-color:var(--oc)}
+.ocard .t{width:40px;height:40px;border-radius:10px;background:var(--oc);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0b0d14}
+.ocard .n{font-family:"Cinzel",serif;font-size:17px;font-weight:700;letter-spacing:.04em}
+.ocard .b{font-size:13px;color:#c9cbd8;line-height:1.4}.ocard .g{margin-top:auto;font-size:12px;color:#3dff9a;font-weight:600}
+.obj-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;font-size:13px;color:#c9cbd8}
+.obj-mis{margin-top:22px;border-radius:16px;background:#141827;border:1px solid #262c40;padding:20px 24px;display:flex;flex-wrap:wrap;gap:24px}
+.obj-mis > div{display:flex;flex-direction:column;gap:12px;min-width:0}.obj-mis > div:first-child{flex:1.2 1 420px}.obj-mis > div:last-child{flex:1 1 320px}
+.obj-mis h2{margin:0;font-family:"Cinzel",serif;font-size:15px;letter-spacing:.1em;color:#f0c46a}.obj-mis h2.foe{color:#ff5c7a}
+.obj-mis .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.obj-mis .hd span{font-size:12px;color:#9a9db3}
+.obj-mis .tx{font-size:13px;color:#c9cbd8;line-height:1.5}
+.mrow{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#0f1220;border:1px solid #262c40}
+.mrow .wk{width:28px;height:28px;border-radius:50%;background:#262c40;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;color:#f0c46a;flex-shrink:0}
+.mrow > span:last-child{display:flex;flex-direction:column;gap:3px}.mrow strong{font-size:14px}.mrow small{font-size:12px;color:#c9cbd8}.mrow em{font-style:normal;font-size:12px;color:#3dff9a}
+.mrow.done{border-color:#3dff9a}.mrow.done .wk{background:#3dff9a;color:#0b0d14}.mrow .st{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#9a9db3}.mrow.late .st{color:#f0c46a}
+.obj-f{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+.obj-f > span{font-size:12px;color:#6f7390}
+.bigcta{display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 28px;border-radius:14px;background:#af50ff;color:#0b0d14;border:0;cursor:pointer;font-family:"Cinzel",serif;font-size:17px;font-weight:900;letter-spacing:.1em;box-shadow:0 0 32px rgba(175,80,255,.45)}
+.bigcta:disabled{opacity:.4;cursor:not-allowed}
+.bigcta.gold{background:#f0c46a;box-shadow:none}
+/* the show */
+.weekshow{position:fixed;inset:0;z-index:65;overflow:auto;background:rgba(11,13,20,.86);backdrop-filter:blur(3px);animation:wsin .3s ease-out}
+.weekshow[hidden]{display:none}
+@keyframes wsin{from{opacity:0}}
+.ws-in{max-width:1440px;margin:0 auto;min-height:100%;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(30,21,53,.95) 0%,rgba(11,13,20,.6) 55%);color:#e9e7f2;font-family:var(--sans);font-weight:400;display:flex;flex-direction:column;padding:28px 32px 24px;gap:20px}
+.ws-hd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.ws-hd .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9db3}
+.ws-hd h1{margin:0;font-family:"Cinzel",serif;font-weight:900;font-size:34px;line-height:1.15;max-width:1000px;color:#f0c46a;min-height:40px}
+.ws-hd .s{font-size:14px;color:#c9cbd8}
+.ws-body{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.ws-left{flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.ws-right{flex:1.3 1 480px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.ws-sec{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.ws-sec h2{margin:0;font-family:"Cinzel",serif;font-size:15px;letter-spacing:.1em;color:#f0c46a}.ws-sec span{font-size:12px;color:#9a9db3}
+.lcard{border-radius:14px;background:#141827;border:1px solid var(--lc,#262c40);padding:14px 16px;display:flex;gap:14px;animation:lin .4s ease-out}
+@keyframes lin{from{transform:translateX(40px);opacity:0}}
+.lcard .utile{width:44px;height:44px}
+.lcard .lb{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.lcard .l1{display:flex;justify-content:space-between;gap:10px}.lcard .l1 span{font-size:12px;color:#f0c46a;white-space:nowrap;font-family:var(--mono)}
+.lcard .fact{font-size:13px;color:#c9cbd8}.lcard .fact b{color:#e9e7f2}.lcard .lrc{color:#9a9db3;font-size:12px;cursor:pointer;text-decoration:underline dotted}
+.lcard .chg{font-size:12px;color:#3dff9a}.lcard .chg.none{color:#9a9db3}.lcard .mv{font-size:12px;color:#c9a8ff}
+.lcard .act{align-self:flex-start;margin-top:4px;background:none;border:1px solid #3a4060;color:#e9e7f2;border-radius:999px;padding:6px 12px;font:500 12px var(--sans);cursor:pointer}
+.lcard.empty{border-style:dashed}
+.lwait{border-radius:14px;background:#0f1220;border:1px dashed #3a4060;padding:12px 16px;font-size:13px;color:#9a9db3}
+.bcard{border-radius:16px;background:#141827;border:1px solid #ff5c7a;padding:18px 20px;display:flex;flex-direction:column;gap:14px;animation:lin .4s ease-out}
+.bcard .bh{display:flex;justify-content:space-between;align-items:center}.bcard h2{margin:0;font-family:"Cinzel",serif;font-size:15px;letter-spacing:.1em;color:#ff5c7a}
+.wstamp{font-family:"Cinzel",serif;font-weight:900;font-size:18px;letter-spacing:.08em;opacity:0;transform:scale(1.6);transition:all .3s ease-out}.wstamp.on{opacity:1;transform:none}.wstamp.good{color:#3dff9a}.wstamp.bad{color:#ff5c7a}
+.bvs{display:flex;align-items:center;gap:14px}
+.bface{width:56px;height:56px;border-radius:50%;overflow:hidden;border:2px solid var(--fc);flex-shrink:0;background:#2a1a4a;display:grid;place-items:center;font-family:"Cinzel",serif;font-weight:900;color:var(--fc)}.bface img{width:100%;height:100%;object-fit:cover}.bface .ph{display:grid;place-items:center}
+.bmeter{flex:1;display:flex;flex-direction:column;gap:6px}.bmeter .t{display:flex;justify-content:space-between;font-size:12px;color:#9a9db3}.bmeter .t b{font-family:var(--mono);color:#e9e7f2;font-weight:600}
+.bmeter .bar{height:14px;border-radius:7px;background:#3a1420;overflow:hidden}.bmeter .bar i{display:block;height:100%;width:50%;background:#af50ff;transition:width 1.5s ease-out}
+.brounds{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.brounds li{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:8px;background:#0f1220;opacity:.25;transition:opacity .2s ease-out}.brounds li.on{opacity:1}
+.brounds li span:first-child i{font-style:normal;color:#9a9db3}.brounds .w{color:#3dff9a;font-weight:600;white-space:nowrap}.brounds .l{color:#ff9db0;font-weight:600;white-space:nowrap}
+.rline{display:flex;gap:10px;align-items:flex-start}.rline .bface{width:36px;height:36px;font-size:12px}
+.rline .bub{background:#1a1222;border:1px solid #ff5c7a;border-radius:12px 12px 12px 2px;padding:8px 12px;font-size:13px;line-height:1.35}.rline .bub div{margin-top:4px;font-size:11px;color:#ff9db0}
+.rcard{border-radius:16px;background:#141827;border:1px solid #262c40;padding:16px 18px;display:flex;flex-direction:column;gap:12px;animation:lin .4s ease-out}
+.rcard h2{margin:0;font-family:"Cinzel",serif;font-size:15px;letter-spacing:.1em;color:#ff5c7a}
+.lvup{border-radius:16px;background:#2a1f0a;border:1px solid #f0c46a;padding:14px 18px;text-align:center;font-family:"Cinzel",serif;font-weight:900;color:#f0c46a;letter-spacing:.08em;animation:lin .4s ease-out}
+.lvup small{display:block;font-family:var(--sans);font-weight:500;letter-spacing:0;color:#c9cbd8;font-size:13px;margin-top:4px}
+.wstrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.wstrip > div{border-radius:12px;background:#141827;border:1px solid #262c40;padding:10px 12px;text-align:center}
+.wstrip b{display:block;font-family:var(--mono);font-size:22px;font-weight:600;color:#f0c46a}.wstrip b.ok{color:#3dff9a}.wstrip b.vi{color:#af50ff}
+.wstrip small{font-size:11px;color:#9a9db3;text-transform:uppercase;letter-spacing:.06em}
+.woffers{display:flex;flex-direction:column;gap:8px}.woffers h3{margin:4px 0 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a9db3;font-weight:600}
+.offer2{display:flex;gap:10px;align-items:center;justify-content:space-between;border-radius:12px;background:#0f1220;border:1px solid #3a4060;padding:10px 14px;font-size:13px;color:#c9cbd8}.offer2 b{color:#e9e7f2}.offer2 em{font-style:normal;color:#3dff9a}
+.ws-ft{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;border-top:1px solid #262c40;padding-top:16px}
+.ws-ft .rm{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 480px}
+.ws-ft .rm > div:first-child{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9a9db3}
+.ws-ft .rmv{display:flex;gap:8px;align-items:center;font-size:14px;color:#e9e7f2}
+.ws-ft .rmv button{width:22px;height:22px;border-radius:6px;border:1px solid #3a4060;background:none;color:#3dff9a;cursor:pointer;flex-shrink:0;padding:0}.ws-ft .rmv.done{color:#9a9db3;text-decoration:line-through}
+.ws-ft .bt{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ghost2{display:inline-flex;align-items:center;height:48px;padding:0 18px;border-radius:12px;border:1px solid #262c40;background:none;color:#c9cbd8;font:500 14px var(--sans);cursor:pointer}.ghost2:hover{color:#fff;border-color:#3a4060}
+.ws-skip{font-size:11px;color:#6f7390;text-align:center}
+/* win screen = the tour pack */
+#victory.victory{overflow:auto;display:block;padding:0;background:rgba(11,13,20,.96)}
+#victory[hidden]{display:none}
+.vpack{max-width:1440px;margin:0 auto;min-height:100%;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,#2a1f0a 0%,#0b0d14 50%);color:#e9e7f2;font-family:var(--sans);font-weight:400;display:flex;flex-direction:column;padding:32px 32px 24px;gap:22px}
+.vp-hd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.vp-hd .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9db3}
+.vp-hd h1{margin:0;font-family:"Cinzel",serif;font-weight:900;font-size:44px;line-height:1.1;color:#f0c46a;letter-spacing:.06em}.vp-hd p{margin:0;font-size:15px;color:#c9cbd8;max-width:760px}
+.vp-body{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.vp-map{flex:1 1 420px;min-width:0;border-radius:16px;background:#10131f;border:1px solid #262c40;position:relative;height:460px;overflow:hidden}
+.vp-map canvas{position:absolute;inset:0;width:100%;height:100%}
+.vp-map .sum{position:absolute;left:16px;top:14px;font-size:12px;color:#9a9db3}
+.vp-map .camp{position:absolute;left:16px;right:16px;bottom:14px;background:rgba(11,13,20,.85);border:1px solid #262c40;border-radius:10px;padding:10px 14px;font-size:13px;color:#c9cbd8}.vp-map .camp strong{color:#e9e7f2}
+.vp-stops{flex:1.4 1 520px;min-width:0;display:flex;flex-direction:column;gap:8px;overflow-x:auto}
+.vp-row{display:grid;grid-template-columns:36px 1.2fr 1.4fr 1fr 1fr 1fr;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#141827;border:1px solid #262c40;font-size:13px;min-width:640px}
+.vp-row.hd{background:none;border:0;padding:0 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9a9db3}
+.vp-row .n{width:28px;height:28px;border-radius:50%;background:#f0c46a;display:inline-flex;align-items:center;justify-content:center;font-family:"Cinzel",serif;font-weight:900;color:#0b0d14}
+.vp-row.empty{opacity:.5}.vp-row.empty .n{background:#262c40;color:#9a9db3}
+.vp-row small{color:#9a9db3;font-size:12px}.vp-row .fit{color:#3dff9a;font-size:12px}.vp-row .c{color:#c9cbd8}
+.vp-note{font-size:12px;color:#6f7390;padding:2px 12px}
+.vp-ft{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border-top:1px solid #262c40;padding-top:16px}.vp-ft > div{display:flex;flex-wrap:wrap;gap:10px}
+.vbtn{cursor:pointer;height:46px;padding:0 16px;border-radius:12px;background:#141827;border:1px solid #3a4060;color:#e9e7f2;font:500 14px var(--sans)}.vbtn:hover{background:#1c2238}.vbtn:disabled{opacity:.4;cursor:not-allowed}
+#intro{z-index:84}#docv{z-index:86}.weekshow{background:rgba(11,13,20,.74)}
+.introsheet.obj{text-align:left}.introsheet.obj :is(h1,h2),.weekshow :is(h1,h2),.vpack :is(h1,h2),.arail h2{font-style:normal}
+/* missions drawer */
+.msheet{display:flex;flex-direction:column;gap:10px}.msheet .win{font-size:13px;color:#c9cbd8;border-radius:12px;background:#0f1220;border:1px solid #262c40;padding:10px 12px}.msheet .win b{color:#f0c46a}
+@media (max-width:1180px){
+  #game{position:fixed;overflow:auto;display:block!important}
+  #game .hud{flex-wrap:wrap!important}
+  .questbar{order:5;flex-basis:100%}
+  #game .stage{grid-template-columns:1fr!important;grid-template-rows:auto auto!important;padding:12px}
+  #game .stage .mapwrap{min-height:60vh}
+  .arail{overflow:visible}.rail-list{overflow:visible}
+  .rail-end{position:sticky;bottom:0;background:var(--c-bg);padding:8px 0;z-index:6}
+  .obj-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:768px){
+  .hhero{min-width:0}.xpbar2{width:70px}
+  .qb-slots{display:flex;overflow-x:auto}.qs{min-width:110px}
+  .obj-cards{grid-template-columns:1fr}.introsheet.obj{padding:22px 16px}.obj-h h1{font-size:28px}
+  .wstrip{grid-template-columns:repeat(2,1fr)}.ws-in,.vpack{padding:18px 16px}.ws-hd h1,.vp-hd h1{font-size:24px}
+  #game .hud .brand{display:none}
+}
 </style>
 </head>
 <body>
@@ -1734,44 +1933,31 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <div id="game" hidden>
   <div class="hud">
     <span class="brand"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><path d="M7 28 V5" stroke="#e1bdff" stroke-width="2.4" stroke-linecap="round"/><path d="M8 6 L26 9 L19 13 L26 17 L8 16 Z" fill="#af50ff"/></svg><span class="bt">CONQUEST</span></span>
-    <button class="cmd" id="cmd-btn" title="Your intel: profile, factions, live sources"><div class="lvl"><span id="hud-face"></span><b id="lvl-n">I</b></div><div class="xp"><div class="xpt"><b id="age-name">Open Mic</b><span id="xp-text"></span></div><div class="xpbar"><i id="xp-fill"></i></div></div></button>
-    <div class="orbs" id="orbs">
-      <div class="orbw" id="ow-buzz" title="Buzz: your actions this week. Recharges every Sunday."><div class="orb buzz" id="orb-buzz"><b></b></div><span>Buzz<em id="rate-buzz"></em></span></div>
-      <div class="orbw" id="ow-hype" title="Hype: how hard your material hits (1,000-fan panel rating). More hype, more buzz."><div class="orb hype" id="orb-hype"><b></b></div><span>Hype</span></div>
-      <div class="orbw" id="ow-gold" title="Gold: ticket sales and sponsors. Pays for agents and walls."><div class="orb gold" id="orb-gold"><b></b></div><span>Gold<em id="rate-gold"></em></span></div>
-    </div>
-    <div class="statsw"><button class="icobtn" id="stats-btn" title="Cities held, allies, agents and score">⭐ <b id="stats-score">0</b> <span class="lbl">Stats</span></button><div class="mini statsp" id="mini" hidden></div></div>
-    <div class="hudr">
-      <div class="hgrp">
-      <button class="icobtn wide" id="plan-btn" title="Your real-world to-do list">📋 <span class="lbl">Real moves</span> <b id="real-n"></b></button>
-      <button class="icobtn" id="tour-btn" title="Plan a real tour from your map: cities, nights, rooms, calendar">🗺 <span class="lbl">Tour</span></button>
-      <button class="icobtn" id="xray-btn" title="X-ray your real YouTube content with the brain + 1,000 fans">🎬 <span class="lbl">X-ray</span></button>
-      <button class="icobtn" id="share-btn" title="Share your campaign card">⭐ <span class="lbl">Share</span></button>
-      </div>
-      <div class="hgrp quiet">
-      <button class="icobtn" id="view-btn" title="Simple view shows only what you need; full view shows radar, brain and live calls">Full view</button>
-      <button class="icobtn" id="help" title="Replay the guided first turn">?</button>
-      <button class="icobtn" id="sound" title="Sound on or off">🔊</button>
-      <button class="icobtn" id="exit" title="Back to the site">Exit</button>
-      </div>
+    <button class="hhero" id="cmd-btn" title="Your intel: profile, factions, live sources"><span class="hero-face" id="hud-face"></span><span class="hero-b"><span class="hero-n"><b id="hero-name"></b> <span id="hero-week"></span></span><span class="hero-l"><span class="lvpill" id="age-name">Lv I · Open Mic</span><span class="xpbar2"><i id="xp-fill"></i></span><span id="xp-text"></span></span></span><b id="lvl-n" hidden>I</b></button>
+    <button class="questbar" id="quest" title="Your missions and the win rule"></button>
+    <div class="tile" id="gold-tile" title="Gold: cities pay 15 a week, sponsors and stationed units pay more. Spent on Lv III units and walls."><b id="gold-n">0</b><small id="gold-rate">gold</small></div>
+    <div class="tile ord" id="orders-tile" title="Orders: each unit you send costs one. They refill at END WEEK."><b id="orders-n">3</b><small>orders left</small></div>
+    <div class="hgrp quiet">
+      <button class="icobtn" id="help" title="Replay the guided first turn" aria-label="Help">?</button>
+      <button class="icobtn" id="view-btn" title="Full view adds the radar, the crowd brain, live calls and every rival's colour">Full view</button>
+      <div class="morew"><button class="icobtn" id="more-btn" aria-haspopup="true" aria-expanded="false" title="More">···</button>
+        <div class="moremenu" id="more-menu" hidden>
+          <button id="plan-btn">Real moves <b id="real-n"></b></button>
+          <button id="tour-btn">Tour Planner</button>
+          <button id="xray-btn">Content X-ray</button>
+          <button id="share-btn">Share card</button>
+          <button id="radar-btn">Threat report</button>
+          <button id="sound">Sound: on</button>
+          <button id="exit">Exit to site</button>
+        </div></div>
     </div>
   </div>
   <div class="stage">
     <div class="mapwrap" id="mapwrap">
       <canvas id="gmap" aria-label="Battle map of US cities by faction"></canvas>
-      <div class="clock" id="clock" title="One game week (about 90 seconds) stands for one real week of your career. Spend buzz on moves during the week; at Sunday midnight rivals attack and gold comes in."><span class="cdial" id="cdial"></span><span><small id="cday">WEEK 1</small><b id="ctime">MON 09:00</b></span><button class="icobtn clk" id="cpause" title="Pause or play the world clock" aria-label="Pause"></button><button class="icobtn clk" id="cfast" title="Fast-forward" aria-label="Fast-forward"></button></div>
-      <div class="goalbar" id="goalbar"></div>
+      <div class="maplegend" id="maplegend"></div>
       <div class="events" id="events" aria-live="polite"></div>
-      <aside class="council frame" id="council">
-        <div class="chead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#15111f" stroke="#af50ff" stroke-width="2"/><path d="M12 30 Q24 8 36 30 Z" fill="#af50ff"/><rect x="11" y="29" width="26" height="5" rx="2" fill="#e1bdff"/><circle cx="24" cy="16" r="3" fill="#fff"/></svg><div><b>Your AI strategist</b><span>Picks your best move</span></div><button class="chip" id="trends-btn" title="Live Google Trends you can ride for buzz">🧪 Trends <b id="trends-n">0</b></button></div>
-        <div class="brief" id="brief"></div>
-        <button class="go council-do" id="council-do"></button>
-        <button class="lnk council-more" id="council-more">Why · more ▾</button>
-        <div class="quests" id="quests"></div>
-        <button class="ghostbtn" id="simulate">▶ Simulate my whole plan</button>
-      </aside>
       <div class="cityp frame" id="cityp" hidden></div>
-      <div class="unitpop" id="unitpop" hidden></div>
       <div class="mapside" id="mapside">
         <section class="slot s-radar" id="slot-radar"><div class="stitle">Radar ›</div><canvas id="radar" class="radarc" aria-label="Radar of incoming rivals"></canvas></section>
         <section class="slot s-brain" id="slot-brain" title="Click to X-ray your real content"><div class="stitle">Crowd brain ›</div><div class="bwrap"><div id="brainsvg"></div><div class="regions" id="regions"></div></div><div class="bnote" id="brain-note"></div></section>
@@ -1780,21 +1966,23 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
       <div class="say" id="say" hidden></div>
       <div class="rivalstrip" id="rivalstrip"></div>
       <div class="scoreboard" id="scoreboard"></div>
-      <div class="legend" id="legend"></div>
+      <div class="fanstrip" id="fanstrip" hidden></div>
       <div class="banner" id="banner"><span class="rib" id="banner-t"></span><small id="banner-s"></small></div>
     </div>
-    <div class="deck" id="deck">
-      <section class="slot s-army" id="slot-army"><div class="stitle">Agent army <span class="hint" id="army-hint"></span></div><div class="units" id="agents"></div></section>
-      <section class="slot s-next" id="slot-next"><div class="stitle"><span id="sel-title">Next move</span> <button class="lnk" id="all-orders">All orders <b id="ocount"></b></button></div><div id="primary"></div></section>
-      <div class="s-end"><button class="endturn" id="endturn" title="Fast-forward to Sunday midnight: income lands, then the rivals strike"><i>⌛</i><span>END</span><b>WEEK</b></button><div class="note" id="weeknote"></div></div>
-    </div>
+    <aside class="arail" id="army-rail" aria-label="Your army">
+      <div class="rail-h"><h2>YOUR ARMY</h2><span>Click a unit, then where to send it · 3 orders a week</span></div>
+      <div class="rail-list" id="army-list"></div>
+      <div class="rail-lock" id="army-lock"></div>
+      <div class="rail-end"><button class="endweek" id="endweek">END WEEK</button><p>No clock. Nothing moves until you press this. Then your army marches, reports back, and the rival makes his move.</p></div>
+    </aside>
   </div>
   <aside class="drawer" id="drawer" aria-hidden="true"><div class="dhead"><b id="drawer-t">All orders</b><button class="icobtn" id="drawer-x" title="Close">✕</button></div><div class="dbody" id="drawer-b"></div></aside>
   <div class="coach" id="coach" hidden role="dialog" aria-live="polite"><div class="ptitle" id="coach-step">Step 1 of 5</div><p id="coach-t"></p><div class="row2"><button class="go" id="coach-go">Continue</button><button class="ghostbtn" id="coach-skip">Skip tutorial</button></div></div>
   <div id="mbar" hidden></div>
 </div>
 
-<div class="victory" id="victory" hidden><div class="vbox panel"><span class="banner on" style="position:static;transform:none;opacity:1"><span class="rib" id="v-title">CAMPAIGN COMPLETE</span></span><dl class="stats" id="v-stats"></dl><p class="note" style="margin:0 26px 10px">Gains are projected from the agent's plan; your real growth comes from doing them.</p><button class="go" id="v-share">Share card</button><button class="go" id="v-copy">Copy battle plan</button><button class="go" id="v-map">Examine map</button><button class="go" id="v-again">Play again</button><button class="go" id="v-site">Back to site</button></div></div>
+<div class="victory" id="victory" hidden><div class="vpack" id="vpack"></div></div>
+<div class="weekshow" id="weekshow" hidden role="dialog" aria-modal="true" aria-label="The week plays out"><div class="ws-in" id="ws-in"></div></div>
 
 <div class="modal gm" id="parley" hidden role="dialog" aria-modal="true"><div class="sheet panel" id="parley-body"></div></div>
 <div class="modal gm" id="battle" hidden role="dialog" aria-modal="true"><div class="sheet panel" id="battle-body"></div></div>
@@ -1805,6 +1993,7 @@ body.simple #game .quests .quest:nth-child(n+2){display:none}
 <script src="vendor/d3-array.min.js"></script>
 <script src="vendor/d3-geo.min.js"></script>
 <script src="vendor/topojson-client.min.js"></script>
-<script src="app.js?v=262"></script>
+<script src="rules.js?v=1"></script>
+<script src="app.js?v=263"></script>
 </body>
 </html>
