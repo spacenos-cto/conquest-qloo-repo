@@ -1864,6 +1864,58 @@ body:not(.simple) .fanstrip{right:300px}
     <p class="lead2">Play a bit, a caption or a script to 1,000 simulated fans built from real taste data. See the score in every city, and the exact second they'd reach for their phones. Fix it, and the brain lights up.</p>
   </div><div></div></div></section>
 
+  <!-- the judges' own past, replayed: real videos, panel score first, real views second -->
+  <section class="past" id="past"><div class="wrap2">
+    <style>
+      .past{padding:120px 0;background:#090909}
+      .past .pastg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:22px;margin-top:44px}
+      .past .pc{padding:28px 26px;border-radius:19px;background:radial-gradient(circle at 30% 0%,rgba(80,90,120,.45),rgba(20,20,26,.9) 70%);display:flex;flex-direction:column;gap:14px}
+      .past .ph2{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}.past .ph2 b{font-size:22px}.past .ph2 small{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--steel);text-transform:uppercase}
+      .past table{width:100%;border-collapse:collapse;font-size:13px}.past th{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--steel);text-align:right;font-weight:400;padding:0 0 6px 10px;text-transform:uppercase}.past th:first-child{text-align:left;padding-left:0}
+      .past td{padding:7px 0 7px 10px;border-top:1px solid var(--hair);text-align:right;white-space:nowrap;color:#d9dce0}.past td:first-child{text-align:left;padding-left:0;white-space:normal;max-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
+      .past tr.hot td{color:#fff;font-weight:600}.past tr.hot td:first-child::before{content:"🔥 "}
+      .past .say2{font-size:15px;line-height:1.5;color:#d9dce0}.past .say2 b{color:#fff}.past .say2 em{color:#e1bdff;font-style:normal;font-weight:600}
+      .past .rc{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--steel)}
+      .past .pill2{align-self:flex-start;margin-top:auto}
+    </style>
+    <div class="stamp-sm">[THEIR_PAST]</div>
+    <h2 class="mix2">We replayed the judges' <em>own past.</em></h2>
+    <p class="lead2">We played each judge's last 6 real YouTube videos to 1,000 simulated fans, then peeked at the real views. Where the fans and the internet disagree is the next move.</p>
+    <div class="pastg">
+      <div class="pc">
+        <div class="ph2"><b>Jason Calacanis</b><small>All-In Podcast · Oct 23–29</small></div>
+        <table><thead><tr><th>Video</th><th>Fans</th><th>Views/day</th></tr></thead><tbody>
+          <tr class="hot"><td title="AI Cyber Panic, Ken Griffin’s Bubble Warning, The Fall of France?">AI Cyber Panic, Ken Griffin’s Bubble Warning…</td><td>3.4</td><td>111,707</td></tr>
+          <tr><td title="WHOOP CEO, Will Ahmed: 50B Hours of Health Data, a 4 Million Member Data Moat, &amp; the FDA Fight">WHOOP CEO, Will Ahmed: 50B Hours of Health Data…</td><td>3.5</td><td>25,796</td></tr>
+          <tr><td>David Friedberg: France’s Crisis Is a Warning for America</td><td>3.6</td><td>21,735</td></tr>
+          <tr><td>Chamath: France Won’t Fix Itself…</td><td>3.6</td><td>12,568</td></tr>
+          <tr><td>David Friedberg: We’ve Lost the Plot on Immigration</td><td>3.6</td><td>6,243</td></tr>
+          <tr><td>Palo Alto Networks CEO: The Cyber Panic Is Just Getting Started</td><td>3.6</td><td>3,683</td></tr>
+        </tbody></table>
+        <p class="say2"><b>We got it backwards.</b> The news roundup drew 4× the views of anything else, but his fans scored it lowest. Reach comes from the news; love comes from tech and investing.</p>
+        <p class="say2"><em>Next move:</em> give the interviews the roundup's news hook in the title, and keep tech news and investing in the first line.</p>
+        <p class="rc">Fans vs views: ρ −0.94 · 6 videos · YouTube public feed + 1,000 fans from Qloo</p>
+        <button class="pill2" data-as="Jason Calacanis">Replay it as Jason ›</button>
+      </div>
+      <div class="pc">
+        <div class="ph2"><b>Los Angeles Dodgers</b><small>@Dodgers · Oct 11–16</small></div>
+        <table><thead><tr><th>Video</th><th>Fans</th><th>Views/day</th></tr></thead><tbody>
+          <tr class="hot"><td>SHOTIME! #nlcs #dodgers</td><td>3.1</td><td>11,041</td></tr>
+          <tr><td>ON REPEAT. #nlcs #dodgers</td><td>3.1</td><td>2,764</td></tr>
+          <tr><td>Let the NLCS begin. #dodgers</td><td>3.1</td><td>2,641</td></tr>
+          <tr><td>Andy delivers! #nlcs #dodgers</td><td>3.1</td><td>2,597</td></tr>
+          <tr><td>WILL SMITH, CAPTAIN CLUTCH! #dodgers</td><td>3.1</td><td>1,750</td></tr>
+          <tr><td>Back home and focused on Game 3. #nlcs #dodgers</td><td>3.1</td><td>889</td></tr>
+        </tbody></table>
+        <p class="say2"><b>To your fans, every title read the same:</b> 3.1 of 5, six times. None of them named a single thing Dodgers fans love. The internet still picked one: the Shohei pun got 3× the average.</p>
+        <p class="say2"><em>Next move:</em> put the star and what your fans love (Latino culture, hip hop, LA) in the title, and test it on the fans before you post.</p>
+        <p class="rc">Fans vs views: ρ −0.43 · 6 videos · YouTube public feed + 1,000 fans from Qloo</p>
+        <button class="pill2" data-as="Los Angeles Dodgers">Replay it as the Dodgers ›</button>
+      </div>
+    </div>
+    <p class="note">Read on Oct 30, 2026. Fan scores come from the free local panel (Qloo taste overlap, no AI model); views are per day, so new and old videos compare fairly. Cedric's YouTube feed was down when we ran this, so play his campaign live instead.</p>
+  </div></section>
+
   <!-- rivals radar -->
   <section class="rivals2" id="rivals"><div class="wrap2 eg">
     <div><div class="stamp-sm">[RIVALS]</div><h2 class="mix2">See them <em>coming.</em></h2>
